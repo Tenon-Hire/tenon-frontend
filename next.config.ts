@@ -8,8 +8,6 @@ const BACKEND_BASE_URL = normalizeOrigin(
   process.env.BACKEND_BASE_URL || "http://localhost:8000"
 );
 
-const BACKEND_API_PREFIX = "/api";
-
 const nextConfig: NextConfig = {
   async rewrites() {
     return [
