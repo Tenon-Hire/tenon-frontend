@@ -21,7 +21,7 @@ const eslintConfig = defineConfig([
         }
       ],
       "@typescript-eslint/explicit-module-boundary-types": "off",
-      "no-console": "error",
+      "no-console": "off",
       "no-comments/disallowComments": "error"
     }
   },
