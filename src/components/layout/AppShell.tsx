@@ -19,15 +19,11 @@ export default async function AppShell({ children }: AppShellProps) {
           </Link>
 
           <nav className="flex items-center gap-4 text-sm">
-            <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
+            {isAuthed && ( <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
               Dashboard
-            </Link>
+            </Link>)  }
 
-            {!isAuthed ? (
-              <Link href="/login" className="text-gray-700 hover:text-gray-900">
-                Login
-              </Link>
-            ) : (
+            {isAuthed && (
               <a href="/logout" className="text-gray-700 hover:text-gray-900">
                 Logout
               </a>
