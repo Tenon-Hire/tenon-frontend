@@ -11,12 +11,6 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  console.log("ENV CHECK", {
-    hasBackend: !!process.env.BACKEND_BASE_URL,
-    hasAudience: !!process.env.AUTH0_AUDIENCE,
-    appBaseUrl: process.env.APP_BASE_URL,
-  });
-
   let me: RecruiterProfile | null = null;
   let error: string | null = null;
 
@@ -33,7 +27,6 @@ export default async function DashboardPage() {
 
     if (!response.ok) {
       const bodyText = await response.text().catch(() => "");
-      console.log("ME FAILED", response.status, bodyText);
       error = `Unable to fetch profile (status ${response.status})${
         bodyText ? `: ${bodyText}` : ""
       }`;
