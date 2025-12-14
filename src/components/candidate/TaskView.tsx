@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Button from "@/components/common/Button";
 import CodeEditor from "@/components/candidate/CodeEditor";
 
@@ -16,6 +16,10 @@ type Task = {
 
 function isCodeTask(t: Task) {
   return t.type === "code" || t.type === "debug";
+}
+
+function isTextTask(t: Task) {
+  return t.type === "design" || t.type === "documentation" || t.type === "handoff";
 }
 
 function loadDraft(storageKey: string) {
@@ -36,9 +40,11 @@ function TaskViewInner({
   task,
   onSubmit,
   submitting,
+  submitError,
 }: {
   task: Task;
   submitting: boolean;
+  submitError?: string | null;
   onSubmit: (payload: { contentText?: string; codeBlob?: string }) => Promise<void> | void;
 }) {
   const storageKey = useMemo(() => `simuhire:candidate_task_draft:${task.id}`, [task.id]);
@@ -48,22 +54,47 @@ function TaskViewInner({
   const [text, setText] = useState<string>(() => initial.text);
   const [code, setCode] = useState<string>(() => initial.code);
 
-  const codeTask = isCodeTask(task);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  useEffect(() => {
+  const codeTask = isCodeTask(task);
+  const textTask = isTextTask(task);
+
+  function saveDraft() {
     try {
       sessionStorage.setItem(storageKey, JSON.stringify({ text, code }));
+      setSavedAt(Date.now());
+      window.setTimeout(() => setSavedAt(null), 1500);
     } catch {
     }
-  }, [storageKey, text, code]);
+  }
 
   async function handleSubmit() {
-    if (codeTask) {
-      await onSubmit({ codeBlob: code });
-    } else {
-      await onSubmit({ contentText: text });
+    if (textTask) {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        setLocalError("Please enter an answer before submitting.");
+        return;
+      }
+      setLocalError(null);
+
+      await onSubmit({ contentText: trimmed });
+
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch {}
+      return;
     }
+
+    setLocalError(null);
+    await onSubmit({ codeBlob: code });
+
+    try {
+      sessionStorage.removeItem(storageKey);
+    } catch {}
   }
+
+  const errorToShow = localError ?? submitError ?? null;
 
   return (
     <div className="max-w-3xl mx-auto p-6 border rounded-md bg-white">
@@ -78,16 +109,42 @@ function TaskViewInner({
         {codeTask ? (
           <CodeEditor value={code} onChange={setCode} language="typescript" />
         ) : (
-          <textarea
-            className="w-full min-h-[220px] border rounded-md p-3"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Write your response here…"
-          />
+          <>
+            <textarea
+              className="w-full min-h-[260px] border rounded-md p-3 text-sm leading-6"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Write your response here…"
+              disabled={submitting}
+            />
+            <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+              <span>{text.length.toLocaleString()} characters</span>
+              {savedAt ? <span>Draft saved</span> : null}
+            </div>
+          </>
         )}
       </div>
 
-      <div className="mt-4 flex justify-end">
+      {errorToShow ? (
+        <div className="mt-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          {errorToShow}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex items-center justify-between gap-2">
+        {textTask ? (
+          <button
+            type="button"
+            onClick={saveDraft}
+            disabled={submitting}
+            className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
+          >
+            Save draft
+          </button>
+        ) : (
+          <div />
+        )}
+
         <Button onClick={handleSubmit} disabled={submitting}>
           {submitting ? "Submitting…" : "Submit & Continue"}
         </Button>
@@ -99,6 +156,7 @@ function TaskViewInner({
 export default function TaskView(props: {
   task: Task;
   submitting: boolean;
+  submitError?: string | null;
   onSubmit: (payload: { contentText?: string; codeBlob?: string }) => Promise<void> | void;
 }) {
   return <TaskViewInner key={props.task.id} {...props} />;
