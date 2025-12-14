@@ -5,6 +5,7 @@ import { auth0 } from "./lib/auth0";
 function isPublicPath(pathname: string) {
   if (pathname === "/" || pathname === "/login" || pathname === "/logout") return true;
   if (pathname.startsWith("/auth")) return true;
+  if (pathname.startsWith("/candidate")) return true;
   return false;
 }
 
@@ -12,7 +13,6 @@ export async function middleware(request: NextRequest) {
   const authRes = await auth0.middleware(request);
 
   const pathname = request.nextUrl.pathname;
-
   const session = await auth0.getSession(request);
 
   if (session && (pathname === "/" || pathname === "/login")) {
@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
 
   if (!session) {
     const url = new URL("/auth/login", request.url);
-    url.searchParams.set("returnTo", pathname);
+    url.searchParams.set("returnTo", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 

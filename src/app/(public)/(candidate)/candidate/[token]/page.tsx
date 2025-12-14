@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
 import CandidateSimulationContent from "./CandidateSimulationContent";
 
-export default function CandidatePage({ params }: { params: { token?: string } }) {
-  const token = params?.token;
+export default async function CandidatePage({
+  params,
+}: {
+  params: Promise<{ token?: string }>;
+}) {
+  const { token } = await params;
 
   if (!token) notFound();
 
