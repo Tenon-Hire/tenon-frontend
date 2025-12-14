@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Button from "@/components/common/Button";
 import CodeEditor from "@/components/candidate/CodeEditor";
 
@@ -60,6 +60,23 @@ function TaskViewInner({
   const codeTask = isCodeTask(task);
   const textTask = isTextTask(task);
 
+  const saveTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (submitting) return;
+
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify({ text, code }));
+      } catch {
+      }
+    }, 350);
+
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    };
+  }, [text, code, storageKey, submitting]);
+
   function saveDraft() {
     try {
       sessionStorage.setItem(storageKey, JSON.stringify({ text, code }));
@@ -86,6 +103,12 @@ function TaskViewInner({
       return;
     }
 
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      setLocalError("Please write some code before submitting.");
+      return;
+    }
+
     setLocalError(null);
     await onSubmit({ codeBlob: code });
 
@@ -107,7 +130,15 @@ function TaskViewInner({
 
       <div className="mt-6">
         {codeTask ? (
-          <CodeEditor value={code} onChange={setCode} language="typescript" />
+          <div className="space-y-2">
+            <div className="text-xs text-gray-500">
+              File: <span className="font-medium text-gray-700">index.ts</span>
+            </div>
+            <CodeEditor value={code} onChange={setCode} language="typescript" />
+            <div className="text-xs text-gray-500">
+              Draft auto-saves locally while you type (refresh-safe until you submit).
+            </div>
+          </div>
         ) : (
           <>
             <textarea

@@ -208,11 +208,20 @@ export default function CandidateSimulationContent({ token }: { token: string })
 
       const type = String(state.taskState.currentTask.type);
       const isTextTask = type === "design" || type === "documentation" || type === "handoff";
+      const isCodeTask = type === "code" || type === "debug";
 
       if (isTextTask) {
         const trimmed = (payload.contentText ?? "").trim();
         if (!trimmed) {
           setTaskError("Please enter an answer before submitting.");
+          return;
+        }
+      }
+
+      if (isCodeTask) {
+        const trimmedCode = (payload.codeBlob ?? "").trim();
+        if (!trimmedCode) {
+          setTaskError("Please write some code before submitting.");
           return;
         }
       }
