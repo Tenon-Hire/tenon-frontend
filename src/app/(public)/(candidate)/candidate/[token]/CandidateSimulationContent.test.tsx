@@ -24,6 +24,7 @@ type MockTask = { id: number; dayIndex: number; type: string; title: string; des
 type MockTaskViewProps = {
   task: MockTask;
   submitting: boolean;
+  submitError?: string | null;
   onSubmit: (payload: { contentText?: string; codeBlob?: string }) => void | Promise<void>;
 };
 
@@ -32,7 +33,8 @@ jest.mock("@/components/candidate/TaskView", () => ({
   default: function MockTaskView({ task, submitting, onSubmit }: MockTaskViewProps) {
     return (
       <div>
-        <div>{task.title}</div>
+        <div data-testid="mock-task-title">{task.title}</div>
+
         <button
           type="button"
           disabled={submitting}
@@ -41,6 +43,10 @@ jest.mock("@/components/candidate/TaskView", () => ({
           }
         >
           Submit & Continue
+        </button>
+
+        <button type="button" disabled={submitting} onClick={() => onSubmit({ contentText: "   " })}>
+          Submit empty
         </button>
       </div>
     );
@@ -128,6 +134,90 @@ describe("CandidateSimulationContent", () => {
     expect(screen.getByText(/Role:\s*Backend Engineer/i)).toBeInTheDocument();
   });
 
+  it("submitting a design/documentation task uses contentText payload", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 123,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock
+      .mockResolvedValueOnce({
+        isComplete: false,
+        completedTaskIds: [],
+        currentTask: {
+          id: 101,
+          dayIndex: 1,
+          type: "design",
+          title: "Unique Day 1 Title",
+          description: "Design it.",
+        },
+      })
+      .mockResolvedValueOnce({
+        isComplete: false,
+        completedTaskIds: [101],
+        currentTask: {
+          id: 102,
+          dayIndex: 2,
+          type: "code",
+          title: "Unique Day 2 Title",
+          description: "Implement it.",
+        },
+      });
+
+    submitMock.mockResolvedValueOnce({ ok: true });
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+
+    expect(await screen.findByText("Unique Day 1 Title")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /submit & continue/i }));
+
+    expect(submitMock).toHaveBeenCalledTimes(1);
+    const arg = submitMock.mock.calls[0]?.[0];
+
+    expect(arg).toMatchObject({
+      taskId: 101,
+      token: "VALID_TOKEN",
+      candidateSessionId: 123,
+      contentText: "ok",
+    });
+
+    expect(await screen.findByText("Unique Day 2 Title")).toBeInTheDocument();
+  });
+
+  it("empty submission shows validation error and does not call submit endpoint", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 123,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock.mockResolvedValueOnce({
+      isComplete: false,
+      completedTaskIds: [],
+      currentTask: {
+        id: 101,
+        dayIndex: 1,
+        type: "design",
+        title: "Unique Day 1 Title",
+        description: "Design it.",
+      },
+    });
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+    expect(await screen.findByText("Unique Day 1 Title")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /submit empty/i }));
+
+    expect(submitMock).not.toHaveBeenCalled();
+    expect(await screen.findByText(/please enter an answer before submitting/i)).toBeInTheDocument();
+  });
+
   it("after submitting Day 1, progress advances to Day 2", async () => {
     resolveMock.mockResolvedValueOnce({
       candidateSessionId: 123,
@@ -139,12 +229,24 @@ describe("CandidateSimulationContent", () => {
       .mockResolvedValueOnce({
         isComplete: false,
         completedTaskIds: [],
-        currentTask: { id: 101, dayIndex: 1, type: "design", title: "Day 1", description: "Design it." },
+        currentTask: {
+          id: 101,
+          dayIndex: 1,
+          type: "design",
+          title: "Unique Day 1 Title",
+          description: "Design it.",
+        },
       })
       .mockResolvedValueOnce({
         isComplete: false,
         completedTaskIds: [101],
-        currentTask: { id: 102, dayIndex: 2, type: "code", title: "Day 2", description: "Implement it." },
+        currentTask: {
+          id: 102,
+          dayIndex: 2,
+          type: "code",
+          title: "Unique Day 2 Title",
+          description: "Implement it.",
+        },
       });
 
     submitMock.mockResolvedValueOnce({ ok: true });
@@ -152,12 +254,11 @@ describe("CandidateSimulationContent", () => {
     renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
 
     fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
-
-    expect(await screen.findAllByText("Day 1")).not.toHaveLength(0);
+    expect(await screen.findByText("Unique Day 1 Title")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /submit & continue/i }));
 
-    expect(await screen.findByText("Day 2")).toBeInTheDocument();
+    expect(await screen.findByText("Unique Day 2 Title")).toBeInTheDocument();
   });
 
   it("after completing all 5 tasks, UI shows completion state", async () => {
@@ -181,7 +282,7 @@ describe("CandidateSimulationContent", () => {
     expect(screen.queryByRole("button", { name: /submit & continue/i })).not.toBeInTheDocument();
   });
 
-  it("refresh retains progress (started session loads current task without needing Start)", async () => {
+  it("refresh retains progress (seeded started session loads current task without needing Start)", async () => {
     seedSessionStorage({
       token: "VALID_TOKEN",
       bootstrap: {
@@ -190,6 +291,13 @@ describe("CandidateSimulationContent", () => {
         simulation: { title: "Sim", role: "Backend Engineer" },
       },
       started: true,
+      taskState: {
+        loading: false,
+        error: null,
+        isComplete: false,
+        completedTaskIds: [],
+        currentTask: null,
+      },
     });
 
     resolveMock.mockResolvedValueOnce({
@@ -201,12 +309,22 @@ describe("CandidateSimulationContent", () => {
     currentTaskMock.mockResolvedValueOnce({
       isComplete: false,
       completedTaskIds: [101, 102],
-      currentTask: { id: 103, dayIndex: 3, type: "debug", title: "Day 3", description: "Debug it." },
+      currentTask: {
+        id: 103,
+        dayIndex: 3,
+        type: "debug",
+        title: "Unique Day 3 Title",
+        description: "Debug it.",
+      },
     });
 
     renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
 
-    expect(await screen.findAllByText("Day 3")).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /start simulation/i })).not.toBeInTheDocument();
+
+    expect(await screen.findByText("Unique Day 3 Title")).toBeInTheDocument();
+
+    expect(currentTaskMock).toHaveBeenCalled();
   });
+
 });

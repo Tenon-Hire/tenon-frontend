@@ -99,11 +99,17 @@ export default function CandidateSimulationContent({ token }: { token: string })
   const role = useMemo(() => bootstrap?.simulation.role ?? "", [bootstrap]);
 
   const candidateSessionId = bootstrap?.candidateSessionId ?? null;
+
   const bootstrapInFlightRef = useRef(false);
   const bootstrapTokenRef = useRef<string | null>(null);
 
+  const fetchTaskInFlightRef = useRef(false);
+
   const fetchCurrentTask = useCallback(async () => {
     if (!state.token || !candidateSessionId) return;
+    if (fetchTaskInFlightRef.current) return;
+
+    fetchTaskInFlightRef.current = true;
 
     clearTaskError();
     setTaskLoading();
@@ -132,6 +138,8 @@ export default function CandidateSimulationContent({ token }: { token: string })
     } catch (err) {
       setTaskError(friendlyTaskError(err));
       setView("running");
+    } finally {
+      fetchTaskInFlightRef.current = false;
     }
   }, [
     candidateSessionId,
@@ -187,6 +195,7 @@ export default function CandidateSimulationContent({ token }: { token: string })
   }, [fetchCurrentTask, view]);
 
   const completedCount = state.taskState.completedTaskIds.length;
+
   const currentDayIndex = useMemo(() => {
     if (state.taskState.isComplete) return 5;
     if (state.taskState.currentTask?.dayIndex) return state.taskState.currentTask.dayIndex;
@@ -196,6 +205,17 @@ export default function CandidateSimulationContent({ token }: { token: string })
   const handleSubmit = useCallback(
     async (payload: { contentText?: string; codeBlob?: string }) => {
       if (!state.token || !candidateSessionId || !state.taskState.currentTask) return;
+
+      const type = String(state.taskState.currentTask.type);
+      const isTextTask = type === "design" || type === "documentation" || type === "handoff";
+
+      if (isTextTask) {
+        const trimmed = (payload.contentText ?? "").trim();
+        if (!trimmed) {
+          setTaskError("Please enter an answer before submitting.");
+          return;
+        }
+      }
 
       setSubmitting(true);
       clearTaskError();
@@ -286,7 +306,9 @@ export default function CandidateSimulationContent({ token }: { token: string })
     return (
       <div className="p-6 max-w-2xl mx-auto">
         <div className="text-2xl font-bold">Simulation complete 🎉</div>
-        <div className="text-sm text-gray-700 mt-3">You’ve submitted all 5 days. You can close this tab now.</div>
+        <div className="text-sm text-gray-700 mt-3">
+          You’ve submitted all 5 days. You can close this tab now.
+        </div>
       </div>
     );
   }
@@ -313,7 +335,12 @@ export default function CandidateSimulationContent({ token }: { token: string })
       ) : null}
 
       {state.taskState.currentTask ? (
-        <TaskView task={state.taskState.currentTask} submitting={submitting} onSubmit={handleSubmit} />
+        <TaskView
+          task={state.taskState.currentTask}
+          submitting={submitting}
+          submitError={state.taskState.error}
+          onSubmit={handleSubmit}
+        />
       ) : (
         <div className="border rounded-md p-4 text-sm text-gray-700">No current task available.</div>
       )}
