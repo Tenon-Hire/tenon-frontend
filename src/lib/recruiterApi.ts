@@ -14,6 +14,18 @@ export type InviteCandidateResponse = {
   inviteUrl: string;
 };
 
+export type CreateSimulationInput = {
+  title: string;
+  role: string;
+  techStack: string;
+  seniority: "Junior" | "Mid" | "Senior";
+  focus?: string;
+};
+
+export type CreateSimulationResponse = {
+  id: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -98,4 +110,34 @@ export async function inviteCandidate(
   });
 
   return normalizeInviteResponse(data);
+}
+
+
+function normalizeCreateSimulationResponse(raw: unknown): CreateSimulationResponse {
+  if (!isRecord(raw)) return { id: "" };
+  const id = getId(raw.id ?? raw.simulationId ?? raw.simulation_id);
+  return { id };
+}
+
+
+export async function createSimulation(
+  input: CreateSimulationInput
+): Promise<CreateSimulationResponse> {
+  const safeTitle = input.title.trim();
+  const safeRole = input.role.trim();
+  const safeTechStack = input.techStack.trim();
+
+  if (!safeTitle || !safeRole || !safeTechStack) {
+    return { id: "" };
+  }
+
+  const data = await apiClient.post<unknown>("/simulations", {
+    title: safeTitle,
+    role: safeRole,
+    techStack: safeTechStack,
+    seniority: input.seniority,
+    focus: input.focus?.trim() ? input.focus.trim() : undefined,
+  });
+
+  return normalizeCreateSimulationResponse(data);
 }

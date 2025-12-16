@@ -8,6 +8,18 @@ jest.mock("@/lib/recruiterApi", () => ({
   inviteCandidate: jest.fn(),
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    refresh: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+  }),
+}));
+
+
 const mockedListSimulations = listSimulations as jest.MockedFunction<typeof listSimulations>;
 const mockedInviteCandidate = inviteCandidate as jest.MockedFunction<typeof inviteCandidate>;
 

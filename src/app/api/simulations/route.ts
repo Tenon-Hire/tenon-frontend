@@ -34,3 +34,38 @@ export async function GET() {
     return NextResponse.json({ message }, { status: 500 });
   }
 }
+
+
+export async function POST(req: Request) {
+  const session = await auth0.getSession();
+  if (!session) {
+    return NextResponse.json({ message: "Not authenticated" }, { status: 401 });
+  }
+
+  try {
+    const accessToken = await getAccessToken();
+    const backendBase = getBackendBaseUrl();
+
+    const body = (await req.json()) as unknown;
+
+    const res = await fetch(`${backendBase}/api/simulations`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const contentType = res.headers.get("content-type") ?? "";
+    const parsed = contentType.includes("application/json")
+      ? ((await res.json()) as unknown)
+      : await res.text();
+
+    return NextResponse.json(parsed, { status: res.status });
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? `Upstream error: ${e.message}` : "Upstream error";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}

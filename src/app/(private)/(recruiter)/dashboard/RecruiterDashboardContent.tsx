@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   inviteCandidate,
   listSimulations,
   type SimulationListItem,
 } from "@/lib/recruiterApi";
 import Button from "@/components/common/Button";
+import PageHeader from "@/components/common/PageHeader";
 
 export type RecruiterProfile = {
   id: number;
@@ -186,6 +188,8 @@ export default function RecruiterDashboardContent({
   profile,
   error,
 }: RecruiterDashboardContentProps) {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [simulations, setSimulations] = useState<SimulationListItem[]>([]);
   const [simError, setSimError] = useState<string | null>(null);
@@ -276,7 +280,17 @@ export default function RecruiterDashboardContent({
 
   return (
     <main className="flex flex-col gap-4 py-8">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <PageHeader
+        title="Dashboard"
+        actions={
+          <Button
+            type="button"
+            onClick={() => router.push("/dashboard/simulations/new")}
+          >
+            New Simulation
+          </Button>
+        }
+      />
 
       {toast.open ? (
         <div
@@ -324,11 +338,15 @@ export default function RecruiterDashboardContent({
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Simulations</h2>
 
-        {loading ? <p className="text-sm text-gray-600">Loading simulations…</p> : null}
+        {loading ? (
+          <p className="text-sm text-gray-600">Loading simulations…</p>
+        ) : null}
 
         {!loading && simError ? (
           <div className="rounded border border-red-200 bg-red-50 p-3">
-            <p className="text-sm font-medium text-red-700">Couldn’t load simulations</p>
+            <p className="text-sm font-medium text-red-700">
+              Couldn’t load simulations
+            </p>
             <p className="text-sm text-red-700">{simError}</p>
           </div>
         ) : null}
@@ -349,7 +367,10 @@ export default function RecruiterDashboardContent({
             </div>
 
             {simulations.map((sim) => (
-              <div key={sim.id} className="border-b border-gray-200 p-3 last:border-b-0">
+              <div
+                key={sim.id}
+                className="border-b border-gray-200 p-3 last:border-b-0"
+              >
                 <div className="grid grid-cols-12 items-center gap-3">
                   <div className="col-span-4">
                     <p className="font-medium">{sim.title}</p>
@@ -371,7 +392,9 @@ export default function RecruiterDashboardContent({
                   </div>
 
                   <div className="col-span-2 flex justify-end">
-                    <Button onClick={() => openInviteModal(sim)}>Invite candidate</Button>
+                    <Button onClick={() => openInviteModal(sim)}>
+                      Invite candidate
+                    </Button>
                   </div>
                 </div>
               </div>
