@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RecruiterDashboardContent, { RecruiterProfile } from "./RecruiterDashboardContent";
 import { inviteCandidate, listSimulations } from "@/lib/recruiterApi";
@@ -104,8 +104,19 @@ describe("RecruiterDashboardContent", () => {
     const inviteBtn = await screen.findByRole("button", { name: "Invite candidate" });
     await user.click(inviteBtn);
 
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("Invite candidate")).toBeInTheDocument();
+
+    await user.type(within(dialog).getByPlaceholderText("Jane Doe"), "Jane Doe");
+    await user.type(within(dialog).getByPlaceholderText("jane@example.com"), "jane@example.com");
+
+    const createBtn = within(dialog).getByRole("button", { name: "Create invite" });
+    await user.click(createBtn);
+
     expect(await screen.findByText("Invite created")).toBeInTheDocument();
     expect(screen.getByText("tok_123")).toBeInTheDocument();
     expect(screen.getByText("http://localhost:3000/candidate/tok_123")).toBeInTheDocument();
+
+    expect(mockedInviteCandidate).toHaveBeenCalledWith("sim_1", "Jane Doe", "jane@example.com");
   });
 });

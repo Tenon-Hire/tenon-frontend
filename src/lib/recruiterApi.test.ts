@@ -93,16 +93,19 @@ describe("recruiterApi", () => {
   });
 
   describe("inviteCandidate", () => {
-    it("calls POST /simulations/{id}/invite with empty body", async () => {
+    it("calls POST /simulations/{id}/invite with candidateName + inviteEmail", async () => {
       mockedPost.mockResolvedValueOnce({
         candidateSessionId: "cs_1",
         token: "tok_1",
         inviteUrl: "http://localhost:3000/candidate/tok_1",
       });
 
-      await inviteCandidate("sim_1");
+      await inviteCandidate("sim_1", "Jane Doe", "jane@example.com");
 
-      expect(mockedPost).toHaveBeenCalledWith("/simulations/sim_1/invite", {});
+      expect(mockedPost).toHaveBeenCalledWith("/simulations/sim_1/invite", {
+        candidateName: "Jane Doe",
+        inviteEmail: "jane@example.com",
+      });
     });
 
     it("normalizes invite response (camelCase)", async () => {
@@ -112,7 +115,7 @@ describe("recruiterApi", () => {
         inviteUrl: "http://localhost:3000/candidate/tok_1",
       });
 
-      const result = await inviteCandidate("sim_1");
+      const result = await inviteCandidate("sim_1", "Jane Doe", "jane@example.com");
 
       expect(result).toEqual({
         candidateSessionId: "cs_1",
@@ -128,7 +131,7 @@ describe("recruiterApi", () => {
         invite_url: "http://localhost:3000/candidate/tok_2",
       });
 
-      const result = await inviteCandidate("sim_2");
+      const result = await inviteCandidate("sim_2", "Jane Doe", "jane@example.com");
 
       expect(result).toEqual({
         candidateSessionId: "cs_2",
@@ -140,7 +143,7 @@ describe("recruiterApi", () => {
     it("returns blanks when response is not an object", async () => {
       mockedPost.mockResolvedValueOnce("not-an-object");
 
-      const result = await inviteCandidate("sim_3");
+      const result = await inviteCandidate("sim_3", "Jane Doe", "jane@example.com");
 
       expect(result).toEqual({
         candidateSessionId: "",
