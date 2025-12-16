@@ -96,8 +96,8 @@ async function request<TResponse = unknown>(
   const token = hasAuthToken
     ? clientOptions.authToken
     : typeof window !== "undefined"
-    ? getAuthToken()
-    : null;
+      ? getAuthToken()
+      : null;
 
   if (!clientOptions.skipAuth && token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -110,8 +110,8 @@ async function request<TResponse = unknown>(
       options.body === undefined
         ? undefined
         : isFormData
-        ? (options.body as FormData)
-        : JSON.stringify(options.body),
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
     credentials: "include",
   });
 

@@ -1,32 +1,111 @@
-import { render, screen } from '@testing-library/react';
-import RecruiterDashboardContent, { RecruiterProfile } from './RecruiterDashboardContent';
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import RecruiterDashboardContent, { RecruiterProfile } from "./RecruiterDashboardContent";
+import { inviteCandidate, listSimulations } from "@/lib/recruiterApi";
 
-describe('RecruiterDashboardContent', () => {
+jest.mock("@/lib/recruiterApi", () => ({
+  listSimulations: jest.fn(),
+  inviteCandidate: jest.fn(),
+}));
+
+const mockedListSimulations = listSimulations as jest.MockedFunction<typeof listSimulations>;
+const mockedInviteCandidate = inviteCandidate as jest.MockedFunction<typeof inviteCandidate>;
+
+describe("RecruiterDashboardContent", () => {
   const profile: RecruiterProfile = {
     id: 1,
-    name: 'Jordan Doe',
-    email: 'jordan@example.com',
-    role: 'recruiter',
+    name: "Jordan Doe",
+    email: "jordan@example.com",
+    role: "recruiter",
   };
 
-  it('renders profile details when available', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it("renders profile details when available", async () => {
+    mockedListSimulations.mockResolvedValueOnce([]);
+
     render(<RecruiterDashboardContent profile={profile} error={null} />);
 
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Jordan Doe')).toBeInTheDocument();
-    expect(screen.getByText('jordan@example.com')).toBeInTheDocument();
-    expect(screen.getByText(/Role:/)).toHaveTextContent('Role: recruiter');
+    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Jordan Doe")).toBeInTheDocument();
+    expect(screen.getByText("jordan@example.com")).toBeInTheDocument();
+    expect(screen.getByText(/Role:/)).toHaveTextContent("Role: recruiter");
+
+    expect(await screen.findByText("No simulations yet.")).toBeInTheDocument();
   });
 
-  it('shows an error message when provided', () => {
+  it("shows an error message when provided", async () => {
+    mockedListSimulations.mockResolvedValueOnce([]);
+
     render(<RecruiterDashboardContent profile={null} error="Unable to fetch profile" />);
 
-    expect(screen.getByText('Unable to fetch profile')).toBeInTheDocument();
+    expect(screen.getByText("Unable to fetch profile")).toBeInTheDocument();
+    expect(await screen.findByText("No simulations yet.")).toBeInTheDocument();
   });
 
-  it('shows empty state when no profile or error', () => {
+  it("shows empty state when recruiter has no simulations", async () => {
+    mockedListSimulations.mockResolvedValueOnce([]);
+
     render(<RecruiterDashboardContent profile={null} error={null} />);
 
-    expect(screen.getByText('No profile data available.')).toBeInTheDocument();
+    expect(await screen.findByText("No simulations yet.")).toBeInTheDocument();
+  });
+
+  it("renders simulations list with metadata", async () => {
+    mockedListSimulations.mockResolvedValueOnce([
+      {
+        id: "sim_1",
+        title: "Backend Engineer - Node",
+        role: "Backend Engineer",
+        createdAt: "2025-12-10T10:00:00Z",
+        candidateCount: 2,
+      },
+    ]);
+
+    render(<RecruiterDashboardContent profile={null} error={null} />);
+
+    expect(await screen.findByText("Backend Engineer - Node")).toBeInTheDocument();
+    expect(screen.getByText("Backend Engineer")).toBeInTheDocument();
+    expect(screen.getByText("2 candidate(s)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Invite candidate" })).toBeInTheDocument();
+  });
+
+  it("shows inline error state when listSimulations fails", async () => {
+    mockedListSimulations.mockRejectedValueOnce({ message: "Unauthorized", status: 401 });
+
+    render(<RecruiterDashboardContent profile={null} error={null} />);
+
+    expect(await screen.findByText("Couldn’t load simulations")).toBeInTheDocument();
+    expect(screen.getByText("Unauthorized")).toBeInTheDocument();
+  });
+
+  it("invites a candidate and displays invite url + token", async () => {
+    const user = userEvent.setup();
+
+    mockedListSimulations.mockResolvedValueOnce([
+      {
+        id: "sim_1",
+        title: "Sim 1",
+        role: "Backend",
+        createdAt: "2025-12-10T10:00:00Z",
+      },
+    ]);
+
+    mockedInviteCandidate.mockResolvedValueOnce({
+      candidateSessionId: "cs_1",
+      token: "tok_123",
+      inviteUrl: "http://localhost:3000/candidate/tok_123",
+    });
+
+    render(<RecruiterDashboardContent profile={null} error={null} />);
+
+    const inviteBtn = await screen.findByRole("button", { name: "Invite candidate" });
+    await user.click(inviteBtn);
+
+    expect(await screen.findByText("Invite created")).toBeInTheDocument();
+    expect(screen.getByText("tok_123")).toBeInTheDocument();
+    expect(screen.getByText("http://localhost:3000/candidate/tok_123")).toBeInTheDocument();
   });
 });
