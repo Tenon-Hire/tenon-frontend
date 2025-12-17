@@ -123,7 +123,7 @@ describe("RecruiterDashboardContent", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    expect(await screen.findByText("Invite sent to jane@example.com.")).toBeInTheDocument();
+    expect(await screen.findByText("Invite created for Jane Doe (jane@example.com).")).toBeInTheDocument();
 
     expect(mockedInviteCandidate).toHaveBeenCalledWith("sim_1", "Jane Doe", "jane@example.com");
   });

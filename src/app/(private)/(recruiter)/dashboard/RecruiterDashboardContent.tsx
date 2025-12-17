@@ -25,7 +25,6 @@ type RecruiterDashboardContentProps = {
 type InviteUiState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; inviteUrl: string; token: string }
   | { status: "error"; message: string };
 
 type InviteModalState = {
@@ -36,7 +35,12 @@ type InviteModalState = {
 
 type ToastState =
   | { open: false }
-  | { open: true; kind: "success" | "error"; message: string };
+  | {
+      open: true;
+      kind: "success" | "error";
+      message: string;
+      inviteUrl?: string;
+    };
 
 function formatCreatedDate(iso: string): string {
   if (typeof iso !== "string") return "";
@@ -48,10 +52,39 @@ function errorToMessage(e: unknown, fallback: string): string {
     const maybeMsg = (e as { message?: unknown }).message;
     if (typeof maybeMsg === "string" && maybeMsg.trim()) return maybeMsg;
     const maybeDetail = (e as { detail?: unknown }).detail;
-    if (typeof maybeDetail === "string" && maybeDetail.trim()) return maybeDetail;
+    if (typeof maybeDetail === "string" && maybeDetail.trim())
+      return maybeDetail;
   }
   if (e instanceof Error) return e.message;
   return fallback;
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(trimmed);
+      return true;
+    } catch {
+    }
+  }
+
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = trimmed;
+    ta.setAttribute("readonly", "true");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 function InviteCandidateModal(props: {
@@ -65,19 +98,20 @@ function InviteCandidateModal(props: {
 }) {
   const { open, title, onClose, onSubmit, state } = props;
 
-  const [candidateName, setCandidateName] = useState(props.initialName ?? "");
-  const [inviteEmail, setInviteEmail] = useState(props.initialEmail ?? "");
+  const [candidateName, setCandidateName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
 
   const nameInputId = "invite-candidate-name";
   const emailInputId = "invite-candidate-email";
 
+  const openKey = open ? `${props.initialName ?? ""}::${props.initialEmail ?? ""}` : "closed";
+
   useEffect(() => {
-    if (open) {
-      setCandidateName(props.initialName ?? "");
-      setInviteEmail(props.initialEmail ?? "");
-    }
+    if (!open) return;
+    setCandidateName(props.initialName ?? "");
+    setInviteEmail(props.initialEmail ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [openKey]);
 
   const clientValidationError = useMemo(() => {
     if (!open) return null;
@@ -205,20 +239,31 @@ export default function RecruiterDashboardContent({
   });
 
   const [toast, setToast] = useState<ToastState>({ open: false });
-  const toastTimerRef = useRef<number | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  function showToast(kind: "success" | "error", message: string) {
-    setToast({ open: true, kind, message });
+  const toastTimerRef = useRef<number | null>(null);
+  const copiedTimerRef = useRef<number | null>(null);
+
+  function dismissToast() {
+    setToast({ open: false });
+    setCopied(false);
+  }
+
+  function showToast(next: Omit<Extract<ToastState, { open: true }>, "open">) {
+    setToast({ open: true, ...next });
+    setCopied(false);
+
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => {
-      setToast({ open: false });
+      dismissToast();
       toastTimerRef.current = null;
-    }, 3500);
+    }, 6500);
   }
 
   useEffect(() => {
     return () => {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
     };
   }, []);
 
@@ -262,16 +307,33 @@ export default function RecruiterDashboardContent({
     setInviteState({ status: "loading" });
 
     try {
-      await inviteCandidate(modal.simulationId, candidateName, inviteEmail);
+      const res = await inviteCandidate(
+        modal.simulationId,
+        candidateName,
+        inviteEmail
+      );
 
       closeInviteModal();
-      showToast("success", `Invite sent to ${inviteEmail}.`);
+
+      const displayName = candidateName.trim();
+      const displayEmail = inviteEmail.trim();
+      const who = displayName
+        ? `${displayName} (${displayEmail})`
+        : displayEmail;
+
+      showToast({
+        kind: "success",
+        message: `Invite created for ${who}.`,
+        inviteUrl: res.inviteUrl,
+      });
 
       try {
         const sims = await listSimulations();
         setSimulations(Array.isArray(sims) ? sims : []);
       } catch {
       }
+
+      setInviteState({ status: "idle" });
     } catch (e: unknown) {
       const message = errorToMessage(e, "Failed to invite candidate.");
       setInviteState({ status: "error", message });
@@ -302,19 +364,56 @@ export default function RecruiterDashboardContent({
           role="status"
         >
           <div className="flex items-start justify-between gap-3">
-            <p
-              className={
-                toast.kind === "success"
-                  ? "text-sm text-green-800"
-                  : "text-sm text-red-800"
-              }
-            >
-              {toast.message}
-            </p>
+            <div className="w-full">
+              <p
+                className={
+                  toast.kind === "success"
+                    ? "text-sm text-green-800"
+                    : "text-sm text-red-800"
+                }
+              >
+                {toast.message}
+              </p>
+
+              {toast.kind === "success" && toast.inviteUrl ? (
+                <div className="mt-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-green-800/80">
+                    Invite URL
+                  </p>
+                  <div className="mt-1 flex items-stretch gap-2">
+                    <input
+                      className="w-full rounded border border-green-200 bg-white px-3 py-2 font-mono text-xs"
+                      readOnly
+                      value={toast.inviteUrl}
+                      aria-label="Invite URL"
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        const ok = await copyToClipboard(toast.inviteUrl ?? "");
+                        setCopied(ok);
+
+                        if (copiedTimerRef.current)
+                          window.clearTimeout(copiedTimerRef.current);
+
+                        copiedTimerRef.current = window.setTimeout(() => {
+                          setCopied(false);
+                          copiedTimerRef.current = null;
+                        }, 1800);
+                      }}
+                    >
+                      {copied ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
             <button
               type="button"
               className="rounded px-2 py-1 text-sm text-gray-600 hover:bg-black/5"
-              onClick={() => setToast({ open: false })}
+              onClick={dismissToast}
               aria-label="Dismiss"
             >
               ✕
