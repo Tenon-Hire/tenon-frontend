@@ -24,6 +24,16 @@ const nextConfig: NextConfig = {
         source: "/api/simulations/:path*",
         destination: "/api/simulations/:path*",
       },
+
+      {
+        source: "/api/submissions",
+        destination: "/api/submissions",
+      },
+      {
+        source: "/api/submissions/:path*",
+        destination: "/api/submissions/:path*",
+      },
+
       {
         source: "/api/auth/me",
         destination: "/api/auth/me",

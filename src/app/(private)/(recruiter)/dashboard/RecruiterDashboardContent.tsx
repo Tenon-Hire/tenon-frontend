@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   inviteCandidate,
   listSimulations,
@@ -104,7 +105,9 @@ function InviteCandidateModal(props: {
   const nameInputId = "invite-candidate-name";
   const emailInputId = "invite-candidate-email";
 
-  const openKey = open ? `${props.initialName ?? ""}::${props.initialEmail ?? ""}` : "closed";
+  const openKey = open
+    ? `${props.initialName ?? ""}::${props.initialEmail ?? ""}`
+    : "closed";
 
   useEffect(() => {
     if (!open) return;
@@ -472,7 +475,12 @@ export default function RecruiterDashboardContent({
               >
                 <div className="grid grid-cols-12 items-center gap-3">
                   <div className="col-span-4">
-                    <p className="font-medium">{sim.title}</p>
+                    <Link
+                      href={`/dashboard/simulations/${sim.id}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {sim.title}
+                    </Link>
                     {typeof sim.candidateCount === "number" ? (
                       <p className="text-xs text-gray-500">
                         {sim.candidateCount} candidate(s)
