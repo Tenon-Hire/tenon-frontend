@@ -1,4 +1,4 @@
-import { getAuthToken, setAuthToken } from "./auth";
+import { getAuthToken, setAuthToken } from "@/lib/auth";
 
 describe("auth storage helpers", () => {
   beforeEach(() => {

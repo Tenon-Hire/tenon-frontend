@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import LoginPage from './page';
+import LoginPage from '@/app/(public)/login/page';
 
 describe('LoginPage', () => {
   it('renders recruiter login heading and Auth0 button', () => {

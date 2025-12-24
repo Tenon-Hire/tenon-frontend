@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import CodeEditor from "./CodeEditor";
+import CodeEditor from "@/components/candidate/CodeEditor";
 
 type MonacoMockProps = {
   value?: string;
@@ -30,7 +30,7 @@ jest.mock("@monaco-editor/react", () => ({
 }));
 
 jest.mock("next/dynamic", () => {
-  return (_importer: unknown, _opts?: unknown) => {
+  return () => {
     return function DynamicMock(props: MonacoMockProps) {
       const mod = jest.requireMock("@monaco-editor/react") as {
         default: (p: MonacoMockProps) => React.ReactElement;

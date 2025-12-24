@@ -1,7 +1,7 @@
-import { apiClient } from "./apiClient";
-import { inviteCandidate, listSimulations } from "./recruiterApi";
+import { apiClient } from "@/lib/apiClient";
+import { inviteCandidate, listSimulations, createSimulation } from "@/lib/recruiterApi";
 
-jest.mock("./apiClient", () => ({
+jest.mock("@/lib/apiClient", () => ({
   apiClient: {
     get: jest.fn(),
     post: jest.fn(),
@@ -150,6 +150,55 @@ describe("recruiterApi", () => {
         token: "",
         inviteUrl: "",
       });
+    });
+  });
+
+  describe("createSimulation", () => {
+    it("returns blank id when required fields are missing", async () => {
+      const result = await createSimulation({
+        title: "",
+        role: " ",
+        techStack: "",
+        seniority: "Mid",
+      });
+
+      expect(result).toEqual({ id: "" });
+      expect(mockedPost).not.toHaveBeenCalled();
+    });
+
+    it("posts trimmed payload and returns normalized id", async () => {
+      mockedPost.mockResolvedValueOnce({ id: "sim_99" });
+
+      const result = await createSimulation({
+        title: "  Backend Sim ",
+        role: " Backend ",
+        techStack: " Node ",
+        seniority: "Senior",
+        focus: "  Focus ",
+      });
+
+      expect(mockedPost).toHaveBeenCalledWith("/simulations", {
+        title: "Backend Sim",
+        role: "Backend",
+        techStack: "Node",
+        seniority: "Senior",
+        focus: "Focus",
+      });
+
+      expect(result).toEqual({ id: "sim_99" });
+    });
+
+    it("normalizes snake_case id responses", async () => {
+      mockedPost.mockResolvedValueOnce({ simulation_id: 42 });
+
+      const result = await createSimulation({
+        title: "Sim",
+        role: "Backend",
+        techStack: "Node",
+        seniority: "Junior",
+      });
+
+      expect(result).toEqual({ id: "42" });
     });
   });
 });

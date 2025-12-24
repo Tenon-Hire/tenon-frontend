@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import CandidateSubmissionsContent from "./CandidateSubmissionsContent";
+import CandidateSubmissionsContent from "@/app/(private)/(recruiter)/dashboard/simulations/[id]/candidates/[candidateSessionId]/CandidateSubmissionsContent";
 
 let mockParams: Record<string, string> = { id: "1", candidateSessionId: "2" };
 
@@ -253,6 +253,50 @@ describe("CandidateSubmissionsContent", () => {
     expect(
       screen.getByText("console.log('hello from candidate');")
     ).toBeInTheDocument();
+
+    const writeText = jest.fn().mockRejectedValue(new Error("clipboard blocked"));
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    const createObjectURL = jest.fn().mockReturnValue("blob://mock");
+    const revokeObjectURL = jest.fn();
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    Object.defineProperty(URL, "createObjectURL", {
+      value: createObjectURL,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      value: revokeObjectURL,
+      writable: true,
+      configurable: true,
+    });
+
+    const downloadBtn = screen.getByRole("button", { name: "Download" });
+    const copyBtn = screen.getByRole("button", { name: "Copy code" });
+
+    await waitFor(async () => {
+      copyBtn.click();
+      downloadBtn.click();
+    });
+
+    expect(writeText).toHaveBeenCalledWith("console.log('hello from candidate');");
+    expect(createObjectURL).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalled();
+
+    Object.defineProperty(URL, "createObjectURL", {
+      value: originalCreateObjectURL,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      value: originalRevokeObjectURL,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it("renders empty state when candidate has no submissions", async () => {
@@ -331,5 +375,78 @@ describe("CandidateSubmissionsContent", () => {
     await waitFor(() => {
       expect(screen.getByText("List failed")).toBeInTheDocument();
     });
+  });
+
+  it("shows fallback text when no content is captured in artifact", async () => {
+    mockParams = { id: "1", candidateSessionId: "2" };
+
+    const fetchMock = jest.fn(
+      async (input: RequestInfo | URL): Promise<MockResponse> => {
+        const url = getUrl(input);
+
+        if (url === "/api/simulations/1/candidates") {
+          return mockJsonResponse([
+            {
+              candidateSessionId: 2,
+              inviteEmail: "jane@example.com",
+              candidateName: "Jane Doe",
+              status: "completed",
+              startedAt: "2025-12-23T18:00:00.000000Z",
+              completedAt: "2025-12-23T19:00:00.000000Z",
+              hasReport: false,
+            },
+          ]);
+        }
+
+        if (url.startsWith("/api/submissions?candidateSessionId=2")) {
+          return mockJsonResponse({
+            items: [
+              {
+                submissionId: 9,
+                candidateSessionId: 2,
+                taskId: 9,
+                dayIndex: 3,
+                type: "design",
+                submittedAt: "2025-12-23T18:57:10.981202Z",
+              },
+            ],
+          });
+        }
+
+        if (url === "/api/submissions/9") {
+          return mockJsonResponse({
+            submissionId: 9,
+            candidateSessionId: 2,
+            task: {
+              taskId: 9,
+              dayIndex: 3,
+              type: "design",
+              title: "No Content Task",
+              prompt: "Describe nothing",
+            },
+            contentText: null,
+            code: { blob: "   ", repoPath: null },
+            testResults: null,
+            submittedAt: "2025-12-23T18:57:10.981202Z",
+          });
+        }
+
+        return mockTextResponse("Not found", 404);
+      }
+    );
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsContent />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText((content) =>
+          content.includes("Day 3:") && content.includes("No Content Task")
+        )
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("No content captured for this submission.")).toBeInTheDocument();
   });
 });

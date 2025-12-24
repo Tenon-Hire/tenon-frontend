@@ -1,4 +1,4 @@
-import { clearCodeDraft, codeDraftKey, hasCodeDraft, loadCodeDraft, saveCodeDraft } from "./codeDrafts";
+import { clearCodeDraft, codeDraftKey, hasCodeDraft, loadCodeDraft, saveCodeDraft } from "@/lib/codeDrafts";
 
 describe("codeDrafts helpers", () => {
   beforeEach(() => {
@@ -23,5 +23,16 @@ describe("codeDrafts helpers", () => {
     clearCodeDraft("abc", "def");
     expect(loadCodeDraft("abc", "def")).toBeNull();
     expect(hasCodeDraft("abc", "def")).toBe(false);
+  });
+
+  it("returns null when storage access fails", () => {
+    const getItemSpy = jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+
+    expect(loadCodeDraft(9, 9)).toBeNull();
+    expect(hasCodeDraft(9, 9)).toBe(false);
+
+    getItemSpy.mockRestore();
   });
 });

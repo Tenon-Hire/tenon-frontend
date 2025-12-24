@@ -1,7 +1,7 @@
 import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import CandidateSimulationContent from "./CandidateSimulationContent";
-import { CandidateSessionProvider } from "../CandidateSessionProvider";
+import CandidateSimulationContent from "@/app/(public)/(candidate)/candidate/[token]/CandidateSimulationContent";
+import { CandidateSessionProvider } from "@/app/(public)/(candidate)/candidate/CandidateSessionProvider";
 import {
   HttpError,
   resolveCandidateInviteToken,
@@ -176,6 +176,24 @@ describe("CandidateSimulationContent", () => {
 
     expect(await screen.findByText("Sim")).toBeInTheDocument();
     expect(screen.getByText(/Role:\s*Backend Engineer/i)).toBeInTheDocument();
+  });
+
+  it("shows server error message when bootstrap fails with message field", async () => {
+    resolveMock.mockRejectedValueOnce({ status: 500, message: "Backend exploded" });
+
+    renderWithProvider(<CandidateSimulationContent token="SERVER_FAIL" />);
+
+    expect(await screen.findByText(/Unable to load simulation/i)).toBeInTheDocument();
+    expect(screen.getByText("Backend exploded")).toBeInTheDocument();
+  });
+
+  it("falls back to default bootstrap error when backend gives no message", async () => {
+    resolveMock.mockRejectedValueOnce({ status: 500 });
+
+    renderWithProvider(<CandidateSimulationContent token="SERVER_FAIL" />);
+
+    expect(await screen.findByText(/Unable to load simulation/i)).toBeInTheDocument();
+    expect(screen.getByText(/Something went wrong loading your simulation/i)).toBeInTheDocument();
   });
 
   it("submitting a design/documentation task uses contentText payload", async () => {
@@ -422,5 +440,241 @@ describe("CandidateSimulationContent", () => {
     expect(screen.queryByRole("button", { name: /start simulation/i })).not.toBeInTheDocument();
     expect(await screen.findByText("Unique Day 3 Title")).toBeInTheDocument();
     expect(currentTaskMock).toHaveBeenCalled();
+  });
+
+  it("shows friendly task load error when current task fetch fails", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 777,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock.mockRejectedValueOnce(new HttpError(404, "Session missing"));
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+
+    expect(
+      await screen.findByText(/Session not found\. Please reopen your invite link\./i)
+    ).toBeInTheDocument();
+  });
+
+  it("displays submit error returned from backend (409)", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 123,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock.mockResolvedValueOnce({
+      isComplete: false,
+      completedTaskIds: [],
+      currentTask: {
+        id: 202,
+        dayIndex: 2,
+        type: "code",
+        title: "Day 2 — Code",
+        description: "Write code.",
+      },
+    });
+
+    submitMock.mockRejectedValueOnce(new HttpError(409, "Already submitted"));
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+    expect(await screen.findByText("Day 2 — Code")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /submit & continue/i }));
+
+    expect(await screen.findByText(/Task already submitted/i)).toBeInTheDocument();
+  });
+
+  it("uses nested progress.completedTaskIds when present", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 222,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock.mockResolvedValueOnce({
+      isComplete: false,
+      progress: { completedTaskIds: [1, 2] },
+      currentTask: {
+        id: 303,
+        dayIndex: 3,
+        type: "debug",
+        title: "Day 3 — Debug",
+        description: "Fix it.",
+      },
+    });
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+
+    expect(await screen.findByText("Day 3 — Debug")).toBeInTheDocument();
+    expect(screen.getAllByText(/Completed/i)).toHaveLength(2);
+    expect(screen.getByText(/Current/i)).toBeInTheDocument();
+  });
+
+  it("shows backend message when bootstrap fails with generic error", async () => {
+    const err = new Error("Backend offline") as Error & { status?: number };
+    err.status = 500;
+    resolveMock.mockRejectedValueOnce(err);
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    expect(await screen.findByText(/Backend offline/i)).toBeInTheDocument();
+  });
+
+  it("recovers from task load error, retries, and clears submit timers", async () => {
+    jest.useFakeTimers();
+
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 111,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    const codeTask = {
+      id: 501,
+      dayIndex: 2,
+      type: "code" as const,
+      title: "Debug API",
+      description: "Fix it",
+    };
+
+    const designTask = {
+      id: 502,
+      dayIndex: 3,
+      type: "design" as const,
+      title: "Design follow-up",
+      description: "Describe next steps",
+    };
+
+    currentTaskMock
+      .mockRejectedValueOnce(new HttpError(410, "expired"))
+      .mockResolvedValueOnce({
+        isComplete: false,
+        completedTaskIds: [],
+        currentTask: codeTask,
+      })
+      .mockResolvedValueOnce({
+        isComplete: false,
+        completedTaskIds: [codeTask.id],
+        currentTask: designTask,
+      });
+
+    submitMock.mockResolvedValue({
+      progress: { completed: 2, total: 5 },
+      nextTask: designTask,
+    });
+
+    const originalClear = window.clearTimeout;
+    const clearTimeoutSpy = jest.fn();
+    Object.defineProperty(window, "clearTimeout", { value: clearTimeoutSpy });
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    const startBtn = await screen.findByRole("button", { name: /start simulation/i });
+    fireEvent.click(startBtn);
+
+    expect(await screen.findByText(/invite link has expired/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Retry/i }));
+
+    expect(await screen.findByText("Debug API")).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole("button", { name: /Submit & Continue/i });
+    fireEvent.click(submitBtn);
+
+    await screen.findByTestId("submit-status");
+
+    fireEvent.click(submitBtn);
+
+    expect(submitMock).toHaveBeenCalledTimes(2);
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+    });
+
+    Object.defineProperty(window, "clearTimeout", { value: originalClear });
+  });
+
+  it("shows default task error when backend fails without message", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 555,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock.mockRejectedValueOnce({ status: 500 });
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+
+    expect(await screen.findByText(/Something went wrong loading your current task/i)).toBeInTheDocument();
+  });
+
+  it("shows default submit error when submission fails without message", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 666,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock.mockResolvedValueOnce({
+      isComplete: false,
+      completedTaskIds: [],
+      currentTask: {
+        id: 909,
+        dayIndex: 1,
+        type: "design",
+        title: "Day 1 — Design",
+        description: "Desc",
+      },
+    });
+
+    submitMock.mockRejectedValueOnce({ status: 500 });
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+
+    const submitBtn = await screen.findByRole("button", { name: /Submit & Continue/i });
+    fireEvent.click(submitBtn);
+
+    expect(await screen.findByText(/Something went wrong submitting your task/i)).toBeInTheDocument();
+  });
+
+  it("normalizes missing completed task ids to empty array", async () => {
+    resolveMock.mockResolvedValueOnce({
+      candidateSessionId: 777,
+      status: "in_progress",
+      simulation: { title: "Sim", role: "Backend Engineer" },
+    });
+
+    currentTaskMock.mockResolvedValueOnce({
+      isComplete: false,
+      currentTask: {
+        id: 11,
+        dayIndex: 1,
+        type: "design",
+        title: "Day 1 — Start",
+        description: "Start",
+      },
+    });
+
+    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /start simulation/i }));
+
+    expect(await screen.findByText("Day 1 — Start")).toBeInTheDocument();
+    expect(screen.getAllByText(/Locked/)).toHaveLength(4);
+    expect(screen.queryByText(/Completed/)).toBeNull();
   });
 });

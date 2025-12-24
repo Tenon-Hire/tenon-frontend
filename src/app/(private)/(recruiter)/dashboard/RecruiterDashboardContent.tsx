@@ -43,12 +43,12 @@ type ToastState =
       inviteUrl?: string;
     };
 
-function formatCreatedDate(iso: string): string {
+export function formatCreatedDate(iso: string): string {
   if (typeof iso !== "string") return "";
   return iso.length >= 10 ? iso.slice(0, 10) : iso;
 }
 
-function errorToMessage(e: unknown, fallback: string): string {
+export function errorToMessage(e: unknown, fallback: string): string {
   if (e && typeof e === "object") {
     const maybeMsg = (e as { message?: unknown }).message;
     if (typeof maybeMsg === "string" && maybeMsg.trim()) return maybeMsg;
@@ -60,7 +60,7 @@ function errorToMessage(e: unknown, fallback: string): string {
   return fallback;
 }
 
-async function copyToClipboard(text: string): Promise<boolean> {
+export async function copyToClipboard(text: string): Promise<boolean> {
   const trimmed = text.trim();
   if (!trimmed) return false;
 

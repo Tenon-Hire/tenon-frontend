@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import LogoutPageContent from './LogoutPageContent';
+import LogoutPageContent from '@/app/(public)/logout/LogoutPageContent';
 
 describe('LogoutPageContent', () => {
   it('renders logout and cancel actions', () => {

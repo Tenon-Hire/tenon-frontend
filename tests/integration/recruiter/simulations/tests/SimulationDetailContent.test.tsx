@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import SimulationDetailContent from "./SimulationDetailContent";
+import SimulationDetailContent from "@/app/(private)/(recruiter)/dashboard/simulations/[id]/SimulationDetailContent";
 
 let mockParams: Record<string, string> = { id: "1" };
 

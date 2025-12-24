@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import PublicHomeContent from './PublicHomeContent';
+import PublicHomeContent from '@/app/(public)/PublicHomeContent';
 
 describe('PublicHomeContent', () => {
   it('shows signed-in state with user links', () => {

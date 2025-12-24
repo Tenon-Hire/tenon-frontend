@@ -1,6 +1,6 @@
 import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import TaskView from "./TaskView";
+import TaskView from "@/components/candidate/TaskView";
 import { loadCodeDraft, saveCodeDraft, clearCodeDraft } from "@/lib/codeDrafts";
 
 jest.mock("@/components/candidate/CodeEditor", () => ({

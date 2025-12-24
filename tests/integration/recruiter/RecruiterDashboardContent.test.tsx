@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import RecruiterDashboardContent, { RecruiterProfile } from "./RecruiterDashboardContent";
+import RecruiterDashboardContent, { RecruiterProfile } from "@/app/(private)/(recruiter)/dashboard/RecruiterDashboardContent";
 import { inviteCandidate, listSimulations } from "@/lib/recruiterApi";
 
 jest.mock("@/lib/recruiterApi", () => ({
@@ -126,6 +126,55 @@ describe("RecruiterDashboardContent", () => {
     expect(await screen.findByText("Invite created for Jane Doe (jane@example.com).")).toBeInTheDocument();
 
     expect(mockedInviteCandidate).toHaveBeenCalledWith("sim_1", "Jane Doe", "jane@example.com");
+  });
+
+  it("copies invite url from toast and resets copied state", async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    mockedListSimulations
+      .mockResolvedValueOnce([
+        { id: "sim_1", title: "Sim 1", role: "Backend", createdAt: "2025-12-10T10:00:00Z" },
+      ])
+      .mockResolvedValueOnce([
+        { id: "sim_1", title: "Sim 1", role: "Backend", createdAt: "2025-12-10T10:00:00Z" },
+      ]);
+
+    mockedInviteCandidate.mockResolvedValueOnce({
+      candidateSessionId: "cs_1",
+      token: "tok_123",
+      inviteUrl: "http://localhost:3000/candidate/tok_123",
+    });
+
+    render(<RecruiterDashboardContent profile={null} error={null} />);
+
+    const inviteBtn = await screen.findByRole("button", { name: "Invite candidate" });
+    await user.click(inviteBtn);
+    await user.type(screen.getByLabelText(/Candidate name/i), "Jane Doe");
+    await user.type(screen.getByLabelText(/Candidate email/i), "jane@example.com");
+    await user.click(screen.getByRole("button", { name: /Create invite/i }));
+
+    const copyBtn = await screen.findByRole("button", { name: /Copy/i });
+    await user.click(copyBtn);
+
+    expect(writeText).toHaveBeenCalledWith("http://localhost:3000/candidate/tok_123");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Copied/i })).toBeInTheDocument()
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Copy/i })).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /Dismiss/i }));
+    expect(screen.queryByText(/Invite created for Jane Doe/i)).not.toBeInTheDocument();
   });
 
 });

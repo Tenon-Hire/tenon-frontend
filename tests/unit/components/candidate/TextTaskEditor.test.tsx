@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import TextTaskEditor from "./TextTaskEditor";
+import TextTaskEditor from "@/components/candidate/TextTaskEditor";
 
 function draftKey(taskId: number) {
   return `simuhire:candidate:draft:text:${taskId}`;
