@@ -33,7 +33,7 @@ jobs:
         run: npm run lint
 
   test:
-    name: Unit Tests
+    name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

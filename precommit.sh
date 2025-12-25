@@ -4,7 +4,7 @@ set -euo pipefail
 echo "Running lint..."
 npm run lint
 
-echo "Running unit tests (CI mode)..."
+echo "Running tests (CI mode)..."
 npm run test:ci
 
 GREEN=$'\033[0;32m'
