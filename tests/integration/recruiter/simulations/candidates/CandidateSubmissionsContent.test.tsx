@@ -61,9 +61,21 @@ function getUrl(input: RequestInfo | URL): string {
   return input.url;
 }
 
+let anchorClickSpy: jest.SpyInstance | null = null;
+
 describe("CandidateSubmissionsContent", () => {
+  beforeAll(() => {
+    anchorClickSpy = jest
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+  });
+
   afterEach(() => {
     jest.resetAllMocks();
+  });
+
+  afterAll(() => {
+    anchorClickSpy?.mockRestore();
   });
 
   it("renders available submissions for an incomplete candidate", async () => {
