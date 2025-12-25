@@ -4,7 +4,7 @@ import {
   hasCodeDraft,
   loadCodeDraft,
   saveCodeDraft,
-} from '@/lib/codeDrafts';
+} from '@/lib/storage/candidateDrafts';
 
 describe('codeDrafts helpers', () => {
   beforeEach(() => {

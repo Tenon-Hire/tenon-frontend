@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import {
   CandidateSessionProvider,
   useCandidateSession,
-} from '@/app/(public)/(candidate)/candidate/CandidateSessionProvider';
+} from '@/features/candidate/session/CandidateSessionProvider';
 
 const STORAGE_KEY = 'simuhire:candidate_session_v1';
 

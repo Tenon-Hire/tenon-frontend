@@ -1,4 +1,4 @@
-import { SimulationList } from '@/features/recruiter/SimulationList';
+import { SimulationList } from '@/features/recruiter/simulations/SimulationList';
 import type { SimulationListItem } from '../types';
 
 type SimulationSectionProps = {

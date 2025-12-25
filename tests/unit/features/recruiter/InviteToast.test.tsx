@@ -1,9 +1,12 @@
 import { waitFor } from '@testing-library/react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { InviteToast, type ToastState } from '@/features/recruiter/InviteToast';
-import { copyToClipboard } from '@/features/recruiter/helpers';
+import {
+  InviteToast,
+  type ToastState,
+} from '@/features/recruiter/invitations/InviteToast';
+import { copyToClipboard } from '@/features/recruiter/helpers/formatters';
 
-jest.mock('@/features/recruiter/helpers', () => ({
+jest.mock('@/features/recruiter/helpers/formatters', () => ({
   __esModule: true,
   copyToClipboard: jest.fn().mockResolvedValue(true),
 }));

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
 import './globals.css';
-import AppShell from '@/components/layout/AppShell';
+import AppShell from '@/features/shared/layout/AppShell';
 
 export const metadata: Metadata = {
   title: 'SimuHire',

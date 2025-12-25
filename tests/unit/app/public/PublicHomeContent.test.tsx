@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import HomePageView from '@/features/public/home/HomePageView';
+import MarketingHomePage from '@/features/marketing/home/MarketingHomePage';
 
 describe('PublicHomeContent', () => {
   it('shows signed-in state with user links', () => {
-    render(<HomePageView user={{ name: 'Ada Lovelace' }} />);
+    render(<MarketingHomePage user={{ name: 'Ada Lovelace' }} />);
 
     expect(screen.getByText('Welcome back, Ada Lovelace.')).toBeInTheDocument();
     expect(
@@ -19,7 +19,7 @@ describe('PublicHomeContent', () => {
   });
 
   it('shows signed-out state with auth entry points', () => {
-    render(<HomePageView />);
+    render(<MarketingHomePage />);
 
     expect(screen.getByText('Welcome to SimuHire')).toBeInTheDocument();
     expect(
@@ -31,7 +31,7 @@ describe('PublicHomeContent', () => {
   });
 
   it('handles user without a name gracefully', () => {
-    render(<HomePageView user={{ name: null }} />);
+    render(<MarketingHomePage user={{ name: null }} />);
 
     expect(screen.getByText('Welcome back.')).toBeInTheDocument();
     expect(

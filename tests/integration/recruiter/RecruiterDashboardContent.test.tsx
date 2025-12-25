@@ -9,10 +9,10 @@ import {
 import userEvent from '@testing-library/user-event';
 import RecruiterDashboardContent, {
   RecruiterProfile,
-} from '@/app/(private)/(recruiter)/dashboard/RecruiterDashboardContent';
-import { inviteCandidate, listSimulations } from '@/lib/recruiterApi';
+} from '@/features/recruiter/dashboard/DashboardPageClient';
+import { inviteCandidate, listSimulations } from '@/lib/api/recruiter';
 
-jest.mock('@/lib/recruiterApi', () => ({
+jest.mock('@/lib/api/recruiter', () => ({
   listSimulations: jest.fn(),
   inviteCandidate: jest.fn(),
 }));

@@ -1,5 +1,5 @@
 import PageHeader from '@/components/ui/PageHeader';
-import Button from '@/components/common/Button';
+import Button from '@/components/ui/Button';
 
 type DashboardHeaderProps = {
   onNewSimulation: () => void;

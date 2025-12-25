@@ -2,10 +2,11 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { InviteCandidateModal } from '@/features/recruiter/InviteCandidateModal';
-import { InviteToast } from '@/features/recruiter/InviteToast';
-import { ProfileCard } from './ProfileCard';
-import { useInviteCandidateFlow, useSimulations } from './hooks';
+import { InviteCandidateModal } from '@/features/recruiter/invitations/InviteCandidateModal';
+import { InviteToast } from '@/features/recruiter/invitations/InviteToast';
+import { ProfileCard } from './components/ProfileCard';
+import { useInviteCandidateFlow } from './hooks/useInviteCandidateFlow';
+import { useSimulations } from './hooks/useSimulations';
 import type { InviteModalState, RecruiterProfile } from './types';
 import { DashboardHeader } from './components/DashboardHeader';
 import { SimulationSection } from './components/SimulationSection';
