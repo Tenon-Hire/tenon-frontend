@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import LogoutPageContent from '@/app/(public)/logout/LogoutPageContent';
+import LogoutView from '@/features/public/auth/LogoutView';
 
 describe('LogoutPageContent', () => {
   it('renders logout and cancel actions', () => {
-    render(<LogoutPageContent />);
+    render(<LogoutView />);
 
     expect(screen.getByText('Log out')).toBeInTheDocument();
     expect(

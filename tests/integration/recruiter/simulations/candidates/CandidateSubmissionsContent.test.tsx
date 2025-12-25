@@ -1,12 +1,8 @@
+import '../../../setup/paramsMock';
+import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import CandidateSubmissionsContent from '@/app/(private)/(recruiter)/dashboard/simulations/[id]/candidates/[candidateSessionId]/CandidateSubmissionsContent';
-
-let mockParams: Record<string, string> = { id: '1', candidateSessionId: '2' };
-
-jest.mock('next/navigation', () => ({
-  useParams: () => mockParams,
-}));
 
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -79,7 +75,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('renders available submissions for an incomplete candidate', async () => {
-    mockParams = { id: '1', candidateSessionId: '2' };
+    setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {
@@ -159,7 +155,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('renders multiple submissions and includes code content when present', async () => {
-    mockParams = { id: '1', candidateSessionId: '2' };
+    setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {
@@ -322,7 +318,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('renders empty state when candidate has no submissions', async () => {
-    mockParams = { id: '1', candidateSessionId: '2' };
+    setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {
@@ -362,7 +358,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('renders error state when submissions list request fails', async () => {
-    mockParams = { id: '1', candidateSessionId: '2' };
+    setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {
@@ -392,7 +388,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('shows fallback text when no content is captured in artifact', async () => {
-    mockParams = { id: '1', candidateSessionId: '2' };
+    setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {
@@ -468,7 +464,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('handles missing candidate info, renders prompt/test results, and fallback artifact message', async () => {
-    mockParams = { id: '1', candidateSessionId: '2' };
+    setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {
@@ -544,7 +540,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('surfaces thrown errors from fetch calls', async () => {
-    mockParams = { id: '9', candidateSessionId: '3' };
+    setMockParams({ id: '9', candidateSessionId: '3' });
 
     const fetchMock = jest.fn(async () => {
       throw new Error('network down');
@@ -557,7 +553,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('falls back to default error when fetch throws non-error value', async () => {
-    mockParams = { id: '11', candidateSessionId: '4' };
+    setMockParams({ id: '11', candidateSessionId: '4' });
     const fetchMock = jest.fn(async () => {
       throw 'bad';
     });
@@ -569,7 +565,7 @@ describe('CandidateSubmissionsContent', () => {
   });
 
   it('renders repo path when provided on code artifact', async () => {
-    mockParams = { id: '1', candidateSessionId: '2' };
+    setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {

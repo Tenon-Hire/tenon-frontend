@@ -1,7 +1,7 @@
 import { auth0 } from '@/lib/auth0';
-import PublicHomeContent from './PublicHomeContent';
+import HomePageView from '@/features/public/home/HomePageView';
 
 export default async function HomePage() {
   const session = await auth0.getSession();
-  return <PublicHomeContent user={session?.user} />;
+  return <HomePageView user={session?.user} />;
 }

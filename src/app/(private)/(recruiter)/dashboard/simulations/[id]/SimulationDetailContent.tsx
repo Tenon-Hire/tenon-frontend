@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import PageHeader from '@/components/common/PageHeader';
+import PageHeader from '@/components/ui/PageHeader';
 
 type CandidateSession = {
   candidateSessionId: number;

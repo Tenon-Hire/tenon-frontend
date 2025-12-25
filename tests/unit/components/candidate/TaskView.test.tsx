@@ -1,9 +1,9 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import TaskView from '@/components/candidate/TaskView';
+import TaskView from '@/features/candidate/task/TaskView';
 import { loadCodeDraft, saveCodeDraft, clearCodeDraft } from '@/lib/codeDrafts';
 
-jest.mock('@/components/candidate/CodeEditor', () => ({
+jest.mock('@/components/ui/CodeEditor', () => ({
   __esModule: true,
   default: function MockCodeEditor({
     value,

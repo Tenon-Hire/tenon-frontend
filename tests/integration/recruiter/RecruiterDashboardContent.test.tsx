@@ -1,3 +1,4 @@
+import '../setup/routerMock';
 import {
   act,
   fireEvent,
@@ -14,17 +15,6 @@ import { inviteCandidate, listSimulations } from '@/lib/recruiterApi';
 jest.mock('@/lib/recruiterApi', () => ({
   listSimulations: jest.fn(),
   inviteCandidate: jest.fn(),
-}));
-
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    refresh: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-  }),
 }));
 
 const mockedListSimulations = listSimulations as jest.MockedFunction<

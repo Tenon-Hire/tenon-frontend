@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import TaskProgress from '@/components/candidate/TaskProgress';
+import TaskProgress from '@/features/candidate/task/TaskProgress';
 
 describe('TaskProgress', () => {
   it('marks completed, current, and locked days correctly', () => {

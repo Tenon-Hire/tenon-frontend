@@ -1,11 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
+import { RecruiterPage } from './pages/RecruiterPage';
 
 test('recruiter logs in and sees simulations', async ({ page }) => {
-  await page.goto('/login');
+  const recruiter = new RecruiterPage(page);
 
-  await page.getByRole('button', { name: /continue/i }).click();
-
-  await page.waitForURL('**/dashboard');
-  await expect(page.getByText(/simulations/i)).toBeVisible();
-  await expect(page.getByTestId('simulation-row')).toBeVisible();
+  await recruiter.gotoLogin();
+  await recruiter.login();
+  await recruiter.expectDashboard();
 });

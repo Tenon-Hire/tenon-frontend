@@ -1,14 +1,47 @@
 import { ButtonHTMLAttributes } from 'react';
+import { cn } from '@/components/ui/cn';
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md';
+  loading?: boolean;
+};
 
-export default function Button(props: ButtonProps) {
-  const { className = '', ...rest } = props;
+const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
+  primary:
+    'bg-blue-600 text-white border-transparent hover:bg-blue-700 focus:ring-blue-500',
+  secondary:
+    'bg-white text-gray-800 border-gray-300 hover:bg-gray-50 focus:ring-blue-500',
+  ghost:
+    'bg-transparent text-gray-700 border-transparent hover:bg-gray-50 focus:ring-blue-500',
+};
 
-  const baseClasses =
-    'inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2';
+const sizes: Record<NonNullable<ButtonProps['size']>, string> = {
+  sm: 'px-3 py-2 text-sm',
+  md: 'px-4 py-2 text-sm',
+};
 
-  const mergedClassName = `${baseClasses} ${className}`.trim();
-
-  return <button className={mergedClassName} {...rest} />;
+export default function Button({
+  variant = 'primary',
+  size = 'md',
+  loading,
+  className,
+  children,
+  disabled,
+  ...rest
+}: ButtonProps) {
+  return (
+    <button
+      disabled={disabled || loading}
+      className={cn(
+        'inline-flex items-center justify-center rounded-md border font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50',
+        variants[variant],
+        sizes[size],
+        className,
+      )}
+      {...rest}
+    >
+      {loading ? 'Loading…' : children}
+    </button>
+  );
 }

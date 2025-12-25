@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ensureAccessToken, forwardJson } from '@/lib/server/bff';
+import { NextRequest } from 'next/server';
+import { forwardJson, withAuthGuard } from '@/lib/server/bff';
 
 export async function GET(
   _req: NextRequest,
@@ -7,13 +7,12 @@ export async function GET(
 ) {
   const { submissionId } = await context.params;
 
-  const auth = await ensureAccessToken();
-  if (auth instanceof NextResponse) return auth;
-
-  const resp = await forwardJson({
-    path: `/api/submissions/${encodeURIComponent(submissionId)}`,
-    accessToken: auth.accessToken,
-  });
+  const resp = await withAuthGuard((accessToken) =>
+    forwardJson({
+      path: `/api/submissions/${encodeURIComponent(submissionId)}`,
+      accessToken,
+    }),
+  );
   resp.headers.set('x-simuhire-bff', 'submission-detail');
   return resp;
 }

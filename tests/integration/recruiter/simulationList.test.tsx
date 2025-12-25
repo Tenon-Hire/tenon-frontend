@@ -1,17 +1,7 @@
+import '../setup/routerMock';
 import { render, screen, waitFor } from '@testing-library/react';
 import RecruiterDashboardContent from '@/app/(private)/(recruiter)/dashboard/RecruiterDashboardContent';
 import { listSimulations } from '@/lib/recruiterApi';
-
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    refresh: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-  }),
-}));
 
 jest.mock('@/lib/recruiterApi', () => ({
   ...jest.requireActual('@/lib/recruiterApi'),

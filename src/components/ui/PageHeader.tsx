@@ -1,18 +1,23 @@
 import { ReactNode } from 'react';
+import { cn } from './cn';
 
 type PageHeaderProps = {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
+  className?: string;
 };
 
 export default function PageHeader({
   title,
   subtitle,
   actions,
+  className,
 }: PageHeaderProps) {
   return (
-    <header className="flex items-center justify-between gap-4">
+    <header
+      className={cn('flex items-center justify-between gap-4', className)}
+    >
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {subtitle ? (

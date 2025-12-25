@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CodeEditor, {
   __ensureMonacoConfiguredForTest,
   __resetMonacoConfiguredForTest,
-} from '@/components/candidate/CodeEditor';
+} from '@/components/ui/CodeEditor';
 import loaderModule from '@monaco-editor/loader';
 
 type MonacoMockProps = {

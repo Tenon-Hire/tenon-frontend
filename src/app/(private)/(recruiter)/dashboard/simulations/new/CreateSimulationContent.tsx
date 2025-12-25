@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
-import PageHeader from '@/components/common/PageHeader';
+import PageHeader from '@/components/ui/PageHeader';
 import {
   createSimulation,
   type CreateSimulationInput,

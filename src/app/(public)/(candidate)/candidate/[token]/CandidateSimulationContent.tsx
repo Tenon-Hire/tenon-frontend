@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Button from '@/components/common/Button';
-import TaskView from '@/components/candidate/TaskView';
-import TaskProgress from '@/components/candidate/TaskProgress';
+import TaskView from '@/features/candidate/task/TaskView';
+import TaskProgress from '@/features/candidate/task/TaskProgress';
 import {
   HttpError,
   resolveCandidateInviteToken,

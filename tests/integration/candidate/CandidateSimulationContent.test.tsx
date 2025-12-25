@@ -49,7 +49,7 @@ function isSubmitResp(
   return typeof p['completed'] === 'number' && typeof p['total'] === 'number';
 }
 
-jest.mock('@/components/candidate/TaskView', () => ({
+jest.mock('@/features/candidate/task/TaskView', () => ({
   __esModule: true,
   default: function MockTaskView({
     task,

@@ -2,42 +2,43 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth0 } from './lib/auth0';
 
+const PUBLIC_PATHS = new Set(['/', '/login', '/logout']);
+const PUBLIC_PREFIXES = ['/auth', '/candidate'];
+
 function isPublicPath(pathname: string) {
-  {
-    const publicPaths = ['/', '/login', '/logout'];
-    if (publicPaths.includes(pathname)) return true;
-  }
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
 
-  if (pathname.startsWith('/auth')) return true;
-  if (pathname.startsWith('/candidate')) return true;
+function redirect(to: string, request: NextRequest) {
+  return NextResponse.redirect(new URL(to, request.url));
+}
 
-  return false;
+function buildLoginRedirect(request: NextRequest) {
+  const url = new URL('/auth/login', request.url);
+  url.searchParams.set(
+    'returnTo',
+    request.nextUrl.pathname + request.nextUrl.search,
+  );
+  return NextResponse.redirect(url);
 }
 
 export async function middleware(request: NextRequest) {
   const authRes = await auth0.middleware(request);
-
   const pathname = request.nextUrl.pathname;
 
-  if (pathname.startsWith('/api/')) {
-    return authRes;
-  }
+  if (pathname.startsWith('/api/')) return authRes;
 
   const session = await auth0.getSession(request);
 
   if (session && (pathname === '/' || pathname === '/login')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return redirect('/dashboard', request);
   }
 
   if (isPublicPath(pathname)) return authRes;
 
   if (!session) {
-    const url = new URL('/auth/login', request.url);
-    url.searchParams.set(
-      'returnTo',
-      request.nextUrl.pathname + request.nextUrl.search,
-    );
-    return NextResponse.redirect(url);
+    return buildLoginRedirect(request);
   }
 
   return authRes;

@@ -1,12 +1,8 @@
+import '../../../setup/paramsMock';
+import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import SimulationDetailContent from '@/app/(private)/(recruiter)/dashboard/simulations/[id]/SimulationDetailContent';
-
-let mockParams: Record<string, string> = { id: '1' };
-
-jest.mock('next/navigation', () => ({
-  useParams: () => mockParams,
-}));
 
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -63,7 +59,7 @@ function getUrl(input: RequestInfo | URL): string {
 
 describe('SimulationDetailContent', () => {
   beforeEach(() => {
-    mockParams = { id: '1' };
+    setMockParams({ id: '1' });
 
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL): Promise<MockResponse> => {

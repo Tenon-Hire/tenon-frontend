@@ -79,3 +79,11 @@ export async function forwardJson(options: ForwardOptions) {
   const parsed = await parseUpstreamBody(upstream);
   return NextResponse.json(parsed, { status: upstream.status });
 }
+
+export async function withAuthGuard(
+  handler: (accessToken: string) => Promise<NextResponse>,
+) {
+  const auth = await ensureAccessToken();
+  if (auth instanceof NextResponse) return auth;
+  return handler(auth.accessToken);
+}

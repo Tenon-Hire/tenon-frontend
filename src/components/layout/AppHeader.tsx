@@ -1,0 +1,19 @@
+import Link from 'next/link';
+import { AppNav } from './AppNav';
+
+type AppHeaderProps = {
+  isAuthed: boolean;
+};
+
+export function AppHeader({ isAuthed }: AppHeaderProps) {
+  return (
+    <header className="border-b bg-white">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+        <Link href="/" className="text-lg font-semibold tracking-tight">
+          SimuHire
+        </Link>
+        <AppNav isAuthed={isAuthed} />
+      </div>
+    </header>
+  );
+}

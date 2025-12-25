@@ -1,43 +1,18 @@
 import { apiClient, type ApiClientOptions } from './apiClient';
+import {
+  HttpError,
+  extractBackendMessage,
+  fallbackStatus,
+  toHttpError,
+} from './api/errors';
 
-export class HttpError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
+export { HttpError };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 const clientOptions: ApiClientOptions = {
   basePath: API_BASE || '',
   skipAuth: true,
 };
-
-function extractBackendMessage(
-  value: unknown,
-  allowPlainString = true,
-): string | null {
-  if (allowPlainString && typeof value === 'string' && value.trim())
-    return value.trim();
-  if (typeof value === 'object' && value !== null) {
-    const record = value as Record<string, unknown>;
-    const detail = record['detail'];
-    const message = record['message'];
-
-    if (typeof detail === 'string' && detail.trim()) return detail.trim();
-    if (typeof message === 'string' && message.trim()) return message.trim();
-  }
-  return null;
-}
-
-function fallbackStatus(err: unknown, defaultStatus: number) {
-  const maybeStatus =
-    err && typeof err === 'object'
-      ? (err as { status?: unknown }).status
-      : null;
-  return typeof maybeStatus === 'number' ? maybeStatus : defaultStatus;
-}
 
 type SimulationSummary = { title: string; role: string };
 
@@ -81,33 +56,6 @@ export type CandidateTaskSubmitResponse = {
   };
   isComplete: boolean;
 };
-
-function toHttpError(
-  err: unknown,
-  fallback: { status: number; message: string },
-) {
-  if (err instanceof HttpError) return err;
-  if (err instanceof TypeError) {
-    return new HttpError(
-      0,
-      'Network error. Please check your connection and try again.',
-    );
-  }
-
-  if (err && typeof err === 'object') {
-    const maybeStatus = (err as { status?: unknown }).status;
-    const maybeMsg = (err as { message?: unknown }).message;
-    const status =
-      typeof maybeStatus === 'number' ? maybeStatus : fallback.status;
-    const message =
-      typeof maybeMsg === 'string' && maybeMsg.trim()
-        ? maybeMsg
-        : fallback.message;
-    return new HttpError(status, message);
-  }
-
-  return new HttpError(fallback.status, fallback.message);
-}
 
 export async function resolveCandidateInviteToken(token: string) {
   const path = `/candidate/session/${encodeURIComponent(token)}`;

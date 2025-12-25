@@ -1,7 +1,7 @@
 'use client';
 
-import LoginPageContent from './LoginPageContent';
+import LoginView from '@/features/public/auth/LoginView';
 
 export default function LoginRoutePage() {
-  return <LoginPageContent />;
+  return <LoginView />;
 }

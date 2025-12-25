@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { buildLoginHref } from './authUrls';
 
 type AuthLoginLinkProps = {
   returnTo: string;
@@ -11,7 +12,7 @@ export default function AuthLoginLink({
   className,
   children,
 }: AuthLoginLinkProps) {
-  const href = `/auth/login?returnTo=${encodeURIComponent(returnTo)}`;
+  const href = buildLoginHref(returnTo);
   return (
     <a href={href} className={className}>
       {children}

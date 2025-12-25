@@ -1,17 +1,9 @@
+import '../../../setup/routerMock';
+import { routerMock } from '../../../setup/routerMock';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CreateSimulationContent from '@/app/(private)/(recruiter)/dashboard/simulations/new/CreateSimulationContent';
 import { createSimulation } from '@/lib/recruiterApi';
-
-const pushMock = jest.fn();
-const refreshMock = jest.fn();
-
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-    refresh: refreshMock,
-  }),
-}));
 
 jest.mock('@/lib/recruiterApi', () => ({
   ...jest.requireActual('@/lib/recruiterApi'),
@@ -72,8 +64,8 @@ describe('CreateSimulationContent', () => {
       });
     });
 
-    expect(pushMock).toHaveBeenCalledWith('/dashboard');
-    expect(refreshMock).toHaveBeenCalled();
+    expect(routerMock.push).toHaveBeenCalledWith('/dashboard');
+    expect(routerMock.refresh).toHaveBeenCalled();
   });
 
   it('shows form error when backend returns no id', async () => {
@@ -88,7 +80,7 @@ describe('CreateSimulationContent', () => {
     );
 
     expect(await screen.findByText(/no id was returned/i)).toBeInTheDocument();
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(routerMock.push).not.toHaveBeenCalled();
   });
 
   it('redirects to login on 401 response', async () => {
@@ -102,7 +94,7 @@ describe('CreateSimulationContent', () => {
       screen.getByRole('button', { name: /Create simulation/i }),
     );
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/login'));
   });
 
   it('surfaces backend error message on failure', async () => {
@@ -120,7 +112,7 @@ describe('CreateSimulationContent', () => {
     );
 
     expect(await screen.findByText(/Server exploded/i)).toBeInTheDocument();
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(routerMock.refresh).not.toHaveBeenCalled();
   });
 
   it('navigates back to dashboard via header Back button', async () => {
@@ -128,7 +120,7 @@ describe('CreateSimulationContent', () => {
     render(<CreateSimulationContent />);
 
     await user.click(screen.getByRole('button', { name: /^Back$/i }));
-    expect(pushMock).toHaveBeenCalledWith('/dashboard');
+    expect(routerMock.push).toHaveBeenCalledWith('/dashboard');
   });
 
   it('cancel button returns to dashboard without submitting', async () => {
@@ -138,7 +130,7 @@ describe('CreateSimulationContent', () => {
     await user.type(screen.getByLabelText(/Title/i), 'Backend Sim');
     await user.click(screen.getByRole('button', { name: /^Cancel$/i }));
 
-    expect(pushMock).toHaveBeenCalledWith('/dashboard');
+    expect(routerMock.push).toHaveBeenCalledWith('/dashboard');
     expect(createSimulationMock).not.toHaveBeenCalled();
   });
 });
