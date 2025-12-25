@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SimuHire Frontend
 
-## Getting Started
+Next.js frontend for SimuHire, a 5-day simulation-based hiring platform. It serves two surfaces:
 
-First, run the development server:
+- Candidate portal for completing daily simulation tasks via invite tokens.
+- Recruiter portal for logging in, creating simulations, inviting candidates, and viewing submissions.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tech & Architecture
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Next.js App Router (React 19).
+- Auth0 for recruiter authentication.
+- BFF API routes under `/api/*` that forward to the backend with Auth0 access tokens (`src/lib/server/bff.ts`).
+- Candidate portal calls the backend directly via `NEXT_PUBLIC_API_BASE_URL` with candidate-token headers.
+- UI primitives in `src/components/ui`; feature modules in `src/features/*`; layouts in `src/features/shared/layout`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Key Routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Marketing: `/` (`src/app/(marketing)/page.tsx`) with signed-in/out variants.
+- Auth: `/login`, `/logout`, `/auth/login`, `/auth/logout` (Auth0).
+- Candidate: `/candidate/[token]` (main portal), `/candidate/session/[token]` (redirect shim).
+- Recruiter:
+  - `/dashboard` – profile + simulations list.
+  - `/dashboard/simulations/new` – create simulation form.
+  - `/dashboard/simulations/[id]` – candidates in a simulation.
+  - `/dashboard/simulations/[id]/candidates/[candidateSessionId]` – submission artifacts.
 
-## Learn More
+## Data Flow
 
-To learn more about Next.js, take a look at the following resources:
+- Candidate actions (unauthenticated):
+  - Bootstrap: `GET {API_BASE}/candidate/session/{token}`.
+  - Current task: `GET {API_BASE}/candidate/session/{id}/current_task` with `x-candidate-token`.
+  - Submit task: `POST {API_BASE}/tasks/{taskId}/submit` with `x-candidate-token` and `x-candidate-session-id`; text/code required by type.
+- Recruiter actions (Auth0-protected via BFF):
+  - Profile: `GET /api/auth/me` (server-side in `/dashboard`).
+  - Simulations: `GET/POST /api/simulations`.
+  - Invite candidate: `POST /api/simulations/{id}/invite`.
+  - Candidates in simulation: `GET /api/simulations/{id}/candidates`.
+  - Submissions: `GET /api/submissions?candidateSessionId=...` and `GET /api/submissions/{submissionId}`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Running Locally
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1) Install deps: `npm install`.
+2) Env vars (`.env.local`):
+   - `NEXT_PUBLIC_API_BASE_URL=https://backend.example.com/api` (candidate calls).
+   - `BACKEND_BASE_URL=http://localhost:8000` (BFF upstream base; no trailing slash).
+   - Auth0: `AUTH0_SECRET`, `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`, `AUTH0_AUDIENCE`, `AUTH0_SCOPE` (if needed), `APP_BASE_URL=http://localhost:3000`.
+3) Dev server: `npm run dev` (<http://localhost:3000>).
+4) Tests: `npm test` (unit/Jest), `npm run test:e2e` (Playwright config at `tests/e2e/playwright.config.ts`).
+5) Typecheck/lint: `npm run typecheck`, `npm run lint`.
 
-## Deploy on Vercel
+## Code Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `src/app/` – routes, layouts, and API BFF handlers.
+- `src/features/candidate/` – session context, task UI, draft handling.
+- `src/features/recruiter/` – dashboard, simulations, invitations, submissions.
+- `src/features/auth/` – Auth0 login/logout links and pages.
+- `src/features/marketing/` – marketing homepage variants.
+- `src/components/ui/` – buttons, inputs, page headers, Monaco code editor.
+- `src/lib/api/` – HTTP client, recruiter/candidate API wrappers, error helpers.
+- `src/lib/server/` – BFF helpers for forwarding to backend.
+- `src/lib/storage/` – candidate draft persistence.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Typical Flows
+
+- Candidate link → bootstrap invite → intro screen → fetch current task → auto-save drafts → submit (text/code) → refetch next task → complete after 5 days.
+- Recruiter login → dashboard loads profile + simulations → create simulation → invite candidate (modal + copy invite URL) → monitor candidates in simulation → open candidate → view submission artifacts (text/code/test results). Execution profile, comparisons, and print/export are not yet implemented.
+
+## Status / TODO
+
+- No “Run Tests” UX in candidate tasks; only submission.
+- Execution profile, candidate comparison, and report/print views are absent.
+- Notifications/toasts exist only for invite success; broader error/success toasts could be added.
