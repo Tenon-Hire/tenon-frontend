@@ -1,16 +1,16 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import CandidateSimulationContent from '@/app/(public)/(candidate)/candidate/[token]/CandidateSimulationContent';
-import { CandidateSessionProvider } from '@/app/(public)/(candidate)/candidate/CandidateSessionProvider';
+import CandidateSimulationContent from '@/features/candidate/session/CandidateSessionPageClient';
+import { CandidateSessionProvider } from '@/features/candidate/session/CandidateSessionProvider';
 import {
   HttpError,
   resolveCandidateInviteToken,
   getCandidateCurrentTask,
   submitCandidateTask,
-} from '@/lib/candidateApi';
+} from '@/lib/api/candidate';
 
-jest.mock('@/lib/candidateApi', () => {
-  const actual = jest.requireActual('@/lib/candidateApi');
+jest.mock('@/lib/api/candidate', () => {
+  const actual = jest.requireActual('@/lib/api/candidate');
   return {
     __esModule: true,
     ...actual,
@@ -49,7 +49,7 @@ function isSubmitResp(
   return typeof p['completed'] === 'number' && typeof p['total'] === 'number';
 }
 
-jest.mock('@/features/candidate/task/TaskView', () => ({
+jest.mock('@/features/candidate/session/task/CandidateTaskView', () => ({
   __esModule: true,
   default: function MockTaskView({
     task,

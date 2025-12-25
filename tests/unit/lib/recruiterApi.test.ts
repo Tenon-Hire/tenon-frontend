@@ -1,11 +1,11 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/api/httpClient';
 import {
   inviteCandidate,
   listSimulations,
   createSimulation,
-} from '@/lib/recruiterApi';
+} from '@/lib/api/recruiter';
 
-jest.mock('@/lib/apiClient', () => ({
+jest.mock('@/lib/api/httpClient', () => ({
   apiClient: {
     get: jest.fn(),
     post: jest.fn(),

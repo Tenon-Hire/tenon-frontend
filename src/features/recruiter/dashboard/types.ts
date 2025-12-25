@@ -1,4 +1,4 @@
-import type { SimulationListItem } from '@/lib/recruiterApi';
+import type { SimulationListItem } from '@/lib/api/recruiter';
 
 export type RecruiterProfile = {
   id: number;

@@ -1,10 +1,10 @@
 import '../setup/routerMock';
 import { render, screen, waitFor } from '@testing-library/react';
-import RecruiterDashboardContent from '@/app/(private)/(recruiter)/dashboard/RecruiterDashboardContent';
-import { listSimulations } from '@/lib/recruiterApi';
+import RecruiterDashboardContent from '@/features/recruiter/dashboard/DashboardPageClient';
+import { listSimulations } from '@/lib/api/recruiter';
 
-jest.mock('@/lib/recruiterApi', () => ({
-  ...jest.requireActual('@/lib/recruiterApi'),
+jest.mock('@/lib/api/recruiter', () => ({
+  ...jest.requireActual('@/lib/api/recruiter'),
   listSimulations: jest.fn(),
 }));
 

@@ -2,7 +2,7 @@ import '../../../setup/paramsMock';
 import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import SimulationDetailContent from '@/app/(private)/(recruiter)/dashboard/simulations/[id]/SimulationDetailContent';
+import SimulationDetailContent from '@/features/recruiter/simulation-detail/SimulationDetailPageClient';
 
 jest.mock('next/link', () => ({
   __esModule: true,

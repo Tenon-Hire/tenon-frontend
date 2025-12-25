@@ -26,7 +26,7 @@ const originalApiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
 async function importApi() {
   jest.resetModules();
   process.env.NEXT_PUBLIC_API_BASE_URL = 'http://api.example.com';
-  return import('@/lib/candidateApi');
+  return import('@/lib/api/candidate');
 }
 
 describe('candidateApi', () => {

@@ -1,7 +1,11 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import TaskView from '@/features/candidate/task/TaskView';
-import { loadCodeDraft, saveCodeDraft, clearCodeDraft } from '@/lib/codeDrafts';
+import TaskView from '@/features/candidate/session/task/CandidateTaskView';
+import {
+  loadCodeDraft,
+  saveCodeDraft,
+  clearCodeDraft,
+} from '@/lib/storage/candidateDrafts';
 
 jest.mock('@/components/ui/CodeEditor', () => ({
   __esModule: true,
@@ -22,7 +26,7 @@ jest.mock('@/components/ui/CodeEditor', () => ({
   },
 }));
 
-jest.mock('@/lib/codeDrafts', () => ({
+jest.mock('@/lib/storage/candidateDrafts', () => ({
   loadCodeDraft: jest.fn(),
   saveCodeDraft: jest.fn(),
   clearCodeDraft: jest.fn(),

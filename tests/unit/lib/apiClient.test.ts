@@ -1,4 +1,4 @@
-import { apiClient, login } from '@/lib/apiClient';
+import { apiClient, login } from '@/lib/api/httpClient';
 import { getAuthToken } from '@/lib/auth';
 
 jest.mock('@/lib/auth', () => ({
