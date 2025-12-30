@@ -1,6 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CandidateSessionPageClient from '@/features/candidate/session/CandidateSessionPageClient';
+import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 import { jsonResponse } from '../../setup/responseHelpers';
 import { renderCandidateWithProviders } from '../../setup';
 
@@ -39,7 +39,7 @@ afterAll(() => {
   global.fetch = realFetch;
 });
 
-describe('CandidateSessionPageClient (real task view)', () => {
+describe('CandidateSessionPage (real task view)', () => {
   it('loads bootstrap, walks Day 1 → Day 2 progression, and validates code submissions', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -93,9 +93,7 @@ describe('CandidateSessionPageClient (real task view)', () => {
         }),
       );
 
-    renderCandidateWithProviders(
-      <CandidateSessionPageClient token="valid-token" />,
-    );
+    renderCandidateWithProviders(<CandidateSessionPage token="valid-token" />);
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(await screen.findByText('Infra Simulation')).toBeInTheDocument();

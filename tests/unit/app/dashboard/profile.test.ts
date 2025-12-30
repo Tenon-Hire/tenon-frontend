@@ -1,4 +1,4 @@
-import { fetchRecruiterProfile } from '@/app/(dashboard)/dashboard/profile';
+import { fetchRecruiterProfile } from '@/app/(recruiter)/dashboard/profile.server';
 import { getAccessToken } from '@/lib/auth0';
 import { getBackendBaseUrl } from '@/lib/server/bff';
 import { responseHelpers } from '../../../setup';

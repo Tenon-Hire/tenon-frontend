@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { inviteCandidate } from '@/lib/api/recruiter';
-import { errorToMessage } from '../../helpers/formatters';
-import type { InviteModalState, InviteSuccess } from '../types';
+import { errorToMessage } from '../../utils/formatters';
+import type { InviteModalState, InviteSuccess } from '@/types/recruiter';
 
 export function useInviteCandidateFlow(simulation: InviteModalState | null) {
   const [state, setState] = useState<{

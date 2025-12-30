@@ -19,11 +19,14 @@ export function MarketingHomeSignedIn({ name }: { name?: string | null }) {
           Go to dashboard
         </Link>
 
-        <Link href="/candidate/demo-token" className={secondaryCtaClass}>
+        <Link
+          href="/candidate-sessions/demo-token"
+          className={secondaryCtaClass}
+        >
           Open candidate simulation (demo)
         </Link>
 
-        <Link href="/logout" className={secondaryCtaClass}>
+        <Link href="/auth/logout" className={secondaryCtaClass}>
           Logout
         </Link>
       </ActionRow>

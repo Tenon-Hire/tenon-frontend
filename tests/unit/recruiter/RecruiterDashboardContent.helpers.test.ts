@@ -2,7 +2,7 @@ import {
   copyToClipboard,
   errorToMessage,
   formatCreatedDate,
-} from '@/features/recruiter/helpers/formatters';
+} from '@/features/recruiter/utils/formatters';
 
 const originalExecCommand = document.execCommand;
 

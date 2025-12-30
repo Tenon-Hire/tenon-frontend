@@ -11,10 +11,10 @@ describe('PublicHomeContent', () => {
     ).toHaveAttribute('href', '/dashboard');
     expect(
       screen.getByRole('link', { name: 'Open candidate simulation (demo)' }),
-    ).toHaveAttribute('href', '/candidate/demo-token');
+    ).toHaveAttribute('href', '/candidate-sessions/demo-token');
     expect(screen.getByRole('link', { name: 'Logout' })).toHaveAttribute(
       'href',
-      '/logout',
+      '/auth/logout',
     );
   });
 
@@ -27,7 +27,10 @@ describe('PublicHomeContent', () => {
     ).toHaveAttribute('href', '/auth/login?returnTo=%2Fdashboard');
     expect(
       screen.getByRole('link', { name: 'Candidate portal' }),
-    ).toHaveAttribute('href', '/auth/login?returnTo=%2Fcandidate%2Fdemo-token');
+    ).toHaveAttribute(
+      'href',
+      '/auth/login?returnTo=%2Fcandidate-sessions%2Fdemo-token',
+    );
   });
 
   it('handles user without a name gracefully', () => {

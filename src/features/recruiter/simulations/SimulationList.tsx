@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import type { SimulationListItem } from '@/lib/api/recruiter';
-import { formatCreatedDate } from '../helpers/formatters';
+import { formatCreatedDate } from '../utils/formatters';
 
 type SimulationListProps = {
   simulations: SimulationListItem[];

@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { auth0 } from '@/lib/auth0';
 import { AppHeader } from './AppHeader';
-import { contentContainer } from './layoutClasses';
+import { contentContainer } from './layoutStyles';
 
 type AppShellProps = {
   children: ReactNode;

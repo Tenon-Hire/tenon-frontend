@@ -6,9 +6,9 @@ import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { toUserMessage } from '@/lib/utils/errors';
-import type { CandidateSession } from '@/features/recruiter/types';
+import type { CandidateSession } from '@/types/recruiter';
 
-export default function SimulationDetailPageClient() {
+export default function RecruiterSimulationDetailPage() {
   const params = useParams<{ id: string }>();
   const simulationId = params.id;
 

@@ -2,8 +2,8 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth0 } from './lib/auth0';
 
-const PUBLIC_PATHS = new Set(['/', '/login', '/logout']);
-const PUBLIC_PREFIXES = ['/auth', '/candidate'];
+const PUBLIC_PATHS = new Set(['/', '/auth/login', '/auth/logout']);
+const PUBLIC_PREFIXES = ['/auth', '/candidate-sessions'];
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.has(pathname)) return true;
@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
   const session = await auth0.getSession(request);
   if (!session) return buildLoginRedirect(request);
 
-  if (pathname === '/' || pathname === '/login') {
+  if (pathname === '/' || pathname === '/auth/login') {
     return redirect('/dashboard', request);
   }
 

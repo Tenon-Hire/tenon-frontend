@@ -2,7 +2,7 @@ import '../../../setup/paramsMock';
 import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import CandidateSubmissionsContent from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPageClient';
+import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 import {
   getRequestUrl,
   jsonResponse,
@@ -27,7 +27,7 @@ jest.mock('next/link', () => ({
 
 let anchorClickSpy: jest.SpyInstance | null = null;
 
-describe('CandidateSubmissionsContent', () => {
+describe('CandidateSubmissionsPage', () => {
   beforeAll(() => {
     anchorClickSpy = jest
       .spyOn(HTMLAnchorElement.prototype, 'click')
@@ -100,7 +100,7 @@ describe('CandidateSubmissionsContent', () => {
 
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     expect(screen.getByText('Loading submissions…')).toBeInTheDocument();
 
@@ -207,7 +207,7 @@ describe('CandidateSubmissionsContent', () => {
 
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     await waitFor(() => {
       expect(
@@ -310,7 +310,7 @@ describe('CandidateSubmissionsContent', () => {
 
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     await waitFor(() => {
       expect(
@@ -340,7 +340,7 @@ describe('CandidateSubmissionsContent', () => {
 
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Detailed failure')).toBeInTheDocument();
@@ -405,7 +405,7 @@ describe('CandidateSubmissionsContent', () => {
 
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     await waitFor(() => {
       expect(
@@ -481,7 +481,7 @@ describe('CandidateSubmissionsContent', () => {
 
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     expect(
       await screen.findByText(/Candidate 2 — Submissions/),
@@ -503,7 +503,7 @@ describe('CandidateSubmissionsContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/network down/i)).toBeInTheDocument();
   });
@@ -515,7 +515,7 @@ describe('CandidateSubmissionsContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText('Request failed')).toBeInTheDocument();
   });
@@ -581,7 +581,7 @@ describe('CandidateSubmissionsContent', () => {
 
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<CandidateSubmissionsContent />);
+    render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/Path Task/)).toBeInTheDocument();
     expect(screen.getByText(/src\/index\.ts/)).toBeInTheDocument();

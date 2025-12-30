@@ -2,7 +2,7 @@ import '../../../setup/paramsMock';
 import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import SimulationDetailContent from '@/features/recruiter/simulation-detail/SimulationDetailPageClient';
+import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
 import {
   getRequestUrl,
   jsonResponse,
@@ -25,7 +25,7 @@ jest.mock('next/link', () => ({
   ),
 }));
 
-describe('SimulationDetailContent', () => {
+describe('RecruiterSimulationDetailPage', () => {
   beforeEach(() => {
     setMockParams({ id: '1' });
 
@@ -64,7 +64,7 @@ describe('SimulationDetailContent', () => {
   });
 
   it('renders candidates list and links to candidate submissions', async () => {
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     expect(screen.getByText('Loading candidates…')).toBeInTheDocument();
 
@@ -99,7 +99,7 @@ describe('SimulationDetailContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('No candidates yet.')).toBeInTheDocument();
@@ -116,7 +116,7 @@ describe('SimulationDetailContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Boom')).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe('SimulationDetailContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Plain failure')).toBeInTheDocument();
@@ -160,7 +160,7 @@ describe('SimulationDetailContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Unnamed')).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('SimulationDetailContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     expect(await screen.findByText(/network fail/i)).toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe('SimulationDetailContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     expect(await screen.findByText('Request failed')).toBeInTheDocument();
   });
@@ -201,7 +201,7 @@ describe('SimulationDetailContent', () => {
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(<SimulationDetailContent />);
+    render(<RecruiterSimulationDetailPage />);
 
     expect(await screen.findByText('No access')).toBeInTheDocument();
   });

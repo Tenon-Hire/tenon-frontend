@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { AppNav } from './AppNav';
-import { contentContainer } from './layoutClasses';
+import { contentContainer } from './layoutStyles';
 
 type AppHeaderProps = {
   isAuthed: boolean;

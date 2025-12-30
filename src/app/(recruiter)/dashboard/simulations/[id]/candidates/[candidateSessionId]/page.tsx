@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import CandidateSubmissionsPageClient from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPageClient';
+import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 
 export const metadata: Metadata = {
   title: 'Candidate submissions | SimuHire',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <CandidateSubmissionsPageClient />;
+  return <CandidateSubmissionsPage />;
 }

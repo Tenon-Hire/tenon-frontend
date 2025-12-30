@@ -1,5 +1,5 @@
 import { apiClient, safeRequest } from './httpClient';
-import { getId, getNumber, getString, isRecord } from './normalize';
+import { getId, getNumber, getString, isRecord } from './utils/normalize';
 
 export type SimulationListItem = {
   id: string;

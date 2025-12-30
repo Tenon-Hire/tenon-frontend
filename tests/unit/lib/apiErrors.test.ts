@@ -3,7 +3,7 @@ import {
   extractBackendMessage,
   fallbackStatus,
   toHttpError,
-} from '@/lib/api/errors';
+} from '@/lib/api/utils/errors';
 
 describe('api errors helpers', () => {
   it('extracts backend message/ detail variants', () => {

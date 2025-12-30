@@ -1,6 +1,6 @@
 import { StatusPill } from '@/components/ui/StatusPill';
-import { statusMeta } from '@/features/recruiter/helpers/status';
-import type { CandidateSession } from '@/features/recruiter/types';
+import { statusMeta } from '@/features/recruiter/utils/status';
+import type { CandidateSession } from '@/types/recruiter';
 
 export function CandidateStatusPill({
   status,

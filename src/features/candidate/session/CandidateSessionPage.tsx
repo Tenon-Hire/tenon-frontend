@@ -14,11 +14,7 @@ import { StateMessage } from './components/StateMessage';
 
 type ViewState = 'loading' | 'intro' | 'error' | 'starting' | 'running';
 
-export default function CandidateSessionPageClient({
-  token,
-}: {
-  token: string;
-}) {
+export default function CandidateSessionPage({ token }: { token: string }) {
   const {
     state,
     setToken,

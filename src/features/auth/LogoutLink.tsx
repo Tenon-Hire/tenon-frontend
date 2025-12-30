@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { buildLogoutHref } from './authRoutes';
+import { buildLogoutHref } from './authPaths';
 
 type LogoutLinkProps = {
   returnTo?: string;

@@ -1,4 +1,4 @@
-import type { RecruiterProfile } from '@/features/recruiter/dashboard/DashboardPageClient';
+import type { RecruiterProfile } from '@/types/recruiter';
 import { getAccessToken } from '@/lib/auth0';
 import { getBackendBaseUrl } from '@/lib/server/bff';
 

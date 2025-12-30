@@ -1,6 +1,6 @@
 import '../setup/routerMock';
 import { render, screen, waitFor } from '@testing-library/react';
-import RecruiterDashboardContent from '@/features/recruiter/dashboard/DashboardPageClient';
+import RecruiterDashboardPage from '@/features/recruiter/dashboard/RecruiterDashboardPage';
 import { listSimulations } from '@/lib/api/recruiter';
 
 jest.mock('@/lib/api/recruiter', () => ({
@@ -28,7 +28,7 @@ describe('Recruiter simulations list (integration)', () => {
       },
     ]);
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     await waitFor(() =>
       expect(screen.getByText('Backend Simulation')).toBeInTheDocument(),
@@ -40,7 +40,7 @@ describe('Recruiter simulations list (integration)', () => {
   it('shows empty state when no simulations exist', async () => {
     listSimulationsMock.mockResolvedValue([]);
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     expect(await screen.findByText(/No simulations yet/)).toBeInTheDocument();
     expect(screen.queryByText(/candidate\(s\)/i)).not.toBeInTheDocument();
@@ -52,7 +52,7 @@ describe('Recruiter simulations list (integration)', () => {
       status: 401,
     });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     expect(
       await screen.findByText(/Couldn’t load simulations/i),

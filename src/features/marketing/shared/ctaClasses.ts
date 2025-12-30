@@ -1,4 +1,4 @@
-import { cn } from '@/components/ui/cn';
+import { cn } from '@/components/ui/classnames';
 
 const baseButton =
   'inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';

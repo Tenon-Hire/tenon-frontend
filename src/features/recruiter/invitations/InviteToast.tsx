@@ -1,5 +1,5 @@
 import Button from '@/components/ui/Button';
-import { copyToClipboard } from '../helpers/formatters';
+import { copyToClipboard } from '../utils/formatters';
 
 export type ToastState =
   | { open: false }

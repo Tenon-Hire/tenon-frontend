@@ -1,4 +1,4 @@
-import { extractToken } from '@/app/(candidate)/candidate/token';
+import { requireCandidateToken } from '@/app/(candidate)/candidate-sessions/token-params';
 
 jest.mock('next/navigation', () => ({
   notFound: jest.fn(() => {
@@ -6,15 +6,17 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-describe('extractToken', () => {
+describe('requireCandidateToken', () => {
   it('resolves and trims token', async () => {
-    const token = await extractToken(Promise.resolve({ token: '  abc  ' }));
+    const token = await requireCandidateToken(
+      Promise.resolve({ token: '  abc  ' }),
+    );
     expect(token).toBe('abc');
   });
 
   it('throws via notFound when token missing', async () => {
-    await expect(extractToken(Promise.resolve({ token: ' ' }))).rejects.toThrow(
-      'not found',
-    );
+    await expect(
+      requireCandidateToken(Promise.resolve({ token: ' ' })),
+    ).rejects.toThrow('not found');
   });
 });

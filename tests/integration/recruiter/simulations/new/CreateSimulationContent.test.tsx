@@ -2,7 +2,7 @@ import '../../../setup/routerMock';
 import { routerMock } from '../../../setup/routerMock';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CreateSimulationContent from '@/features/recruiter/simulations/CreateSimulationPageClient';
+import SimulationCreatePage from '@/features/recruiter/simulations/SimulationCreatePage';
 import { createSimulation } from '@/lib/api/recruiter';
 
 jest.mock('@/lib/api/recruiter', () => ({
@@ -14,14 +14,14 @@ const createSimulationMock = createSimulation as jest.MockedFunction<
   typeof createSimulation
 >;
 
-describe('CreateSimulationContent', () => {
+describe('SimulationCreatePage', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
 
   it('validates required fields before submitting', async () => {
     const user = userEvent.setup();
-    render(<CreateSimulationContent />);
+    render(<SimulationCreatePage />);
 
     await user.clear(screen.getByLabelText(/Title/i));
     await user.clear(screen.getByLabelText(/Role/i));
@@ -41,7 +41,7 @@ describe('CreateSimulationContent', () => {
     const user = userEvent.setup();
     createSimulationMock.mockResolvedValueOnce({ id: 'sim_123' });
 
-    render(<CreateSimulationContent />);
+    render(<SimulationCreatePage />);
 
     await user.type(screen.getByLabelText(/Title/i), ' Backend Payments ');
     await user.clear(screen.getByLabelText(/Role/i));
@@ -72,7 +72,7 @@ describe('CreateSimulationContent', () => {
     const user = userEvent.setup();
     createSimulationMock.mockResolvedValueOnce({ id: '' });
 
-    render(<CreateSimulationContent />);
+    render(<SimulationCreatePage />);
 
     await user.type(screen.getByLabelText(/Title/i), 'Backend Sim');
     await user.click(
@@ -87,14 +87,16 @@ describe('CreateSimulationContent', () => {
     const user = userEvent.setup();
     createSimulationMock.mockRejectedValueOnce({ status: 401 });
 
-    render(<CreateSimulationContent />);
+    render(<SimulationCreatePage />);
 
     await user.type(screen.getByLabelText(/Title/i), 'Backend Sim');
     await user.click(
       screen.getByRole('button', { name: /Create simulation/i }),
     );
 
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/login'));
+    await waitFor(() =>
+      expect(routerMock.push).toHaveBeenCalledWith('/auth/login'),
+    );
   });
 
   it('surfaces backend error message on failure', async () => {
@@ -104,7 +106,7 @@ describe('CreateSimulationContent', () => {
       body: { detail: 'Server exploded' },
     });
 
-    render(<CreateSimulationContent />);
+    render(<SimulationCreatePage />);
 
     await user.type(screen.getByLabelText(/Title/i), 'Backend Sim');
     await user.click(
@@ -117,7 +119,7 @@ describe('CreateSimulationContent', () => {
 
   it('navigates back to dashboard via header Back button', async () => {
     const user = userEvent.setup();
-    render(<CreateSimulationContent />);
+    render(<SimulationCreatePage />);
 
     await user.click(screen.getByRole('button', { name: /^Back$/i }));
     expect(routerMock.push).toHaveBeenCalledWith('/dashboard');
@@ -125,7 +127,7 @@ describe('CreateSimulationContent', () => {
 
   it('cancel button returns to dashboard without submitting', async () => {
     const user = userEvent.setup();
-    render(<CreateSimulationContent />);
+    render(<SimulationCreatePage />);
 
     await user.type(screen.getByLabelText(/Title/i), 'Backend Sim');
     await user.click(screen.getByRole('button', { name: /^Cancel$/i }));

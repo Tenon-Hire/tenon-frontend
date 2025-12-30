@@ -1,4 +1,4 @@
-import type { CandidateSession, StatusPillTone } from '../types';
+import type { CandidateSession, StatusPillTone } from '@/types/recruiter';
 
 export type StatusMeta = {
   label: string;

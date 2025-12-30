@@ -7,7 +7,7 @@ export class CandidatePage extends BasePage {
   }
 
   async gotoWithToken(token: string) {
-    await this.goto(`/candidate/${token}`);
+    await this.goto(`/candidate-sessions/${token}`);
   }
 
   async expectBootstrap() {

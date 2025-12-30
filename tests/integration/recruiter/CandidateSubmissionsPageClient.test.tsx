@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import CandidateSubmissionsPageClient from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPageClient';
+import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 import { jsonResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1', candidateSessionId: '900' };
@@ -22,7 +22,7 @@ afterAll(() => {
   global.fetch = realFetch;
 });
 
-describe('CandidateSubmissionsPageClient', () => {
+describe('CandidateSubmissionsPage', () => {
   it('renders submission artifacts with code and test results', async () => {
     fetchMock
       .mockResolvedValueOnce(
@@ -70,7 +70,7 @@ describe('CandidateSubmissionsPageClient', () => {
         }),
       );
 
-    render(<CandidateSubmissionsPageClient />);
+    render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/Dee — Submissions/i)).toBeInTheDocument();
     expect(await screen.findByText(/Day 2: Debug API/i)).toBeInTheDocument();
@@ -96,7 +96,7 @@ describe('CandidateSubmissionsPageClient', () => {
       )
       .mockResolvedValueOnce(jsonResponse({ items: [] }));
 
-    render(<CandidateSubmissionsPageClient />);
+    render(<CandidateSubmissionsPage />);
 
     expect(
       await screen.findByText(/No submissions yet for this candidate/i),
@@ -109,7 +109,7 @@ describe('CandidateSubmissionsPageClient', () => {
       .mockResolvedValueOnce(jsonResponse({ message: 'Upstream down' }, 500));
     params.id = 'sim-err';
 
-    render(<CandidateSubmissionsPageClient />);
+    render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/Upstream down/i)).toBeInTheDocument();
   });
@@ -119,7 +119,7 @@ describe('CandidateSubmissionsPageClient', () => {
       .mockResolvedValueOnce(jsonResponse([], 200))
       .mockRejectedValueOnce(new Error('network fail'));
 
-    render(<CandidateSubmissionsPageClient />);
+    render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/network fail/i)).toBeInTheDocument();
   });

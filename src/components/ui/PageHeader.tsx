@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { cn } from './cn';
+import { cn } from './classnames';
 
 type PageHeaderProps = {
   title: string;

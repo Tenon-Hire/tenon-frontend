@@ -7,9 +7,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import RecruiterDashboardContent, {
-  RecruiterProfile,
-} from '@/features/recruiter/dashboard/DashboardPageClient';
+import RecruiterDashboardPage from '@/features/recruiter/dashboard/RecruiterDashboardPage';
+import type { RecruiterProfile } from '@/types/recruiter';
 import { inviteCandidate, listSimulations } from '@/lib/api/recruiter';
 
 jest.mock('@/lib/api/recruiter', () => ({
@@ -24,7 +23,7 @@ const mockedInviteCandidate = inviteCandidate as jest.MockedFunction<
   typeof inviteCandidate
 >;
 
-describe('RecruiterDashboardContent', () => {
+describe('RecruiterDashboardPage', () => {
   const profile: RecruiterProfile = {
     id: 1,
     name: 'Jordan Doe',
@@ -43,7 +42,7 @@ describe('RecruiterDashboardContent', () => {
   it('renders profile details when available', async () => {
     mockedListSimulations.mockResolvedValueOnce([]);
 
-    render(<RecruiterDashboardContent profile={profile} error={null} />);
+    render(<RecruiterDashboardPage profile={profile} error={null} />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Jordan Doe')).toBeInTheDocument();
@@ -57,10 +56,7 @@ describe('RecruiterDashboardContent', () => {
     mockedListSimulations.mockResolvedValueOnce([]);
 
     render(
-      <RecruiterDashboardContent
-        profile={null}
-        error="Unable to fetch profile"
-      />,
+      <RecruiterDashboardPage profile={null} error="Unable to fetch profile" />,
     );
 
     expect(screen.getByText('Unable to fetch profile')).toBeInTheDocument();
@@ -70,7 +66,7 @@ describe('RecruiterDashboardContent', () => {
   it('shows empty state when recruiter has no simulations', async () => {
     mockedListSimulations.mockResolvedValueOnce([]);
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     expect(await screen.findByText('No simulations yet.')).toBeInTheDocument();
   });
@@ -86,7 +82,7 @@ describe('RecruiterDashboardContent', () => {
       },
     ]);
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     expect(
       await screen.findByText('Backend Engineer - Node'),
@@ -104,7 +100,7 @@ describe('RecruiterDashboardContent', () => {
       status: 401,
     });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     expect(
       await screen.findByText('Couldn’t load simulations'),
@@ -136,10 +132,10 @@ describe('RecruiterDashboardContent', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_1',
       token: 'tok_123',
-      inviteUrl: 'http://localhost:3000/candidate/tok_123',
+      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_123',
     });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -200,10 +196,10 @@ describe('RecruiterDashboardContent', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_1',
       token: 'tok_123',
-      inviteUrl: 'http://localhost:3000/candidate/tok_123',
+      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_123',
     });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -220,7 +216,7 @@ describe('RecruiterDashboardContent', () => {
     await user.click(copyBtn);
 
     expect(writeText).toHaveBeenCalledWith(
-      'http://localhost:3000/candidate/tok_123',
+      'http://localhost:3000/candidate-sessions/tok_123',
     );
     await waitFor(() =>
       expect(
@@ -254,7 +250,7 @@ describe('RecruiterDashboardContent', () => {
 
     mockedInviteCandidate.mockRejectedValueOnce({ message: 'Invite failed' });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -277,7 +273,7 @@ describe('RecruiterDashboardContent', () => {
   it('shows inline load error when listSimulations throws', async () => {
     mockedListSimulations.mockRejectedValueOnce({ message: 'Auth failed' });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     expect(
       await screen.findByText('Couldn’t load simulations'),
@@ -315,10 +311,10 @@ describe('RecruiterDashboardContent', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_2',
       token: 'tok_456',
-      inviteUrl: 'http://localhost:3000/candidate/tok_456',
+      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_456',
     });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -334,7 +330,7 @@ describe('RecruiterDashboardContent', () => {
     const copyBtn = await screen.findByRole('button', { name: /Copy/i });
     await user.click(copyBtn);
     expect(writeText).toHaveBeenCalledWith(
-      'http://localhost:3000/candidate/tok_456',
+      'http://localhost:3000/candidate-sessions/tok_456',
     );
 
     await user.click(screen.getByRole('button', { name: /Dismiss/i }));
@@ -368,10 +364,10 @@ describe('RecruiterDashboardContent', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_3',
       token: 'tok_789',
-      inviteUrl: 'http://localhost:3000/candidate/tok_789',
+      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_789',
     });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -427,10 +423,10 @@ describe('RecruiterDashboardContent', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_4',
       token: 'tok_999',
-      inviteUrl: 'http://localhost:3000/candidate/tok_999',
+      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_999',
     });
 
-    render(<RecruiterDashboardContent profile={null} error={null} />);
+    render(<RecruiterDashboardPage profile={null} error={null} />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',

@@ -28,7 +28,7 @@ const SENIORITY_OPTIONS: CreateSimulationInput['seniority'][] = [
   'Senior',
 ];
 
-export default function CreateSimulationPageClient() {
+export default function SimulationCreatePage() {
   const router = useRouter();
 
   const [title, setTitle] = useState<string>('');
@@ -88,7 +88,7 @@ export default function CreateSimulationPageClient() {
       const status = err.status ?? err.response?.status;
 
       if (status === 401) {
-        router.push('/login');
+        router.push('/auth/login');
         return;
       }
 

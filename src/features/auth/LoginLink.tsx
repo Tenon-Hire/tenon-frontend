@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { buildLoginHref } from './authRoutes';
+import { buildLoginHref } from './authPaths';
 
 type LoginLinkProps = {
   returnTo?: string;

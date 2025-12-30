@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { listSimulations } from '@/lib/api/recruiter';
-import { errorToMessage } from '../../helpers/formatters';
-import type { SimulationListItem } from '../types';
+import { errorToMessage } from '../../utils/formatters';
+import type { SimulationListItem } from '@/types/recruiter';
 
 export function useSimulations() {
   const [loading, setLoading] = useState(true);

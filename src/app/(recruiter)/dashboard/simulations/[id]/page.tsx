@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import SimulationDetailPageClient from '@/features/recruiter/simulation-detail/SimulationDetailPageClient';
+import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
 
 export const metadata: Metadata = {
   title: 'Simulation detail | SimuHire',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <SimulationDetailPageClient />;
+  return <RecruiterSimulationDetailPage />;
 }

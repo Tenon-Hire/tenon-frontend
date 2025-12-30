@@ -1,18 +1,16 @@
 'use client';
 
 import DashboardView from '@/features/recruiter/dashboard/DashboardView';
-import type { RecruiterProfile } from '@/features/recruiter/dashboard/types';
+import type { RecruiterProfile } from '@/types/recruiter';
 
-type DashboardPageClientProps = {
+type RecruiterDashboardPageProps = {
   profile: RecruiterProfile | null;
   error: string | null;
 };
 
-export type { RecruiterProfile };
-
-export default function DashboardPageClient({
+export default function RecruiterDashboardPage({
   profile,
   error,
-}: DashboardPageClientProps) {
+}: RecruiterDashboardPageProps) {
   return <DashboardView profile={profile} error={error} />;
 }

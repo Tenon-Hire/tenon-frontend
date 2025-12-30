@@ -4,9 +4,9 @@ import {
   InviteToast,
   type ToastState,
 } from '@/features/recruiter/invitations/InviteToast';
-import { copyToClipboard } from '@/features/recruiter/helpers/formatters';
+import { copyToClipboard } from '@/features/recruiter/utils/formatters';
 
-jest.mock('@/features/recruiter/helpers/formatters', () => ({
+jest.mock('@/features/recruiter/utils/formatters', () => ({
   __esModule: true,
   copyToClipboard: jest.fn().mockResolvedValue(true),
 }));

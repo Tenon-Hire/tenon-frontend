@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import SimulationDetailPageClient from '@/features/recruiter/simulation-detail/SimulationDetailPageClient';
+import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
 import { jsonResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1' };
@@ -24,7 +24,7 @@ afterAll(() => {
   global.fetch = realFetch;
 });
 
-describe('SimulationDetailPageClient', () => {
+describe('RecruiterSimulationDetailPage', () => {
   it('renders candidate rows with status badges', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse([
@@ -49,7 +49,7 @@ describe('SimulationDetailPageClient', () => {
       ]),
     );
 
-    render(<SimulationDetailPageClient />);
+    render(<RecruiterSimulationDetailPage />);
 
     expect(
       await screen.findByText(/Simulation ID: sim-1/i),
@@ -65,7 +65,7 @@ describe('SimulationDetailPageClient', () => {
     fetchMock.mockResolvedValueOnce(jsonResponse([]));
     params.id = 'sim-empty';
 
-    render(<SimulationDetailPageClient />);
+    render(<RecruiterSimulationDetailPage />);
 
     expect(await screen.findByText(/No candidates yet/i)).toBeInTheDocument();
   });
@@ -76,7 +76,7 @@ describe('SimulationDetailPageClient', () => {
     );
     params.id = 'sim-err';
 
-    render(<SimulationDetailPageClient />);
+    render(<RecruiterSimulationDetailPage />);
 
     expect(await screen.findByText(/Auth failed/i)).toBeInTheDocument();
   });

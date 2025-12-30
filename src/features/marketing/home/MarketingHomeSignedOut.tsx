@@ -21,7 +21,7 @@ export function MarketingHomeSignedOut() {
         </LoginLink>
 
         <LoginLink
-          returnTo="/candidate/demo-token"
+          returnTo="/candidate-sessions/demo-token"
           className={secondaryCtaClass}
         >
           Candidate portal
@@ -31,7 +31,7 @@ export function MarketingHomeSignedOut() {
       <p className="mt-4 text-xs text-slate-500">
         In production, candidates will receive a unique simulation link like{' '}
         <code className="rounded bg-slate-100 px-1 py-0.5 text-[0.7rem]">
-          /candidate/&lt;invite-token&gt;
+          /candidate-sessions/&lt;invite-token&gt;
         </code>
         .
       </p>

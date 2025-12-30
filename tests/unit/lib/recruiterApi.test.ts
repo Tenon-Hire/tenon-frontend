@@ -101,7 +101,7 @@ describe('recruiterApi', () => {
       mockedPost.mockResolvedValueOnce({
         candidateSessionId: 'cs_1',
         token: 'tok_1',
-        inviteUrl: 'http://localhost:3000/candidate/tok_1',
+        inviteUrl: 'http://localhost:3000/candidate-sessions/tok_1',
       });
 
       await inviteCandidate('sim_1', 'Jane Doe', 'jane@example.com');
@@ -116,7 +116,7 @@ describe('recruiterApi', () => {
       mockedPost.mockResolvedValueOnce({
         candidateSessionId: 'cs_1',
         token: 'tok_1',
-        inviteUrl: 'http://localhost:3000/candidate/tok_1',
+        inviteUrl: 'http://localhost:3000/candidate-sessions/tok_1',
       });
 
       const result = await inviteCandidate(
@@ -128,7 +128,7 @@ describe('recruiterApi', () => {
       expect(result).toEqual({
         candidateSessionId: 'cs_1',
         token: 'tok_1',
-        inviteUrl: 'http://localhost:3000/candidate/tok_1',
+        inviteUrl: 'http://localhost:3000/candidate-sessions/tok_1',
       });
     });
 
@@ -136,7 +136,7 @@ describe('recruiterApi', () => {
       mockedPost.mockResolvedValueOnce({
         candidate_session_id: 'cs_2',
         token: 'tok_2',
-        invite_url: 'http://localhost:3000/candidate/tok_2',
+        invite_url: 'http://localhost:3000/candidate-sessions/tok_2',
       });
 
       const result = await inviteCandidate(
@@ -148,7 +148,7 @@ describe('recruiterApi', () => {
       expect(result).toEqual({
         candidateSessionId: 'cs_2',
         token: 'tok_2',
-        inviteUrl: 'http://localhost:3000/candidate/tok_2',
+        inviteUrl: 'http://localhost:3000/candidate-sessions/tok_2',
       });
     });
 

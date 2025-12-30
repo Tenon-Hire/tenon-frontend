@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import CandidateSimulationContent from '@/features/candidate/session/CandidateSessionPageClient';
+import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 import { CandidateSessionProvider } from '@/features/candidate/session/CandidateSessionProvider';
 import {
   HttpError,
@@ -138,7 +138,7 @@ async function advance(ms: number) {
   });
 }
 
-describe('CandidateSimulationContent', () => {
+describe('CandidateSessionPage', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     sessionStorage.clear();
@@ -170,7 +170,7 @@ describe('CandidateSimulationContent', () => {
       },
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     expect(
       await screen.findByText('Backend Engineer Simulation'),
@@ -185,7 +185,7 @@ describe('CandidateSimulationContent', () => {
   it('invalid token shows friendly error and no task UI', async () => {
     resolveMock.mockRejectedValueOnce(new HttpError(404, 'Not found'));
 
-    renderWithProvider(<CandidateSimulationContent token="INVALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="INVALID_TOKEN" />);
 
     expect(
       await screen.findByText(/Unable to load simulation/i),
@@ -201,7 +201,7 @@ describe('CandidateSimulationContent', () => {
   it('expired token shows expired message', async () => {
     resolveMock.mockRejectedValueOnce(new HttpError(410, 'Expired'));
 
-    renderWithProvider(<CandidateSimulationContent token="EXPIRED" />);
+    renderWithProvider(<CandidateSessionPage token="EXPIRED" />);
 
     expect(
       await screen.findByText(/invite link has expired/i),
@@ -222,7 +222,7 @@ describe('CandidateSimulationContent', () => {
         simulation: { title: 'Sim', role: 'Backend Engineer' },
       });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     expect(
       await screen.findByText(/Unable to load simulation/i),
@@ -241,7 +241,7 @@ describe('CandidateSimulationContent', () => {
       message: 'Backend exploded',
     });
 
-    renderWithProvider(<CandidateSimulationContent token="SERVER_FAIL" />);
+    renderWithProvider(<CandidateSessionPage token="SERVER_FAIL" />);
 
     expect(
       await screen.findByText(/Unable to load simulation/i),
@@ -252,7 +252,7 @@ describe('CandidateSimulationContent', () => {
   it('falls back to default bootstrap error when backend gives no message', async () => {
     resolveMock.mockRejectedValueOnce({ status: 500 });
 
-    renderWithProvider(<CandidateSimulationContent token="SERVER_FAIL" />);
+    renderWithProvider(<CandidateSessionPage token="SERVER_FAIL" />);
 
     expect(
       await screen.findByText(/Unable to load simulation/i),
@@ -304,7 +304,7 @@ describe('CandidateSimulationContent', () => {
       isComplete: false,
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -351,7 +351,7 @@ describe('CandidateSimulationContent', () => {
       },
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -385,7 +385,7 @@ describe('CandidateSimulationContent', () => {
       },
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -444,7 +444,7 @@ describe('CandidateSimulationContent', () => {
       isComplete: false,
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -475,7 +475,7 @@ describe('CandidateSimulationContent', () => {
       currentTask: null,
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -523,7 +523,7 @@ describe('CandidateSimulationContent', () => {
       },
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     expect(
       screen.queryByRole('button', { name: /start simulation/i }),
@@ -543,7 +543,7 @@ describe('CandidateSimulationContent', () => {
       new HttpError(404, 'Session missing'),
     );
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -565,7 +565,7 @@ describe('CandidateSimulationContent', () => {
 
     currentTaskMock.mockRejectedValueOnce({ status: 0, message: 'offline' });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -599,7 +599,7 @@ describe('CandidateSimulationContent', () => {
 
     submitMock.mockRejectedValueOnce(new HttpError(409, 'Already submitted'));
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -634,7 +634,7 @@ describe('CandidateSimulationContent', () => {
 
     submitMock.mockRejectedValueOnce({ status: 400, message: 'Out of order' });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -670,7 +670,7 @@ describe('CandidateSimulationContent', () => {
       message: 'missing session',
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -701,7 +701,7 @@ describe('CandidateSimulationContent', () => {
       },
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -717,7 +717,7 @@ describe('CandidateSimulationContent', () => {
     err.status = 500;
     resolveMock.mockRejectedValueOnce(err);
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     expect(await screen.findByText(/Backend offline/i)).toBeInTheDocument();
   });
@@ -769,7 +769,7 @@ describe('CandidateSimulationContent', () => {
     const clearTimeoutSpy = jest.fn();
     Object.defineProperty(window, 'clearTimeout', { value: clearTimeoutSpy });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     const startBtn = await screen.findByRole('button', {
       name: /start simulation/i,
@@ -812,7 +812,7 @@ describe('CandidateSimulationContent', () => {
 
     currentTaskMock.mockRejectedValueOnce({ status: 500 });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -846,7 +846,7 @@ describe('CandidateSimulationContent', () => {
 
     submitMock.mockRejectedValueOnce({ status: 500 });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -875,7 +875,7 @@ describe('CandidateSimulationContent', () => {
       currentTask: null,
     });
 
-    renderWithProvider(<CandidateSimulationContent token="DONE" />);
+    renderWithProvider(<CandidateSessionPage token="DONE" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -905,7 +905,7 @@ describe('CandidateSimulationContent', () => {
 
     submitMock.mockRejectedValueOnce(new HttpError(400, 'Task out of order.'));
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),
@@ -935,7 +935,7 @@ describe('CandidateSimulationContent', () => {
       },
     });
 
-    renderWithProvider(<CandidateSimulationContent token="VALID_TOKEN" />);
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     fireEvent.click(
       await screen.findByRole('button', { name: /start simulation/i }),

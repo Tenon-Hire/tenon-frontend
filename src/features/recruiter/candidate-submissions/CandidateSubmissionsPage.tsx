@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
-import type { CandidateSession } from '@/features/recruiter/types';
+import type { CandidateSession } from '@/types/recruiter';
 import { toUserMessage } from '@/lib/utils/errors';
 
 type SubmissionListItem = {
@@ -147,7 +147,7 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
   );
 }
 
-export default function CandidateSubmissionsPageClient() {
+export default function CandidateSubmissionsPage() {
   const params = useParams<{ id: string; candidateSessionId: string }>();
   const simulationId = params.id;
   const candidateSessionId = Number(params.candidateSessionId);

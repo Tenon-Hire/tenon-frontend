@@ -14,7 +14,7 @@ export function AppNav({ isAuthed }: AppNavProps) {
       <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
         Dashboard
       </Link>
-      <Link href="/logout" className="text-gray-700 hover:text-gray-900">
+      <Link href="/auth/logout" className="text-gray-700 hover:text-gray-900">
         Logout
       </Link>
     </nav>

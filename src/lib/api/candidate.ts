@@ -4,7 +4,7 @@ import {
   extractBackendMessage,
   fallbackStatus,
   toHttpError,
-} from './errors';
+} from './utils/errors';
 
 export { HttpError };
 
