@@ -1,18 +1,12 @@
+import { toUserMessage } from '@/lib/utils/errors';
+
 export function formatCreatedDate(iso: string): string {
   if (typeof iso !== 'string') return '';
   return iso.length >= 10 ? iso.slice(0, 10) : iso;
 }
 
 export function errorToMessage(e: unknown, fallback: string): string {
-  if (e && typeof e === 'object') {
-    const maybeMsg = (e as { message?: unknown }).message;
-    if (typeof maybeMsg === 'string' && maybeMsg.trim()) return maybeMsg;
-    const maybeDetail = (e as { detail?: unknown }).detail;
-    if (typeof maybeDetail === 'string' && maybeDetail.trim())
-      return maybeDetail;
-  }
-  if (e instanceof Error) return e.message;
-  return fallback;
+  return toUserMessage(e, fallback, { includeDetail: true });
 }
 
 export async function copyToClipboard(text: string): Promise<boolean> {

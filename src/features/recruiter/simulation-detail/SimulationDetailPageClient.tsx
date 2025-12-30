@@ -4,51 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
-
-type CandidateSession = {
-  candidateSessionId: number;
-  inviteEmail: string | null;
-  candidateName: string | null;
-  status: 'not_started' | 'in_progress' | 'completed';
-  startedAt: string | null;
-  completedAt: string | null;
-  hasReport: boolean;
-};
-
-function StatusPill({ status }: { status: CandidateSession['status'] }) {
-  const label =
-    status === 'not_started'
-      ? 'Not started'
-      : status === 'in_progress'
-        ? 'In progress'
-        : 'Completed';
-
-  const cls =
-    status === 'completed'
-      ? 'bg-green-100 text-green-800'
-      : status === 'in_progress'
-        ? 'bg-yellow-100 text-yellow-800'
-        : 'bg-gray-100 text-gray-800';
-
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function parseErrorMessage(u: unknown): string {
-  if (u && typeof u === 'object') {
-    const msg = (u as { message?: unknown }).message;
-    if (typeof msg === 'string' && msg.trim()) return msg;
-    const detail = (u as { detail?: unknown }).detail;
-    if (typeof detail === 'string' && detail.trim()) return detail;
-  }
-  if (u instanceof Error) return u.message;
-  return 'Request failed';
-}
+import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
+import { toUserMessage } from '@/lib/utils/errors';
+import type { CandidateSession } from '@/features/recruiter/types';
 
 export default function SimulationDetailPageClient() {
   const params = useParams<{ id: string }>();
@@ -75,14 +33,19 @@ export default function SimulationDetailPageClient() {
           const maybeJson: unknown = await res.json().catch(() => null);
           const fallbackText = await res.text().catch(() => '');
           const msg =
-            maybeJson !== null ? parseErrorMessage(maybeJson) : fallbackText;
+            maybeJson !== null
+              ? toUserMessage(maybeJson, 'Request failed', {
+                  includeDetail: true,
+                })
+              : fallbackText;
           throw new Error(msg || `Failed to load candidates (${res.status})`);
         }
 
         const data = (await res.json()) as CandidateSession[];
         if (!cancelled) setCandidates(Array.isArray(data) ? data : []);
       } catch (e: unknown) {
-        if (!cancelled) setError(parseErrorMessage(e));
+        if (!cancelled)
+          setError(toUserMessage(e, 'Request failed', { includeDetail: true }));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -151,7 +114,7 @@ export default function SimulationDetailPageClient() {
                     </td>
 
                     <td className="px-4 py-3">
-                      <StatusPill status={c.status} />
+                      <CandidateStatusPill status={c.status} />
                     </td>
 
                     <td className="px-4 py-3 text-gray-700">

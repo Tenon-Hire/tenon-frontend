@@ -15,7 +15,7 @@ export function MarketingHomeSignedOut() {
         </p>
       </div>
 
-      <ActionRow>
+      <ActionRow align="center">
         <LoginLink returnTo="/dashboard" className={primaryCtaClass}>
           Recruiter login
         </LoginLink>

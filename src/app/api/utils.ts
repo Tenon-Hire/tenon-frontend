@@ -1,0 +1,31 @@
+import { NextResponse } from 'next/server';
+import { forwardJson, withAuthGuard } from '@/lib/server/bff';
+
+type ForwardArgs = {
+  path: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+  cache?: RequestCache;
+  tag?: string;
+};
+
+export async function forwardWithAuth({
+  tag,
+  ...args
+}: ForwardArgs): Promise<NextResponse> {
+  const resp = await withAuthGuard((accessToken) =>
+    forwardJson({ ...args, accessToken }),
+  );
+
+  if (resp instanceof NextResponse && tag) {
+    resp.headers.set('x-simuhire-bff', tag);
+  }
+
+  return resp;
+}
+
+export function errorResponse(e: unknown, fallback = 'Upstream error') {
+  const message = e instanceof Error ? `${fallback}: ${e.message}` : fallback;
+  return NextResponse.json({ message }, { status: 500 });
+}

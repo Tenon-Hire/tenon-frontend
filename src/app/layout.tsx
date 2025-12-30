@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { ReactNode } from 'react';
 import './globals.css';
 import AppShell from '@/features/shared/layout/AppShell';
@@ -6,6 +6,12 @@ import AppShell from '@/features/shared/layout/AppShell';
 export const metadata: Metadata = {
   title: 'SimuHire',
   description: 'Simulation-based hiring platform',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

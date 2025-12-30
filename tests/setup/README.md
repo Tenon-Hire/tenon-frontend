@@ -2,6 +2,7 @@ Testing utilities used across integration/unit suites:
 
 - `mockServer.ts`: lightweight fetch stub with route matching, JSON/text helpers, and lifecycle (`listen`, `use`, `resetHandlers`, `close`).
 - `renderWithProviders.tsx`: renders React nodes with the candidate session provider wrapper.
+- `responseHelpers.ts`: small Response-like helpers (`jsonMockResponse`, `textMockResponse`, `getRequestUrl`) for tests that stub fetch without the mock server.
 - `index.ts`: barrel to import helpers from a single path (`tests/setup`).
 
 Usage example:

@@ -1,24 +1,11 @@
 import { jest } from '@jest/globals';
+import { responseHelpers } from '../setup';
 
-type MockResponseBody = string | Record<string, unknown> | Array<unknown>;
-
-function makeResponse(
-  body: MockResponseBody,
-  status = 200,
-  headers: Record<string, string> = { 'content-type': 'application/json' },
-) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: {
-      get: (name: string) =>
-        headers[name.toLowerCase()] ?? headers[name] ?? null,
-    },
-    json: async () => body,
-    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-  } as unknown as Response;
-}
-
+const jsonRes = (
+  body: unknown,
+  status?: number,
+  headers?: Record<string, string>,
+) => responseHelpers.jsonResponse(body, status, headers) as unknown as Response;
 type FetchMock = jest.MockedFunction<typeof fetch>;
 
 const originalApiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -37,7 +24,7 @@ describe('candidateApi', () => {
   it('resolves invite token and normalizes response', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock.mockResolvedValue(
-      makeResponse({
+      jsonRes({
         candidateSessionId: 10,
         status: 'in_progress',
         simulation: { title: 'Backend Sim', role: 'Backend' },
@@ -57,7 +44,7 @@ describe('candidateApi', () => {
 
   it('throws HttpError with friendly message for invalid token', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(makeResponse({ detail: 'Not found' }, 404));
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Not found' }, 404));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { resolveCandidateInviteToken, HttpError } = await importApi();
@@ -73,7 +60,7 @@ describe('candidateApi', () => {
   it('fetches current task with candidate token header', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock.mockResolvedValue(
-      makeResponse({
+      jsonRes({
         isComplete: false,
         completedTaskIds: [1],
         currentTask: {
@@ -104,9 +91,7 @@ describe('candidateApi', () => {
 
   it('bubbles backend error messages for current task', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(
-      makeResponse({ message: 'Session missing' }, 500),
-    );
+    fetchMock.mockResolvedValue(jsonRes({ message: 'Session missing' }, 500));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { getCandidateCurrentTask, HttpError } = await importApi();
@@ -123,7 +108,7 @@ describe('candidateApi', () => {
   it('submits candidate task payload and returns response', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock.mockResolvedValue(
-      makeResponse({
+      jsonRes({
         submissionId: 99,
         taskId: 7,
         candidateSessionId: 1,
@@ -159,9 +144,7 @@ describe('candidateApi', () => {
 
   it('throws specific HttpError on submit conflict', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(
-      makeResponse({ detail: 'Already submitted' }, 409),
-    );
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Already submitted' }, 409));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { submitCandidateTask, HttpError } = await importApi();
@@ -205,8 +188,8 @@ describe('candidateApi', () => {
   it('throws expired errors for invite and submit paths', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock
-      .mockResolvedValueOnce(makeResponse({ detail: 'Expired' }, 410))
-      .mockResolvedValueOnce(makeResponse({ detail: 'Expired' }, 410));
+      .mockResolvedValueOnce(jsonRes({ detail: 'Expired' }, 410))
+      .mockResolvedValueOnce(jsonRes({ detail: 'Expired' }, 410));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { resolveCandidateInviteToken, submitCandidateTask, HttpError } =
@@ -268,9 +251,7 @@ describe('candidateApi', () => {
 
   it('returns expired error for current task', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(
-      makeResponse({ detail: 'Expired session' }, 410),
-    );
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Expired session' }, 410));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { getCandidateCurrentTask, HttpError } = await importApi();
@@ -287,10 +268,8 @@ describe('candidateApi', () => {
   it('handles submit errors for 400 and 404 with backend message', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock
-      .mockResolvedValueOnce(makeResponse({ detail: 'Out of order' }, 400))
-      .mockResolvedValueOnce(
-        makeResponse({ message: 'Session mismatch' }, 404),
-      );
+      .mockResolvedValueOnce(jsonRes({ detail: 'Out of order' }, 400))
+      .mockResolvedValueOnce(jsonRes({ message: 'Session mismatch' }, 404));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { submitCandidateTask } = await importApi();
@@ -316,7 +295,7 @@ describe('candidateApi', () => {
 
   it('uses generic task load message when response body is not an object', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(makeResponse([], 500));
+    fetchMock.mockResolvedValue(jsonRes([], 500));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { getCandidateCurrentTask, HttpError } = await importApi();
@@ -332,7 +311,7 @@ describe('candidateApi', () => {
   it('prefers detail when message is blank in submit error', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock.mockResolvedValue(
-      makeResponse({ message: '   ', detail: 'Out of order detail' }, 400),
+      jsonRes({ message: '   ', detail: 'Out of order detail' }, 400),
     );
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -374,7 +353,7 @@ describe('candidateApi', () => {
 
   it('uses backend detail on current task failure', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(makeResponse({ detail: 'Not allowed' }, 500));
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Not allowed' }, 500));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { getCandidateCurrentTask, HttpError } = await importApi();
@@ -414,9 +393,7 @@ describe('candidateApi', () => {
 
   it('returns expired error for current task', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(
-      makeResponse({ detail: 'Expired session' }, 410),
-    );
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Expired session' }, 410));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { getCandidateCurrentTask, HttpError } = await importApi();
@@ -433,10 +410,8 @@ describe('candidateApi', () => {
   it('handles submit errors for 400 and 404 with backend message', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock
-      .mockResolvedValueOnce(makeResponse({ detail: 'Out of order' }, 400))
-      .mockResolvedValueOnce(
-        makeResponse({ message: 'Session mismatch' }, 404),
-      );
+      .mockResolvedValueOnce(jsonRes({ detail: 'Out of order' }, 400))
+      .mockResolvedValueOnce(jsonRes({ message: 'Session mismatch' }, 404));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { submitCandidateTask } = await importApi();
@@ -462,7 +437,7 @@ describe('candidateApi', () => {
 
   it('uses default message for bootstrap errors when backend silent', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(makeResponse({}, 500));
+    fetchMock.mockResolvedValue(jsonRes({}, 500));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { resolveCandidateInviteToken, HttpError } = await importApi();
@@ -479,7 +454,7 @@ describe('candidateApi', () => {
   it('passes through submitCandidateCodeTask wrapper', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock.mockResolvedValue(
-      makeResponse({
+      jsonRes({
         submissionId: 3,
         taskId: 9,
         candidateSessionId: 1,
@@ -504,7 +479,7 @@ describe('candidateApi', () => {
 
   it('uses backend detail when bootstrap fails with details payload', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(makeResponse({ detail: 'Backend down' }, 500));
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Backend down' }, 500));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { resolveCandidateInviteToken, HttpError } = await importApi();
@@ -608,9 +583,7 @@ describe('candidateApi', () => {
 
   it('handles current task 404 branch with backend detail', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(
-      makeResponse({ detail: 'Missing session' }, 404),
-    );
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Missing session' }, 404));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { getCandidateCurrentTask, HttpError } = await importApi();
@@ -626,9 +599,7 @@ describe('candidateApi', () => {
 
   it('handles submit 410 expired branch', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(
-      makeResponse({ detail: 'Expired session' }, 410),
-    );
+    fetchMock.mockResolvedValue(jsonRes({ detail: 'Expired session' }, 410));
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const { submitCandidateTask, HttpError } = await importApi();

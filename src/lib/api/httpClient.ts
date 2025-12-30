@@ -1,4 +1,5 @@
 import { getAuthToken } from '../auth';
+import type { Result } from './types';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -148,6 +149,28 @@ export interface LoginResponse {
 export interface LoginPayload {
   email: string;
   password: string;
+}
+
+export async function safeRequest<T>(
+  path: string,
+  options?: {
+    method?: HttpMethod;
+    body?: unknown;
+    headers?: Record<string, string>;
+    cache?: RequestCache;
+  },
+  clientOptions?: ApiClientOptions,
+): Promise<Result<T>> {
+  try {
+    const data = await request<T>(path, options, clientOptions);
+    return { data, error: null };
+  } catch (err) {
+    const error =
+      err instanceof Error
+        ? err
+        : new Error(typeof err === 'string' ? err : 'Request failed');
+    return { data: null, error };
+  }
 }
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {

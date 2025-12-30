@@ -1,6 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CandidateSessionPageClient from '@/features/candidate/session/CandidateSessionPageClient';
+import { jsonResponse } from '../../setup/responseHelpers';
 import { renderCandidateWithProviders } from '../../setup';
 
 jest.mock('@/components/ui/CodeEditor', () => ({
@@ -24,16 +25,6 @@ jest.mock('@/components/ui/CodeEditor', () => ({
 const fetchMock = jest.fn();
 const realFetch = global.fetch;
 
-function makeJsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-    text: async () => JSON.stringify(body),
-    headers: new Headers({ 'content-type': 'application/json' }),
-  } as unknown as Response;
-}
-
 beforeEach(() => {
   fetchMock.mockReset();
   global.fetch = fetchMock as unknown as typeof fetch;
@@ -55,14 +46,14 @@ describe('CandidateSessionPageClient (real task view)', () => {
 
     fetchMock
       .mockImplementationOnce(async () =>
-        makeJsonResponse({
+        jsonResponse({
           candidateSessionId: 321,
           status: 'in_progress',
           simulation: { title: 'Infra Simulation', role: 'Backend Engineer' },
         }),
       )
       .mockImplementationOnce(async () =>
-        makeJsonResponse({
+        jsonResponse({
           isComplete: false,
           completedTaskIds: [],
           currentTask: {
@@ -78,7 +69,7 @@ describe('CandidateSessionPageClient (real task view)', () => {
         const body = JSON.parse((init?.body as string) ?? '{}') as {
           contentText?: string;
         };
-        return makeJsonResponse({
+        return jsonResponse({
           submissionId: 1,
           taskId: 101,
           candidateSessionId: 321,
@@ -89,7 +80,7 @@ describe('CandidateSessionPageClient (real task view)', () => {
         });
       })
       .mockImplementationOnce(async () =>
-        makeJsonResponse({
+        jsonResponse({
           isComplete: false,
           completedTaskIds: [101],
           currentTask: {

@@ -23,25 +23,27 @@ function buildLoginRedirect(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
+function shouldSkipAuth(pathname: string) {
+  if (pathname.startsWith('/api/')) return true;
+  if (isPublicPath(pathname)) return true;
+  return false;
+}
+
 export async function middleware(request: NextRequest) {
-  const authRes = await auth0.middleware(request);
   const pathname = request.nextUrl.pathname;
 
-  if (pathname.startsWith('/api/')) return authRes;
+  const authResponse = await auth0.middleware(request);
+
+  if (shouldSkipAuth(pathname)) return authResponse;
 
   const session = await auth0.getSession(request);
+  if (!session) return buildLoginRedirect(request);
 
-  if (session && (pathname === '/' || pathname === '/login')) {
+  if (pathname === '/' || pathname === '/login') {
     return redirect('/dashboard', request);
   }
 
-  if (isPublicPath(pathname)) return authRes;
-
-  if (!session) {
-    return buildLoginRedirect(request);
-  }
-
-  return authRes;
+  return authResponse;
 }
 
 export const config = {

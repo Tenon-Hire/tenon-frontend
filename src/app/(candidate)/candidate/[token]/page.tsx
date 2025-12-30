@@ -1,14 +1,18 @@
-import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import CandidateSessionPageClient from '@/features/candidate/session/CandidateSessionPageClient';
+import { extractToken, type TokenParams } from '../token';
+
+export const metadata: Metadata = {
+  title: 'Candidate simulation | SimuHire',
+  description: 'Work through your SimuHire day-by-day simulation.',
+};
 
 export default async function CandidatePage({
   params,
 }: {
-  params: Promise<{ token?: string }>;
+  params: TokenParams;
 }) {
-  const { token } = await params;
-
-  if (!token) notFound();
+  const token = await extractToken(params);
 
   return <CandidateSessionPageClient token={token} />;
 }

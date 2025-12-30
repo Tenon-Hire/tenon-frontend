@@ -1,13 +1,11 @@
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
+import { extractToken, type TokenParams } from '../../token';
 
 export default async function CandidateSessionRedirectPage({
   params,
 }: {
-  params: Promise<{ token?: string }>;
+  params: TokenParams;
 }) {
-  const { token } = await params;
-
-  if (!token) notFound();
-
+  const token = await extractToken(params);
   redirect(`/candidate/${token}`);
 }

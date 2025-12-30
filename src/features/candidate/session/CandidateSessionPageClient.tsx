@@ -1,90 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import Button from '@/components/ui/Button';
 import CandidateTaskView from '@/features/candidate/session/task/CandidateTaskView';
 import CandidateTaskProgress from '@/features/candidate/session/task/CandidateTaskProgress';
-import {
-  HttpError,
-  resolveCandidateInviteToken,
-  getCandidateCurrentTask,
-  submitCandidateTask,
-  type CandidateSessionBootstrapResponse,
-  type CandidateCurrentTaskResponse,
-  type CandidateTaskSubmitResponse,
-} from '@/lib/api/candidate';
+import type { CandidateSessionBootstrapResponse } from '@/lib/api/candidate';
 import { useCandidateSession } from './CandidateSessionProvider';
+import { useCandidateBootstrap } from './hooks/useCandidateBootstrap';
+import { useCurrentTask } from './hooks/useCurrentTask';
+import { useTaskSubmission } from './hooks/useTaskSubmission';
+import { deriveCurrentDayIndex } from './utils/taskTransforms';
+import { StateMessage } from './components/StateMessage';
 
 type ViewState = 'loading' | 'intro' | 'error' | 'starting' | 'running';
-
-function statusFromUnknown(err: unknown): number | undefined {
-  if (err instanceof HttpError) return err.status;
-  const anyErr = err as { status?: unknown } | undefined;
-  return typeof anyErr?.status === 'number' ? anyErr.status : undefined;
-}
-
-function messageFromUnknown(err: unknown): string | undefined {
-  if (err instanceof Error) return err.message;
-  const anyErr = err as { message?: unknown } | undefined;
-  return typeof anyErr?.message === 'string' ? anyErr.message : undefined;
-}
-
-function friendlyBootstrapError(err: unknown): string {
-  const status = statusFromUnknown(err);
-
-  if (status === 404) return 'That invite link is invalid.';
-  if (status === 410) return 'That invite link has expired.';
-  if (!status || status === 0)
-    return 'Network error. Please check your connection and try again.';
-
-  const msg = messageFromUnknown(err);
-  if (msg && msg.trim().length > 0) return msg;
-
-  return 'Something went wrong loading your simulation.';
-}
-
-function friendlyTaskError(err: unknown): string {
-  const status = statusFromUnknown(err);
-
-  if (status === 404)
-    return 'Session not found. Please reopen your invite link.';
-  if (status === 410) return 'That invite link has expired.';
-  if (!status || status === 0)
-    return 'Network error. Please check your connection and try again.';
-
-  const msg = messageFromUnknown(err);
-  if (msg && msg.trim().length > 0) return msg;
-
-  return 'Something went wrong loading your current task.';
-}
-
-function friendlySubmitError(err: unknown): string {
-  const status = statusFromUnknown(err);
-
-  if (status === 400) return 'Task out of order.';
-  if (status === 409) return 'Task already submitted.';
-  if (status === 404)
-    return 'Session mismatch. Please reopen your invite link.';
-  if (status === 410) return 'That invite link has expired.';
-  if (!status || status === 0)
-    return 'Network error. Please check your connection and try again.';
-
-  const msg = messageFromUnknown(err);
-  if (msg && msg.trim().length > 0) return msg;
-
-  return 'Something went wrong submitting your task.';
-}
-
-function normalizeCompletedTaskIds(
-  dto: CandidateCurrentTaskResponse,
-): number[] {
-  const root = dto.completedTaskIds;
-  const nested = dto.progress?.completedTaskIds;
-
-  if (Array.isArray(root)) return root;
-  if (Array.isArray(nested)) return nested;
-  return [];
-}
 
 export default function CandidateSessionPageClient({
   token,
@@ -102,219 +30,88 @@ export default function CandidateSessionPageClient({
     clearTaskError,
   } = useCandidateSession();
 
-  const [view, setView] = useState<ViewState>('loading');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
   const bootstrap = state.bootstrap as CandidateSessionBootstrapResponse | null;
-
   const title = useMemo(() => bootstrap?.simulation?.title ?? '', [bootstrap]);
   const role = useMemo(() => bootstrap?.simulation?.role ?? '', [bootstrap]);
-
   const candidateSessionId = bootstrap?.candidateSessionId ?? null;
 
-  const bootstrapInFlightRef = useRef(false);
-  const bootstrapTokenRef = useRef<string | null>(null);
+  const {
+    state: bootstrapState,
+    errorMessage: bootstrapError,
+    load: loadBootstrap,
+  } = useCandidateBootstrap({
+    token,
+    onResolved: setBootstrap,
+    onSetToken: setToken,
+  });
 
-  const fetchTaskInFlightRef = useRef(false);
-
-  const postSubmitRefreshTimerRef = useRef<number | null>(null);
-  useEffect(() => {
-    return () => {
-      if (postSubmitRefreshTimerRef.current) {
-        window.clearTimeout(postSubmitRefreshTimerRef.current);
-      }
-    };
-  }, []);
-
-  const fetchCurrentTask = useCallback(async () => {
-    if (!state.token || !candidateSessionId) return;
-    if (fetchTaskInFlightRef.current) return;
-
-    fetchTaskInFlightRef.current = true;
-
-    clearTaskError();
-    setTaskLoading();
-
-    try {
-      const dto = await getCandidateCurrentTask(
-        candidateSessionId,
-        state.token,
-      );
-
-      const completedTaskIds = normalizeCompletedTaskIds(dto);
-      const currentTask = dto.currentTask
-        ? {
-            id: dto.currentTask.id,
-            dayIndex: dto.currentTask.dayIndex,
-            type: dto.currentTask.type,
-            title: dto.currentTask.title,
-            description: dto.currentTask.description,
-          }
-        : null;
-
-      setTaskLoaded({
-        isComplete: Boolean(dto.isComplete),
-        completedTaskIds,
-        currentTask,
-      });
-
-      setView('running');
-    } catch (err) {
-      setTaskError(friendlyTaskError(err));
-      setView('running');
-    } finally {
-      fetchTaskInFlightRef.current = false;
-    }
-  }, [
+  const { fetchCurrentTask } = useCurrentTask({
+    token: state.token,
     candidateSessionId,
+    setTaskLoading,
+    setTaskLoaded,
+    setTaskError,
+    clearTaskError,
+  });
+
+  const { submitting, handleSubmit } = useTaskSubmission({
+    token: state.token,
+    candidateSessionId,
+    currentTask: state.taskState.currentTask,
     clearTaskError,
     setTaskError,
-    setTaskLoaded,
-    setTaskLoading,
-    state.token,
-  ]);
-
-  const loadBootstrap = useCallback(async () => {
-    if (bootstrapTokenRef.current === token && bootstrapInFlightRef.current)
-      return;
-
-    bootstrapInFlightRef.current = true;
-    bootstrapTokenRef.current = token;
-    setView('loading');
-    setErrorMessage(null);
-
-    try {
-      setToken(token);
-
-      const data = await resolveCandidateInviteToken(token);
-      setBootstrap(data);
-
-      setView('intro');
-    } catch (err) {
-      setErrorMessage(friendlyBootstrapError(err));
-      setView('error');
-    } finally {
-      bootstrapInFlightRef.current = false;
-    }
-  }, [setBootstrap, setToken, token]);
+    refreshTask: fetchCurrentTask,
+  });
 
   useEffect(() => {
-    if (state.token === token && state.bootstrap) {
-      setView(state.started ? 'starting' : 'intro');
-      return;
-    }
+    if (state.token === token && state.bootstrap) return;
     void loadBootstrap();
   }, [loadBootstrap, state.bootstrap, state.started, state.token, token]);
 
   useEffect(() => {
     if (!state.started) return;
     if (!state.bootstrap) return;
-    if (view === 'error') return;
-    if (view === 'running') return;
-    setView('starting');
-  }, [state.started, state.bootstrap, view]);
-
-  useEffect(() => {
-    if (view !== 'starting') return;
     void fetchCurrentTask();
-  }, [fetchCurrentTask, view]);
+  }, [fetchCurrentTask, state.bootstrap, state.started]);
 
   const completedCount = state.taskState.completedTaskIds.length;
-
-  const currentDayIndex = useMemo(() => {
-    if (state.taskState.isComplete) return 5;
-    if (state.taskState.currentTask?.dayIndex)
-      return state.taskState.currentTask.dayIndex;
-    return Math.min(completedCount + 1, 5);
-  }, [completedCount, state.taskState.currentTask, state.taskState.isComplete]);
-
-  const handleSubmit = useCallback(
-    async (payload: {
-      contentText?: string;
-      codeBlob?: string;
-    }): Promise<CandidateTaskSubmitResponse | void> => {
-      if (!state.token || !candidateSessionId || !state.taskState.currentTask)
-        return;
-
-      const type = String(state.taskState.currentTask.type);
-      const isTextTask =
-        type === 'design' || type === 'documentation' || type === 'handoff';
-      const isCodeTask = type === 'code' || type === 'debug';
-
-      if (isTextTask) {
-        const trimmed = (payload.contentText ?? '').trim();
-        if (!trimmed) {
-          setTaskError('Please enter an answer before submitting.');
-          return;
-        }
-      }
-
-      if (isCodeTask) {
-        const trimmedCode = (payload.codeBlob ?? '').trim();
-        if (!trimmedCode) {
-          setTaskError('Please write some code before submitting.');
-          return;
-        }
-      }
-
-      setSubmitting(true);
-      clearTaskError();
-
-      try {
-        const resp = await submitCandidateTask({
-          taskId: state.taskState.currentTask.id,
-          token: state.token,
-          candidateSessionId,
-          contentText: payload.contentText,
-          codeBlob: payload.codeBlob,
-        });
-
-        if (postSubmitRefreshTimerRef.current) {
-          window.clearTimeout(postSubmitRefreshTimerRef.current);
-        }
-        postSubmitRefreshTimerRef.current = window.setTimeout(() => {
-          void fetchCurrentTask();
-        }, 900);
-
-        return resp;
-      } catch (err) {
-        setTaskError(friendlySubmitError(err));
-        throw err;
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [
-      candidateSessionId,
-      clearTaskError,
-      fetchCurrentTask,
-      setTaskError,
-      state.taskState.currentTask,
-      state.token,
-    ],
+  const currentDayIndex = useMemo(
+    () =>
+      deriveCurrentDayIndex(
+        completedCount,
+        state.taskState.currentTask,
+        state.taskState.isComplete,
+      ),
+    [completedCount, state.taskState.currentTask, state.taskState.isComplete],
   );
+
+  const view: ViewState = useMemo(() => {
+    if (bootstrapState === 'loading') return 'loading';
+    if (bootstrapState === 'error') return 'error';
+    if (!state.started) return 'intro';
+    if (!state.bootstrap) return 'starting';
+    if (state.taskState.loading) return 'starting';
+    return 'running';
+  }, [bootstrapState, state.bootstrap, state.started, state.taskState.loading]);
+
+  const errorMessage = bootstrapError;
 
   if (view === 'loading') {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="text-lg font-semibold">Loading simulation…</div>
-        <div className="text-sm text-gray-500 mt-2">
-          Validating invite link.
-        </div>
-      </div>
+      <StateMessage
+        title="Loading simulation…"
+        description="Validating invite link."
+      />
     );
   }
 
   if (view === 'error') {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="text-lg font-semibold">Unable to load simulation</div>
-        <div className="text-sm text-gray-600 mt-2">{errorMessage}</div>
-        <div className="mt-4">
-          <Button onClick={loadBootstrap}>Retry</Button>
-        </div>
-      </div>
+      <StateMessage
+        title="Unable to load simulation"
+        description={errorMessage}
+        action={<Button onClick={loadBootstrap}>Retry</Button>}
+      />
     );
   }
 
@@ -337,7 +134,6 @@ export default function CandidateSessionPageClient({
           <Button
             onClick={() => {
               setStarted(true);
-              setView('starting');
             }}
           >
             Start simulation
@@ -349,23 +145,19 @@ export default function CandidateSessionPageClient({
 
   if (view === 'starting') {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="text-lg font-semibold">Starting…</div>
-        <div className="text-sm text-gray-600 mt-2">
-          Loading your current task.
-        </div>
-      </div>
+      <StateMessage
+        title="Starting…"
+        description="Loading your current task."
+      />
     );
   }
 
   if (state.taskState.isComplete) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="text-2xl font-bold">Simulation complete 🎉</div>
-        <div className="text-sm text-gray-700 mt-3">
-          You’ve submitted all 5 days. You can close this tab now.
-        </div>
-      </div>
+      <StateMessage
+        title="Simulation complete 🎉"
+        description="You’ve submitted all 5 days. You can close this tab now."
+      />
     );
   }
 

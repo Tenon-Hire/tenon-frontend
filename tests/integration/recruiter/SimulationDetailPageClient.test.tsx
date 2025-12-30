@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import SimulationDetailPageClient from '@/features/recruiter/simulation-detail/SimulationDetailPageClient';
+import { jsonResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1' };
 
@@ -9,19 +10,6 @@ jest.mock('next/navigation', () => ({
 
 const fetchMock = jest.fn();
 const realFetch = global.fetch;
-
-function makeJsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-    text: async () => JSON.stringify(body),
-    headers: {
-      get: (name: string) =>
-        name.toLowerCase() === 'content-type' ? 'application/json' : null,
-    },
-  } as unknown as Response;
-}
 
 beforeEach(() => {
   fetchMock.mockReset();
@@ -39,7 +27,7 @@ afterAll(() => {
 describe('SimulationDetailPageClient', () => {
   it('renders candidate rows with status badges', async () => {
     fetchMock.mockResolvedValueOnce(
-      makeJsonResponse([
+      jsonResponse([
         {
           candidateSessionId: 11,
           inviteEmail: 'a@example.com',
@@ -74,7 +62,7 @@ describe('SimulationDetailPageClient', () => {
   });
 
   it('shows empty state when there are no candidates', async () => {
-    fetchMock.mockResolvedValueOnce(makeJsonResponse([]));
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
     params.id = 'sim-empty';
 
     render(<SimulationDetailPageClient />);
@@ -84,7 +72,7 @@ describe('SimulationDetailPageClient', () => {
 
   it('renders error message when the backend call fails', async () => {
     fetchMock.mockResolvedValueOnce(
-      makeJsonResponse({ message: 'Auth failed' }, 500),
+      jsonResponse({ message: 'Auth failed' }, 500),
     );
     params.id = 'sim-err';
 

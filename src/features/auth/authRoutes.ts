@@ -1,8 +1,9 @@
-function normalizeReturnTo(returnTo: string): string {
+function normalizeReturnTo(returnTo: string | null | undefined): string {
+  if (typeof returnTo !== 'string') return '/';
   return returnTo.trim() || '/';
 }
 
-export function buildLoginHref(returnTo: string): string {
+export function buildLoginHref(returnTo?: string): string {
   return `/auth/login?returnTo=${encodeURIComponent(normalizeReturnTo(returnTo))}`;
 }
 

@@ -1,18 +1,14 @@
 import { NextRequest } from 'next/server';
-import { forwardJson, withAuthGuard } from '@/lib/server/bff';
+import { errorResponse, forwardWithAuth } from '@/app/api/utils';
 
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ submissionId: string }> },
-) {
-  const { submissionId } = await context.params;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function GET(_req: NextRequest, { params }: any) {
+  const submissionId = params.submissionId;
+  if (!submissionId)
+    return errorResponse('Missing submission id', 'Bad request');
 
-  const resp = await withAuthGuard((accessToken) =>
-    forwardJson({
-      path: `/api/submissions/${encodeURIComponent(submissionId)}`,
-      accessToken,
-    }),
-  );
-  resp.headers.set('x-simuhire-bff', 'submission-detail');
-  return resp;
+  return forwardWithAuth({
+    path: `/api/submissions/${encodeURIComponent(submissionId)}`,
+    tag: 'submission-detail',
+  });
 }

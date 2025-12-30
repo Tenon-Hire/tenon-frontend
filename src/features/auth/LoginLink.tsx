@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { buildLoginHref } from './authRoutes';
 
 type LoginLinkProps = {
-  returnTo: string;
+  returnTo?: string;
   className?: string;
   children: ReactNode;
 };

@@ -72,13 +72,15 @@ cp .env.example .env.local  # if present; otherwise set vars below
 npm run dev  # http://localhost:3000
 ```
 
-### Tests
+### Tests and checks
 
 ```bash
 npm test          # unit (Jest)
 npm run test:e2e  # Playwright (see tests/e2e/playwright.config.ts)
 npm run typecheck
 npm run lint
+npm run build
+./precommit.sh    # runs lint + tests + typecheck + build
 ```
 
 ## Configuration
@@ -104,6 +106,13 @@ Key env vars (set in `.env.local`):
 - `src/lib/api` – HTTP client and candidate/recruiter API helpers.
 - `src/lib/server` – BFF forwarding helpers.
 - `src/lib/storage` – candidate draft persistence helpers.
+
+## Quality and Tooling
+
+- TypeScript strictness with Jest for units/integration; Playwright for E2E.
+- ESLint + Prettier enforced via `./precommit.sh`; commit after this script passes.
+- Tailwind for styling with shared UI primitives; prefer reusing `src/components/ui` rather than ad-hoc classes.
+- Avoid adding comments due to repo lint rules (`no-comments/disallowComments`).
 
 ## Typical Flows
 

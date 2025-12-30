@@ -1,10 +1,12 @@
-import { ButtonHTMLAttributes } from 'react';
+import { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/components/ui/cn';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'primary' | 'secondary' | 'ghost';
   size?: 'sm' | 'md';
   loading?: boolean;
+  icon?: ReactNode;
+  iconPosition?: 'left' | 'right';
 };
 
 const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
@@ -25,6 +27,8 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   loading,
+  icon,
+  iconPosition = 'left',
   className,
   children,
   disabled,
@@ -41,7 +45,19 @@ export default function Button({
       )}
       {...rest}
     >
-      {loading ? 'Loading…' : children}
+      {loading ? (
+        'Loading…'
+      ) : (
+        <>
+          {icon && iconPosition === 'left' ? (
+            <span className="mr-2 inline-flex items-center">{icon}</span>
+          ) : null}
+          {children}
+          {icon && iconPosition === 'right' ? (
+            <span className="ml-2 inline-flex items-center">{icon}</span>
+          ) : null}
+        </>
+      )}
     </button>
   );
 }

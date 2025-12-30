@@ -1,8 +1,10 @@
+const DRAFT_PREFIX = 'simuhire:candidate:codeDraft';
+
 export function codeDraftKey(
   candidateSessionId: number | string,
   taskId: number | string,
 ) {
-  return `simuhire:candidate:codeDraft:${String(candidateSessionId)}:${String(taskId)}`;
+  return `${DRAFT_PREFIX}:${String(candidateSessionId)}:${String(taskId)}`;
 }
 
 export function loadCodeDraft(
@@ -48,4 +50,18 @@ export function hasCodeDraft(
   taskId: number | string,
 ): boolean {
   return loadCodeDraft(candidateSessionId, taskId) !== null;
+}
+
+export function clearAllCodeDrafts() {
+  if (typeof window === 'undefined') return;
+  try {
+    const keysToDelete: string[] = [];
+    for (let i = 0; i < window.sessionStorage.length; i += 1) {
+      const key = window.sessionStorage.key(i);
+      if (key && key.startsWith(DRAFT_PREFIX)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach((k) => window.sessionStorage.removeItem(k));
+  } catch {}
 }

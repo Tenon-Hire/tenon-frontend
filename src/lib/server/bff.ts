@@ -77,7 +77,10 @@ export async function forwardJson(options: ForwardOptions) {
   });
 
   const parsed = await parseUpstreamBody(upstream);
-  return NextResponse.json(parsed, { status: upstream.status });
+  return NextResponse.json(parsed, {
+    status: upstream.status,
+    headers: { 'x-simuhire-upstream-status': String(upstream.status) },
+  });
 }
 
 export async function withAuthGuard(

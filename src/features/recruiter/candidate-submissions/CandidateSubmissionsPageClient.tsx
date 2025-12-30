@@ -5,16 +5,9 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
-
-type CandidateSession = {
-  candidateSessionId: number;
-  inviteEmail: string | null;
-  candidateName: string | null;
-  status: 'not_started' | 'in_progress' | 'completed';
-  startedAt: string | null;
-  completedAt: string | null;
-  hasReport: boolean;
-};
+import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
+import type { CandidateSession } from '@/features/recruiter/types';
+import { toUserMessage } from '@/lib/utils/errors';
 
 type SubmissionListItem = {
   submissionId: number;
@@ -154,17 +147,6 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
   );
 }
 
-function parseErrorMessage(u: unknown): string {
-  if (u && typeof u === 'object') {
-    const msg = (u as { message?: unknown }).message;
-    if (typeof msg === 'string' && msg.trim()) return msg;
-    const detail = (u as { detail?: unknown }).detail;
-    if (typeof detail === 'string' && detail.trim()) return detail;
-  }
-  if (u instanceof Error) return u.message;
-  return 'Request failed';
-}
-
 export default function CandidateSubmissionsPageClient() {
   const params = useParams<{ id: string; candidateSessionId: string }>();
   const simulationId = params.id;
@@ -178,6 +160,7 @@ export default function CandidateSubmissionsPageClient() {
   const [artifacts, setArtifacts] = useState<
     Record<number, SubmissionArtifact>
   >({});
+  const statusDisplay = candidate?.status ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -213,7 +196,11 @@ export default function CandidateSubmissionsPageClient() {
           const maybeJson: unknown = await listRes.json().catch(() => null);
           const fallbackText = await listRes.text().catch(() => '');
           const msg =
-            maybeJson !== null ? parseErrorMessage(maybeJson) : fallbackText;
+            maybeJson !== null
+              ? toUserMessage(maybeJson, 'Request failed', {
+                  includeDetail: true,
+                })
+              : fallbackText;
           throw new Error(
             msg || `Failed to load submissions (${listRes.status})`,
           );
@@ -249,7 +236,8 @@ export default function CandidateSubmissionsPageClient() {
         }
         if (!cancelled) setArtifacts(map);
       } catch (e: unknown) {
-        if (!cancelled) setError(parseErrorMessage(e));
+        if (!cancelled)
+          setError(toUserMessage(e, 'Request failed', { includeDetail: true }));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -272,7 +260,7 @@ export default function CandidateSubmissionsPageClient() {
   const subtitle = useMemo(() => {
     const bits: string[] = [];
     bits.push(`CandidateSession: ${candidateSessionId}`);
-    if (candidate?.status) bits.push(`Status: ${candidate.status}`);
+    if (statusDisplay) bits.push(`Status: ${statusDisplay}`);
     if (candidate?.startedAt)
       bits.push(`Started: ${new Date(candidate.startedAt).toLocaleString()}`);
     if (candidate?.completedAt)
@@ -280,7 +268,7 @@ export default function CandidateSubmissionsPageClient() {
         `Completed: ${new Date(candidate.completedAt).toLocaleString()}`,
       );
     return bits.join(' • ');
-  }, [candidate, candidateSessionId]);
+  }, [candidate, candidateSessionId, statusDisplay]);
 
   return (
     <div className="flex flex-col gap-4 py-8">
@@ -293,6 +281,17 @@ export default function CandidateSubmissionsPageClient() {
           ← Back to candidates
         </Link>
       </div>
+
+      {statusDisplay ? (
+        <div className="flex items-center gap-2 text-sm text-gray-700">
+          <CandidateStatusPill status={statusDisplay} />
+          <span>
+            {candidate?.inviteEmail
+              ? `Invited: ${candidate.inviteEmail}`
+              : null}
+          </span>
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="text-sm text-gray-600">Loading submissions…</div>

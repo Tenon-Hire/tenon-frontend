@@ -1,4 +1,4 @@
-import { apiClient } from './httpClient';
+import { apiClient, safeRequest } from './httpClient';
 import { getId, getNumber, getString, isRecord } from './normalize';
 
 export type SimulationListItem = {
@@ -62,6 +62,10 @@ export async function listSimulations(): Promise<SimulationListItem[]> {
   const data = await apiClient.get<unknown>('/simulations');
   if (!Array.isArray(data)) return [];
   return data.map(normalizeSimulation);
+}
+
+export async function listSimulationsSafe() {
+  return safeRequest<SimulationListItem[]>('/simulations');
 }
 
 function normalizeInviteResponse(raw: unknown): InviteCandidateResponse {

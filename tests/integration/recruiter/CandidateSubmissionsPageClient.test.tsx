@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import CandidateSubmissionsPageClient from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPageClient';
+import { jsonResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1', candidateSessionId: '900' };
 
@@ -9,19 +10,6 @@ jest.mock('next/navigation', () => ({
 
 const fetchMock = jest.fn();
 const realFetch = global.fetch;
-
-function makeJsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-    text: async () => JSON.stringify(body),
-    headers: {
-      get: (name: string) =>
-        name.toLowerCase() === 'content-type' ? 'application/json' : null,
-    },
-  } as unknown as Response;
-}
 
 beforeEach(() => {
   fetchMock.mockReset();
@@ -38,7 +26,7 @@ describe('CandidateSubmissionsPageClient', () => {
   it('renders submission artifacts with code and test results', async () => {
     fetchMock
       .mockResolvedValueOnce(
-        makeJsonResponse([
+        jsonResponse([
           {
             candidateSessionId: 900,
             inviteEmail: 'dee@example.com',
@@ -51,7 +39,7 @@ describe('CandidateSubmissionsPageClient', () => {
         ]),
       )
       .mockResolvedValueOnce(
-        makeJsonResponse({
+        jsonResponse({
           items: [
             {
               submissionId: 1,
@@ -65,7 +53,7 @@ describe('CandidateSubmissionsPageClient', () => {
         }),
       )
       .mockResolvedValueOnce(
-        makeJsonResponse({
+        jsonResponse({
           submissionId: 1,
           candidateSessionId: 900,
           task: {
@@ -94,7 +82,7 @@ describe('CandidateSubmissionsPageClient', () => {
   it('shows empty state when there are no submissions', async () => {
     fetchMock
       .mockResolvedValueOnce(
-        makeJsonResponse([
+        jsonResponse([
           {
             candidateSessionId: 900,
             inviteEmail: 'dee@example.com',
@@ -106,7 +94,7 @@ describe('CandidateSubmissionsPageClient', () => {
           },
         ]),
       )
-      .mockResolvedValueOnce(makeJsonResponse({ items: [] }));
+      .mockResolvedValueOnce(jsonResponse({ items: [] }));
 
     render(<CandidateSubmissionsPageClient />);
 
@@ -117,10 +105,8 @@ describe('CandidateSubmissionsPageClient', () => {
 
   it('renders friendly error when submissions list fails', async () => {
     fetchMock
-      .mockResolvedValueOnce(makeJsonResponse([], 200))
-      .mockResolvedValueOnce(
-        makeJsonResponse({ message: 'Upstream down' }, 500),
-      );
+      .mockResolvedValueOnce(jsonResponse([], 200))
+      .mockResolvedValueOnce(jsonResponse({ message: 'Upstream down' }, 500));
     params.id = 'sim-err';
 
     render(<CandidateSubmissionsPageClient />);
@@ -130,7 +116,7 @@ describe('CandidateSubmissionsPageClient', () => {
 
   it('surfaces network errors when submissions request rejects', async () => {
     fetchMock
-      .mockResolvedValueOnce(makeJsonResponse([], 200))
+      .mockResolvedValueOnce(jsonResponse([], 200))
       .mockRejectedValueOnce(new Error('network fail'));
 
     render(<CandidateSubmissionsPageClient />);

@@ -1,19 +1,26 @@
-import { expect, Page } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { BasePage } from './BasePage';
 
-export class RecruiterPage {
-  constructor(private page: Page) {}
+export class RecruiterPage extends BasePage {
+  constructor(page: Page) {
+    super(page);
+  }
 
   async gotoLogin() {
-    await this.page.goto('/login');
+    await this.goto('/login');
   }
 
   async login() {
-    await this.page.getByRole('button', { name: /continue/i }).click();
+    await this.clickButton(/continue/i);
   }
 
   async expectDashboard() {
-    await this.page.waitForURL('**/dashboard');
-    await expect(this.page.getByText(/simulations/i)).toBeVisible();
-    await expect(this.page.getByTestId('simulation-row')).toBeVisible();
+    await this.expectUrl('**/dashboard');
+    await this.expectVisibleText(/simulations/i);
+    await this.expectRow();
+  }
+
+  private async expectRow() {
+    await this.page.getByTestId('simulation-row').waitFor({ state: 'visible' });
   }
 }

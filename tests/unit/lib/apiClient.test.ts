@@ -1,30 +1,12 @@
 import { apiClient, login } from '@/lib/api/httpClient';
 import { getAuthToken } from '@/lib/auth';
+import { responseHelpers } from '../../setup';
 
 jest.mock('@/lib/auth', () => ({
   getAuthToken: jest.fn(),
 }));
 
 const fetchMock = jest.fn();
-
-function makeResponse(
-  body: unknown,
-  init: { status?: number; headers?: Record<string, string> } = {},
-) {
-  const status = init.status ?? 200;
-  const headers = init.headers ?? { 'content-type': 'application/json' };
-
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: {
-      get: (name: string) =>
-        headers[name.toLowerCase()] ?? headers[name] ?? null,
-    },
-    json: async () => body,
-    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-  } as unknown as Response;
-}
 
 describe('apiClient request helpers', () => {
   beforeEach(() => {
@@ -36,7 +18,7 @@ describe('apiClient request helpers', () => {
   it('attaches auth token by default and normalizes URLs', async () => {
     (getAuthToken as jest.Mock).mockReturnValue('token-123');
     fetchMock.mockResolvedValue(
-      makeResponse({ ok: true, data: { message: 'hi' } }),
+      responseHelpers.jsonResponse({ ok: true, data: { message: 'hi' } }),
     );
 
     await apiClient.get('/jobs');
@@ -50,7 +32,9 @@ describe('apiClient request helpers', () => {
   });
 
   it('respects skipAuth and custom basePath', async () => {
-    fetchMock.mockResolvedValue(makeResponse({ created: true, id: 7 }));
+    fetchMock.mockResolvedValue(
+      responseHelpers.jsonResponse({ created: true, id: 7 }),
+    );
 
     await apiClient.post(
       'tasks',
@@ -69,7 +53,7 @@ describe('apiClient request helpers', () => {
   it('does not stringify FormData bodies', async () => {
     const fd = new FormData();
     fd.append('file', 'content');
-    fetchMock.mockResolvedValue(makeResponse({ ok: true }));
+    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({ ok: true }));
 
     await apiClient.post('/upload', fd);
 
@@ -80,7 +64,10 @@ describe('apiClient request helpers', () => {
 
   it('extracts error messages from API errors', async () => {
     fetchMock.mockResolvedValue(
-      makeResponse({ detail: [{ msg: 'Invalid password' }] }, { status: 422 }),
+      responseHelpers.jsonResponse(
+        { detail: [{ msg: 'Invalid password' }] },
+        422,
+      ),
     );
 
     await expect(
@@ -93,9 +80,8 @@ describe('apiClient request helpers', () => {
 
   it('falls back to status-based messages for text errors', async () => {
     fetchMock.mockResolvedValue(
-      makeResponse('Internal error', {
-        status: 500,
-        headers: { 'content-type': 'text/plain' },
+      responseHelpers.textResponse('Internal error', 500, {
+        'content-type': 'text/plain',
       }),
     );
 
@@ -106,7 +92,9 @@ describe('apiClient request helpers', () => {
   });
 
   it('returns undefined for 204 responses', async () => {
-    fetchMock.mockResolvedValue(makeResponse('', { status: 204, headers: {} }));
+    fetchMock.mockResolvedValue(
+      responseHelpers.textResponse('', 204, { 'content-type': '' }),
+    );
 
     const resp = await apiClient.delete('/noop');
 
@@ -152,7 +140,7 @@ describe('apiClient request helpers', () => {
   });
 
   it('supports delete with request options and explicit basePath', async () => {
-    fetchMock.mockResolvedValue(makeResponse({}, { status: 200 }));
+    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({}, 200));
 
     await apiClient.delete(
       '/custom-delete',
@@ -169,7 +157,7 @@ describe('apiClient request helpers', () => {
   });
 
   it('passes through provided authToken to request helper', async () => {
-    fetchMock.mockResolvedValue(makeResponse({}, { status: 200 }));
+    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({}, 200));
 
     await apiClient.post('/auth', { ok: true }, { authToken: 'tok' });
 
@@ -186,9 +174,9 @@ describe('apiClient request helpers', () => {
 
   it('uses explicit authToken and merges headers for put/patch/delete', async () => {
     fetchMock
-      .mockResolvedValueOnce(makeResponse({ ok: true }))
-      .mockResolvedValueOnce(makeResponse({ ok: true }))
-      .mockResolvedValueOnce(makeResponse({ ok: true }));
+      .mockResolvedValueOnce(responseHelpers.jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(responseHelpers.jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(responseHelpers.jsonResponse({ ok: true }));
 
     await apiClient.put(
       '/put-me',
@@ -230,7 +218,7 @@ describe('apiClient request helpers', () => {
 
   it('respects provided authToken even when window is defined', async () => {
     (getAuthToken as jest.Mock).mockReturnValue('ignored');
-    fetchMock.mockResolvedValue(makeResponse({ ok: true }));
+    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({ ok: true }));
 
     await apiClient.get('/auth-pref', { authToken: 'from-opts' });
 
