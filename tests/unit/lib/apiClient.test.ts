@@ -1,4 +1,4 @@
-import { apiClient, login } from '@/lib/api/httpClient';
+import { apiClient, login, safeRequest } from '@/lib/api/httpClient';
 import { getAuthToken } from '@/lib/auth';
 import { responseHelpers } from '../../setup';
 
@@ -228,5 +228,21 @@ describe('apiClient request helpers', () => {
       body: undefined,
       credentials: 'include',
     });
+  });
+
+  it('safeRequest returns data and wraps unknown errors', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        responseHelpers.jsonResponse({ ok: true, value: 1 }),
+      )
+      .mockRejectedValueOnce('bad');
+
+    const success = await safeRequest<{ value: number }>('/path');
+    expect(success).toMatchObject({ data: { value: 1 }, error: null });
+
+    const failure = await safeRequest('/oops');
+    expect(failure.data).toBeNull();
+    expect(failure.error).toBeInstanceOf(Error);
+    expect(failure.error?.message).toBe('bad');
   });
 });

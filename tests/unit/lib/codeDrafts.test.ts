@@ -1,4 +1,5 @@
 import {
+  clearAllCodeDrafts,
   clearCodeDraft,
   codeDraftKey,
   hasCodeDraft,
@@ -73,5 +74,17 @@ describe('codeDrafts helpers', () => {
 
     setItemSpy.mockRestore();
     removeItemSpy.mockRestore();
+  });
+
+  it('clears only code drafts when running clearAllCodeDrafts', () => {
+    sessionStorage.setItem(codeDraftKey(1, 1), 'draft-one');
+    sessionStorage.setItem(codeDraftKey('user', 'task'), 'draft-two');
+    sessionStorage.setItem('simuhire:other:key', 'keep');
+
+    clearAllCodeDrafts();
+
+    expect(sessionStorage.getItem(codeDraftKey(1, 1))).toBeNull();
+    expect(sessionStorage.getItem(codeDraftKey('user', 'task'))).toBeNull();
+    expect(sessionStorage.getItem('simuhire:other:key')).toBe('keep');
   });
 });

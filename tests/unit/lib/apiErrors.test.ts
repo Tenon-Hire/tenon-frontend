@@ -18,6 +18,10 @@ describe('api errors helpers', () => {
     expect(extractBackendMessage({})).toBeNull();
   });
 
+  it('skips plain strings when allowPlainString is false', () => {
+    expect(extractBackendMessage('plain', false)).toBeNull();
+  });
+
   it('falls back to default status when missing', () => {
     expect(fallbackStatus({ status: 500 }, 400)).toBe(500);
     expect(fallbackStatus({}, 400)).toBe(400);
