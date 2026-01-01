@@ -55,15 +55,7 @@ describe('candidateApi', () => {
     ).rejects.toBeInstanceOf(HttpError);
   });
 
-  it('requires email when verifying invite token', async () => {
-    const { verifyCandidateSessionEmail, HttpError } = await importApi();
-
-    await expect(
-      verifyCandidateSessionEmail('tok_123', '   ', 'auth'),
-    ).rejects.toBeInstanceOf(HttpError);
-  });
-
-  it('verifies email and normalizes response', async () => {
+  it('claims invite token with bearer auth', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock.mockResolvedValue(
       jsonRes({
@@ -74,39 +66,67 @@ describe('candidateApi', () => {
     );
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { verifyCandidateSessionEmail } = await importApi();
-    const result = await verifyCandidateSessionEmail(
-      'tok_123',
-      'user@example.com',
-      'auth-token',
-    );
+    const { claimCandidateInvite } = await importApi();
+    const result = await claimCandidateInvite('tok_123', 'auth-token');
 
     expect(result.candidateSessionId).toBe(99);
     expect(result.simulation.title).toBe('Infra');
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://api.example.com/candidate/session/tok_123/verify',
+      'http://api.example.com/candidate/session/tok_123/claim',
       expect.objectContaining({
         method: 'POST',
         cache: 'no-store',
         headers: expect.objectContaining({
           Authorization: 'Bearer auth-token',
-          'Content-Type': 'application/json',
         }),
-        body: JSON.stringify({ email: 'user@example.com' }),
       }),
     );
   });
 
-  it('throws when verification response is missing session id', async () => {
+  it('requires bearer token for claim', async () => {
+    const { claimCandidateInvite, HttpError } = await importApi();
+    await expect(claimCandidateInvite('tok_123', '')).rejects.toBeInstanceOf(
+      HttpError,
+    );
+  });
+
+  it('lists candidate invites with bearer auth', async () => {
     const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(jsonRes({ status: 'ok' }));
+    fetchMock.mockResolvedValue(
+      jsonRes([
+        {
+          candidate_session_id: 9,
+          simulationTitle: 'Design Sim',
+          role_name: 'Designer',
+          progress: { completed: 1, total: 5 },
+          token: 'abc',
+          expires_at: '2025-01-01',
+          is_expired: true,
+        },
+      ]),
+    );
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { verifyCandidateSessionEmail, HttpError } = await importApi();
+    const { listCandidateInvites } = await importApi();
+    const invites = await listCandidateInvites('auth-token');
 
-    await expect(
-      verifyCandidateSessionEmail('tok', 'email@example.com', 'auth-token'),
-    ).rejects.toBeInstanceOf(HttpError);
+    expect(invites[0]).toMatchObject({
+      candidateSessionId: 9,
+      title: 'Design Sim',
+      role: 'Designer',
+      token: 'abc',
+      progress: { completed: 1, total: 5 },
+      isExpired: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://api.example.com/candidate/invites',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer auth-token',
+        }),
+      }),
+    );
   });
 
   it('surfaces bootstrap errors with status codes', async () => {

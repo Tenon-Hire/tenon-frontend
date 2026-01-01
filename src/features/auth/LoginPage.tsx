@@ -12,6 +12,7 @@ export default function LoginPage({
 }) {
   const isCandidate =
     mode === 'candidate' ||
+    (returnTo ?? '').startsWith('/candidate/session') ||
     (returnTo ?? '').startsWith('/candidate-sessions') ||
     (returnTo ?? '').startsWith('/candidate/');
   const title = isCandidate

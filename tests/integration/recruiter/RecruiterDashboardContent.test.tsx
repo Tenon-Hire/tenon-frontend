@@ -132,7 +132,7 @@ describe('RecruiterDashboardPage', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_1',
       token: 'tok_123',
-      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_123',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
     });
 
     render(<RecruiterDashboardPage profile={null} error={null} />);
@@ -196,7 +196,7 @@ describe('RecruiterDashboardPage', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_1',
       token: 'tok_123',
-      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_123',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
     });
 
     render(<RecruiterDashboardPage profile={null} error={null} />);
@@ -216,7 +216,7 @@ describe('RecruiterDashboardPage', () => {
     await user.click(copyBtn);
 
     expect(writeText).toHaveBeenCalledWith(
-      'http://localhost:3000/candidate-sessions/tok_123',
+      'http://localhost:3000/candidate/session/tok_123',
     );
     await waitFor(() =>
       expect(
@@ -311,7 +311,7 @@ describe('RecruiterDashboardPage', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_2',
       token: 'tok_456',
-      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_456',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_456',
     });
 
     render(<RecruiterDashboardPage profile={null} error={null} />);
@@ -330,7 +330,7 @@ describe('RecruiterDashboardPage', () => {
     const copyBtn = await screen.findByRole('button', { name: /Copy/i });
     await user.click(copyBtn);
     expect(writeText).toHaveBeenCalledWith(
-      'http://localhost:3000/candidate-sessions/tok_456',
+      'http://localhost:3000/candidate/session/tok_456',
     );
 
     await user.click(screen.getByRole('button', { name: /Dismiss/i }));
@@ -364,7 +364,7 @@ describe('RecruiterDashboardPage', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_3',
       token: 'tok_789',
-      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_789',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_789',
     });
 
     render(<RecruiterDashboardPage profile={null} error={null} />);
@@ -423,7 +423,7 @@ describe('RecruiterDashboardPage', () => {
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_4',
       token: 'tok_999',
-      inviteUrl: 'http://localhost:3000/candidate-sessions/tok_999',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_999',
     });
 
     render(<RecruiterDashboardPage profile={null} error={null} />);

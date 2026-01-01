@@ -42,20 +42,23 @@ export function friendlyTaskError(err: unknown): string {
   return 'Something went wrong loading your current task.';
 }
 
-export function friendlyVerifyError(err: unknown): string {
+export function friendlyClaimError(err: unknown): string {
   const status = statusFromUnknown(err);
 
   if (status === 404) return 'That invite link is invalid.';
   if (status === 410) return 'That invite link has expired.';
-  if (status === 401 || status === 403)
-    return 'That email does not match this invite.';
+  if (status === 401 || status === 403) {
+    const msg = messageFromUnknown(err)?.trim();
+    if (msg) return msg;
+    return 'This invite was sent to a different email.';
+  }
   if (!status || status === 0)
     return 'Network error. Please check your connection and try again.';
 
   const msg = messageFromUnknown(err);
   if (msg && msg.trim().length > 0) return msg;
 
-  return 'Unable to verify your email right now. Please try again.';
+  return 'Unable to claim your invite right now. Please try again.';
 }
 
 export function friendlySubmitError(err: unknown): string {

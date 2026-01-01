@@ -2,7 +2,7 @@ import {
   friendlyBootstrapError,
   friendlySubmitError,
   friendlyTaskError,
-  friendlyVerifyError,
+  friendlyClaimError,
 } from '@/features/candidate/session/utils/errorMessages';
 import { HttpError } from '@/lib/api/candidate';
 
@@ -19,11 +19,11 @@ describe('candidate error messages', () => {
     );
   });
 
-  it('maps verify errors including auth mismatch', () => {
-    expect(friendlyVerifyError(new HttpError(401, 'x'))).toContain(
-      'does not match',
+  it('maps claim errors including auth mismatch', () => {
+    expect(friendlyClaimError(new HttpError(401, ''))).toContain(
+      'different email',
     );
-    expect(friendlyVerifyError(new HttpError(410, 'x'))).toContain('expired');
+    expect(friendlyClaimError(new HttpError(410, 'x'))).toContain('expired');
   });
 
   it('maps task errors for missing session and network', () => {

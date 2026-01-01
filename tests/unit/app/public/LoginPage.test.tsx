@@ -23,7 +23,7 @@ describe('LoginPage', () => {
   });
 
   it('renders candidate-friendly copy when returnTo targets candidate session', () => {
-    render(<LoginPage returnTo="/candidate-sessions/tok_123" />);
+    render(<LoginPage returnTo="/candidate/session/tok_123" />);
 
     expect(
       screen.getByText(/Sign in to continue your simulation/i),
@@ -31,7 +31,17 @@ describe('LoginPage', () => {
     const authLink = screen.getByRole('link', { name: 'Continue with Auth0' });
     expect(authLink).toHaveAttribute(
       'href',
-      '/auth/login?returnTo=%2Fcandidate-sessions%2Ftok_123&mode=candidate',
+      '/auth/login?returnTo=%2Fcandidate%2Fsession%2Ftok_123&mode=candidate',
+    );
+  });
+
+  it('still treats legacy candidate-sessions returnTo as candidate mode', () => {
+    render(<LoginPage returnTo="/candidate-sessions/tok_legacy" />);
+
+    const authLink = screen.getByRole('link', { name: 'Continue with Auth0' });
+    expect(authLink).toHaveAttribute(
+      'href',
+      '/auth/login?returnTo=%2Fcandidate-sessions%2Ftok_legacy&mode=candidate',
     );
   });
 });

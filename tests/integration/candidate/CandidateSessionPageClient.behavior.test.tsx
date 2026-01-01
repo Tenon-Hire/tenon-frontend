@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 import { renderCandidateWithProviders } from '../../setup';
@@ -37,67 +37,72 @@ afterAll(() => {
 });
 
 describe('CandidateSessionPage (auth flow)', () => {
-  it('renders claim form with simulation details after bootstrap', async () => {
-    fetchMock.mockImplementationOnce(async () =>
-      jsonResponse({
-        candidateSessionId: 321,
-        status: 'in_progress',
-        simulation: { title: 'Infra Simulation', role: 'Backend Engineer' },
-      }),
-    );
-
-    renderCandidateWithProviders(<CandidateSessionPage token="valid-token" />);
-
-    expect(await screen.findByText('Infra Simulation')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email address/i)).toHaveValue(
-      'prefill@example.com',
-    );
-  });
-
-  it('submits verify call with email and redirects to dashboard', async () => {
-    jest.useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-
-    fetchMock
-      .mockImplementationOnce(async () =>
-        jsonResponse({
-          candidateSessionId: 321,
-          status: 'in_progress',
-          simulation: { title: 'Infra Simulation', role: 'Backend Engineer' },
-        }),
-      )
-      .mockImplementationOnce(async (_input, init) => {
-        const body = JSON.parse((init?.body as string) ?? '{}') as {
-          email?: string;
-        };
+  it('auto-claims the invite and loads the current task', async () => {
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      if (String(url).includes('/claim')) {
         return jsonResponse({
           candidateSessionId: 321,
           status: 'in_progress',
           simulation: { title: 'Infra Simulation', role: 'Backend Engineer' },
-          receivedEmail: body.email,
         });
-      });
+      }
+      if (String(url).includes('/current_task')) {
+        return jsonResponse({
+          isComplete: false,
+          completedTaskIds: [],
+          currentTask: {
+            id: 10,
+            dayIndex: 1,
+            type: 'design',
+            title: 'Task One',
+            description: 'Do it',
+          },
+        });
+      }
+      throw new Error(`Unexpected fetch ${String(url)}`);
+    });
+
+    const user = userEvent.setup();
+    renderCandidateWithProviders(<CandidateSessionPage token="valid-token" />);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/candidate/session/valid-token/claim',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer auth-token',
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/candidate/session/321/current_task',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer auth-token',
+        }),
+      }),
+    );
+
+    const startBtn = await screen.findByRole('button', {
+      name: /Start simulation/i,
+    });
+    await user.click(startBtn);
+
+    expect(await screen.findByText('Task One')).toBeInTheDocument();
+  });
+
+  it('surfaces wrong-account state on claim 403', async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse({ message: 'invite@example.com' }, 403),
+    );
 
     renderCandidateWithProviders(<CandidateSessionPage token="valid-token" />);
 
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/candidate/session/valid-token',
-        expect.anything(),
-      ),
-    );
-
-    await user.click(await screen.findByRole('button', { name: /continue/i }));
-
-    await act(async () => {
-      jest.runAllTimers();
-    });
-
-    const verifyCall = fetchMock.mock.calls[1];
-    expect(verifyCall?.[0]).toContain('/candidate/session/valid-token/verify');
-    expect(JSON.parse((verifyCall?.[1]?.body as string) ?? '{}')).toMatchObject(
-      { email: 'prefill@example.com' },
-    );
-    expect(routerMock.push).toHaveBeenCalledWith('/candidate/dashboard');
+    expect(await screen.findByText(/invite@example.com/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Log out/i }),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

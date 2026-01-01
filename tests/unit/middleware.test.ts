@@ -86,7 +86,7 @@ describe('middleware', () => {
     });
 
     const req = new NextRequest(
-      new URL('http://localhost/candidate-sessions/tok_123'),
+      new URL('http://localhost/candidate/session/tok_123'),
     );
     const res = await middleware(req);
 
