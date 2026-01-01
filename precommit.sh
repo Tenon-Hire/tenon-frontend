@@ -17,7 +17,7 @@ export RESET_COLOR="$RESET"
 echo "Checking coverage threshold (>=85%)..."
 coverage_summary="coverage/coverage-summary.json"
 
-export COVERAGE_TARGET=85
+export COVERAGE_TARGET=90
 node scripts/checkCoverage.js
 
 echo "Running typecheck..."
