@@ -24,10 +24,15 @@ export type CandidateSession = {
   candidateSessionId: number;
   inviteEmail: string | null;
   candidateName: string | null;
-  status: 'not_started' | 'in_progress' | 'completed';
+  status: 'not_started' | 'in_progress' | 'completed' | string;
   startedAt: string | null;
   completedAt: string | null;
   hasReport: boolean;
+  inviteToken?: string | null;
+  inviteUrl?: string | null;
+  inviteEmailStatus?: 'sent' | 'failed' | 'rate_limited' | string | null;
+  inviteEmailSentAt?: string | null;
+  inviteEmailError?: string | null;
 };
 
 export type StatusPillTone = 'info' | 'success' | 'warning' | 'muted';
