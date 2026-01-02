@@ -4,8 +4,9 @@ import {
   CandidateSessionProvider,
   useCandidateSession,
 } from '@/features/candidate/session/CandidateSessionProvider';
+import { BRAND_SLUG } from '@/lib/brand';
 
-const STORAGE_KEY = 'simuhire:candidate_session_v1';
+const STORAGE_KEY = `${BRAND_SLUG}:candidate_session_v1`;
 
 function Harness() {
   const {

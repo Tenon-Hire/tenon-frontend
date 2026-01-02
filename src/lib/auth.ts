@@ -1,4 +1,6 @@
-const TOKEN_KEY = 'simuhire_token';
+import { BRAND_SLUG } from '@/lib/brand';
+
+const TOKEN_KEY = `${BRAND_SLUG}_token`;
 
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;

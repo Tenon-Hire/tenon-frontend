@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { forwardJson, withAuthGuard } from '@/lib/server/bff';
+import { BFF_HEADER } from '@/app/api/utils';
 
 export async function POST(
   req: NextRequest,
@@ -18,6 +19,6 @@ export async function POST(
       accessToken,
     }),
   );
-  resp.headers.set('x-simuhire-bff', 'invite');
+  resp.headers.set(BFF_HEADER, 'invite');
   return resp;
 }

@@ -51,7 +51,7 @@ describe('CandidateDashboardPage', () => {
         token: 'INV123',
         title: 'Infra Simulation',
         role: 'Backend Engineer',
-        company: 'SimuHire',
+        company: 'Tenon',
         status: 'in_progress',
         progress: { completed: 2, total: 5 },
         expiresAt: '2025-01-01',

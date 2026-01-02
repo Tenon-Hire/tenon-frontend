@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth0 } from './lib/auth0';
+import { auth0, getSessionNormalized } from './lib/auth0';
 import { extractPermissions, hasPermission } from './lib/auth0-claims';
 
 const PUBLIC_PATHS = new Set([
@@ -95,7 +95,7 @@ export async function middleware(request: NextRequest) {
 
   if (shouldSkipAuth(pathname)) return authResponse;
 
-  const session = await auth0.getSession(request);
+  const session = await getSessionNormalized(request);
   if (!session) return buildLoginRedirect(request);
 
   const fallbackAccessToken =

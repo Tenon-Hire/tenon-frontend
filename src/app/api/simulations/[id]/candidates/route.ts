@@ -1,4 +1,5 @@
 import { forwardJson, withAuthGuard } from '@/lib/server/bff';
+import { BFF_HEADER } from '@/app/api/utils';
 
 export async function GET(
   _req: Request,
@@ -12,6 +13,6 @@ export async function GET(
       accessToken,
     }),
   );
-  resp.headers.set('x-simuhire-bff', 'simulations-candidates');
+  resp.headers.set(BFF_HEADER, 'simulations-candidates');
   return resp;
 }

@@ -35,23 +35,27 @@ jest.mock('@/lib/auth0', () => ({
     middleware: jest.fn(),
   },
   getAccessToken: jest.fn(),
+  getSessionNormalized: jest.fn(),
 }));
 
 const realFetch = global.fetch;
-const originalBackendBase = process.env.BACKEND_BASE_URL;
+const originalBackendBase = process.env.TENON_BACKEND_BASE_URL;
 
 describe('forwardJson', () => {
   const fetchMock = jest.fn();
   let forwardJson: (typeof import('@/lib/server/bff'))['forwardJson'];
+  let upstreamHeader: (typeof import('@/lib/server/bff'))['UPSTREAM_HEADER'];
 
   beforeEach(async () => {
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
-    forwardJson = (await import('@/lib/server/bff')).forwardJson;
+    const mod = await import('@/lib/server/bff');
+    forwardJson = mod.forwardJson;
+    upstreamHeader = mod.UPSTREAM_HEADER;
   });
 
   afterEach(() => {
-    process.env.BACKEND_BASE_URL = originalBackendBase;
+    process.env.TENON_BACKEND_BASE_URL = originalBackendBase;
   });
 
   afterAll(() => {
@@ -80,11 +84,11 @@ describe('forwardJson', () => {
       body: undefined,
       cache: 'no-store',
     });
-    expect(res.headers.get('x-simuhire-upstream-status')).toBe('200');
+    expect(res.headers.get(upstreamHeader)).toBe('200');
   });
 
   it('uses BACKEND_BASE_URL when provided', async () => {
-    process.env.BACKEND_BASE_URL = 'https://api.example.com';
+    process.env.TENON_BACKEND_BASE_URL = 'https://api.example.com';
     fetchMock.mockResolvedValue({
       status: 200,
       headers: { get: () => null },

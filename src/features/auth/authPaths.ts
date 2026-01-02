@@ -7,10 +7,10 @@ function normalizeReturnTo(returnTo: string | null | undefined): string {
 
 function connectionForMode(mode?: LoginMode): string | null {
   if (mode === 'candidate') {
-    return process.env.NEXT_PUBLIC_AUTH0_CANDIDATE_CONNECTION ?? null;
+    return process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION ?? null;
   }
   if (mode === 'recruiter') {
-    return process.env.NEXT_PUBLIC_AUTH0_RECRUITER_CONNECTION ?? null;
+    return process.env.NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION ?? null;
   }
   return null;
 }

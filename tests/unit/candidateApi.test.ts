@@ -8,17 +8,17 @@ const jsonRes = (
 ) => responseHelpers.jsonResponse(body, status, headers) as unknown as Response;
 type FetchMock = jest.MockedFunction<typeof fetch>;
 
-const originalApiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+const originalApiBase = process.env.NEXT_PUBLIC_TENON_API_BASE_URL;
 
 async function importApi() {
   jest.resetModules();
-  process.env.NEXT_PUBLIC_API_BASE_URL = 'http://api.example.com';
+  process.env.NEXT_PUBLIC_TENON_API_BASE_URL = 'http://api.example.com';
   return import('@/lib/api/candidate');
 }
 
 describe('candidateApi', () => {
   afterAll(() => {
-    process.env.NEXT_PUBLIC_API_BASE_URL = originalApiBase;
+    process.env.NEXT_PUBLIC_TENON_API_BASE_URL = originalApiBase;
   });
 
   it('resolves invite token with bearer auth', async () => {

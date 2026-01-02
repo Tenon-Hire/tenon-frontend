@@ -1,4 +1,6 @@
-const DRAFT_PREFIX = 'simuhire:candidate:codeDraft';
+import { BRAND_SLUG } from '@/lib/brand';
+
+const DRAFT_PREFIX = `${BRAND_SLUG}:candidate:codeDraft`;
 
 export function codeDraftKey(
   candidateSessionId: number | string,

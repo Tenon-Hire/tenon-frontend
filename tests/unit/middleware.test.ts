@@ -1,4 +1,5 @@
 import { middleware } from '@/middleware';
+import { CUSTOM_CLAIM_PERMISSIONS, CUSTOM_CLAIM_ROLES } from '@/lib/brand';
 
 jest.mock('next/server', () => {
   const buildHeaders = (location?: string) => {
@@ -40,6 +41,7 @@ jest.mock('@/lib/auth0', () => ({
     getSession: jest.fn(),
     getAccessToken: jest.fn(),
   },
+  getSessionNormalized: jest.fn(),
 }));
 
 const mockAuth0 = jest.requireMock('@/lib/auth0').auth0 as {
@@ -47,15 +49,18 @@ const mockAuth0 = jest.requireMock('@/lib/auth0').auth0 as {
   getSession: jest.Mock;
   getAccessToken: jest.Mock;
 };
+const getSessionNormalizedMock = jest.requireMock('@/lib/auth0')
+  .getSessionNormalized as jest.Mock;
 
 describe('middleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    getSessionNormalizedMock.mockReset();
     mockAuth0.getAccessToken.mockResolvedValue({ token: 'auth' });
   });
 
   it('redirects unauthenticated candidate dashboard to login with mode', async () => {
-    mockAuth0.getSession.mockResolvedValue(null);
+    getSessionNormalizedMock.mockResolvedValue(null);
 
     const req = new NextRequest(
       new URL('http://localhost/candidate/dashboard'),
@@ -69,7 +74,7 @@ describe('middleware', () => {
   });
 
   it('redirects unauthenticated recruiter dashboard to login with mode', async () => {
-    mockAuth0.getSession.mockResolvedValue(null);
+    getSessionNormalizedMock.mockResolvedValue(null);
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
     const res = await middleware(req);
@@ -81,7 +86,7 @@ describe('middleware', () => {
   });
 
   it('sends authorized candidates through candidate routes', async () => {
-    mockAuth0.getSession.mockResolvedValue({
+    getSessionNormalizedMock.mockResolvedValue({
       user: { permissions: ['candidate:access'] },
     });
 
@@ -95,7 +100,7 @@ describe('middleware', () => {
   });
 
   it('redirects candidates hitting recruiter pages to not authorized', async () => {
-    mockAuth0.getSession.mockResolvedValue({
+    getSessionNormalizedMock.mockResolvedValue({
       user: { permissions: ['candidate:access'] },
     });
 
@@ -109,8 +114,22 @@ describe('middleware', () => {
   });
 
   it('allows recruiter when permissions claim present on user', async () => {
-    mockAuth0.getSession.mockResolvedValue({
-      user: { 'https://simuhire.com/permissions': ['recruiter:access'] },
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { [CUSTOM_CLAIM_PERMISSIONS]: ['recruiter:access'] },
+    });
+
+    const req = new NextRequest(new URL('http://localhost/dashboard'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+  });
+
+  it('allows recruiter when standard permissions are empty but namespaced exist', async () => {
+    getSessionNormalizedMock.mockResolvedValue({
+      user: {
+        permissions: [],
+        [CUSTOM_CLAIM_PERMISSIONS]: ['recruiter:access'],
+      },
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
@@ -120,8 +139,8 @@ describe('middleware', () => {
   });
 
   it('denies recruiter dashboard when user has candidate permission only', async () => {
-    mockAuth0.getSession.mockResolvedValue({
-      user: { 'https://simuhire.com/permissions': ['candidate:access'] },
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { [CUSTOM_CLAIM_PERMISSIONS]: ['candidate:access'] },
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
@@ -132,8 +151,8 @@ describe('middleware', () => {
   });
 
   it('maps roles to permissions allowing recruiter access', async () => {
-    mockAuth0.getSession.mockResolvedValue({
-      user: { 'https://simuhire.com/roles': ['Recruiter'] },
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { [CUSTOM_CLAIM_ROLES]: ['Recruiter'] },
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
@@ -143,7 +162,7 @@ describe('middleware', () => {
   });
 
   it('redirects recruiters hitting candidate pages to not authorized', async () => {
-    mockAuth0.getSession.mockResolvedValue({
+    getSessionNormalizedMock.mockResolvedValue({
       user: { permissions: ['recruiter:access'] },
     });
 

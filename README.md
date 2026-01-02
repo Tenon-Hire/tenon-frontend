@@ -1,6 +1,6 @@
-# SimuHire Frontend
+# Tenon Frontend
 
-Next.js App Router (React 19 + TypeScript) UI for SimuHire’s 5-day work simulations. Candidates complete day-by-day tasks via invite tokens; recruiters create simulations, invite candidates, and review submissions.
+Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulations. Candidates complete day-by-day tasks via invite tokens; recruiters create simulations, invite candidates, and review submissions.
 
 ## Architecture
 
@@ -27,7 +27,7 @@ Next.js App Router (React 19 + TypeScript) UI for SimuHire’s 5-day work simula
 
 ## API Integration
 
-- Base config: `NEXT_PUBLIC_API_BASE_URL` (defaults to `/api`); BFF targets `BACKEND_BASE_URL` (default `http://localhost:8000`).
+- Base config: `NEXT_PUBLIC_TENON_API_BASE_URL` (defaults to `/api`); BFF targets `TENON_BACKEND_BASE_URL` (default `http://localhost:8000`).
 - Candidate calls (direct with Auth0 bearer + `candidate:access`):
   - `GET /candidate/session/{token}` bootstrap/resolve invite.
   - `POST /candidate/session/{token}/claim` (no body) to claim invite with signed-in email.
@@ -39,24 +39,25 @@ Next.js App Router (React 19 + TypeScript) UI for SimuHire’s 5-day work simula
   - `POST /api/simulations/{id}/invite`.
   - `GET /api/simulations/{id}/candidates`.
   - `GET /api/submissions?candidateSessionId=…`, `GET /api/submissions/{submissionId}`.
-- Not implemented: codespace init/status, run-tests polling UI, execution profile fetch.
+- Not implemented: codespace init/status, run-tests polling UI, fit profile fetch.
 
 ## Configuration / Env Vars
 
-- `NEXT_PUBLIC_API_BASE_URL` – backend base for candidate calls (e.g., `https://backend.example.com/api`).
-- `BACKEND_BASE_URL` – backend base for BFF (default `http://localhost:8000`; `/api` suffix trimmed).
-- Auth0: `AUTH0_SECRET`, `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`, `AUTH0_AUDIENCE`, `AUTH0_SCOPE`, `APP_BASE_URL`.
+- `NEXT_PUBLIC_TENON_API_BASE_URL` – backend base for candidate calls (e.g., `https://backend.example.com/api`).
+- `TENON_BACKEND_BASE_URL` – backend base for BFF (default `http://localhost:8000`; `/api` suffix trimmed).
+- Auth0 (Tenon-only): `TENON_AUTH0_SECRET`, `TENON_AUTH0_DOMAIN`, `TENON_AUTH0_CLIENT_ID`, `TENON_AUTH0_CLIENT_SECRET`, `TENON_AUTH0_AUDIENCE`, `TENON_AUTH0_SCOPE`, `TENON_APP_BASE_URL`.
+- Auth0 custom claims namespace (Tenon-only): `NEXT_PUBLIC_TENON_AUTH0_CLAIM_NAMESPACE` (defaults to `https://tenon.ai` when unset).
 - Optional Auth0 connection hints for the login button intent routing:
-  - `NEXT_PUBLIC_AUTH0_CANDIDATE_CONNECTION`
-  - `NEXT_PUBLIC_AUTH0_RECRUITER_CONNECTION`
-- Optional helper script: `./runFrontend.sh` echoes `BACKEND_BASE_URL` then runs `npm run dev`.
+  - `NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION`
+  - `NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION`
+- Optional helper script: `./runFrontend.sh` echoes `TENON_BACKEND_BASE_URL` then runs `npm run dev`.
 
 ## Local Development
 
 - Install: `npm install`.
 - Run dev: `npm run dev` (<http://localhost:3000>). Build: `npm run build`; start: `npm start`.
 - Tests/checks: `npm test`, `npm run test:coverage`, `npm run test:e2e`, `npm run typecheck`, `npm run lint`, `./precommit.sh`.
-- Point to local backend: set `BACKEND_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL` in `.env.local`.
+- Point to local backend: set `TENON_BACKEND_BASE_URL` and `NEXT_PUBLIC_TENON_API_BASE_URL` in `.env.local`.
 
 ## Typical Flows
 
@@ -67,7 +68,7 @@ Next.js App Router (React 19 + TypeScript) UI for SimuHire’s 5-day work simula
 
 - GitHub-native workflow: codespace init/status, run-tests trigger + duplicate-run prevention UI.
 - Day4 demo capture + transcript; Day5 structured markdown submission.
-- Execution profile/report view, comparison, and print/export.
+- Fit profile/report view, comparison, and print/export.
 - Candidate run-tests panel integration and richer states/loading skeletons.
 
 ## Manual QA checklist

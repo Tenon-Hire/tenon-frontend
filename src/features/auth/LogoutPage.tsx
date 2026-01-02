@@ -1,14 +1,15 @@
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import LogoutLink from '@/features/auth/LogoutLink';
+import { BRAND_NAME } from '@/lib/brand';
 import { AuthPageLayout } from './AuthPageLayout';
 
 export default function LogoutPage() {
   return (
     <AuthPageLayout
       title="Log out"
-      subtitle="Are you sure you want to log out of SimuHire?"
-      footer="This will end your SimuHire session and redirect you back to the app."
+      subtitle={`Are you sure you want to log out of ${BRAND_NAME}?`}
+      footer={`This will end your ${BRAND_NAME} session and redirect you back to the app.`}
     >
       <div className="flex flex-col gap-3">
         <LogoutLink className="block">

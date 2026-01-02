@@ -1,4 +1,10 @@
 import { Buffer } from 'buffer';
+import {
+  CUSTOM_CLAIM_EMAIL,
+  CUSTOM_CLAIM_PERMISSIONS,
+  CUSTOM_CLAIM_PERMISSIONS_STR,
+  CUSTOM_CLAIM_ROLES,
+} from '@/lib/brand';
 
 type Claims = Record<string, unknown>;
 
@@ -53,40 +59,70 @@ function appendPermissions(set: Set<string>, items: string[]) {
   items.forEach((item) => set.add(item));
 }
 
+export function normalizeUserClaims(user?: Claims | null): Claims {
+  const claims = (user ?? {}) as Claims;
+  const normalized: Claims = { ...claims };
+
+  const namespacedPermissions = toStringArray(claims[CUSTOM_CLAIM_PERMISSIONS]);
+  const existingPermissions = toStringArray(claims.permissions);
+  if (existingPermissions.length === 0 && namespacedPermissions.length > 0) {
+    normalized.permissions = namespacedPermissions;
+  }
+
+  const namespacedRoles = toStringArray(claims[CUSTOM_CLAIM_ROLES]);
+  const existingRoles = toStringArray(claims.roles);
+  if (existingRoles.length === 0 && namespacedRoles.length > 0) {
+    normalized.roles = namespacedRoles;
+  }
+
+  const namespacedEmail = claims[CUSTOM_CLAIM_EMAIL];
+  const existingEmail = claims.email;
+  if (
+    (existingEmail === undefined ||
+      existingEmail === null ||
+      (typeof existingEmail === 'string' && !existingEmail.trim())) &&
+    typeof namespacedEmail === 'string' &&
+    namespacedEmail.trim()
+  ) {
+    normalized.email = namespacedEmail.trim();
+  }
+
+  return normalized;
+}
+
 export function extractPermissions(
   user?: Claims | null,
   accessToken?: string | null,
 ): string[] {
+  const normalizedUser = normalizeUserClaims(user);
   const collected = new Set<string>();
 
   const fromUser = [
-    ...(toStringArray(user?.permissions) as string[]),
-    ...toStringArray(user?.['https://simuhire.com/permissions']),
-    ...parsePermissionsString(user?.['https://simuhire.com/permissions_str']),
+    ...(toStringArray(normalizedUser?.permissions) as string[]),
+    ...toStringArray(normalizedUser?.[CUSTOM_CLAIM_PERMISSIONS]),
+    ...parsePermissionsString(normalizedUser?.[CUSTOM_CLAIM_PERMISSIONS_STR]),
   ];
   appendPermissions(collected, fromUser);
 
   const userRoles = toStringArray(
-    user?.['https://simuhire.com/roles'] ?? (user?.roles as unknown),
+    normalizedUser?.[CUSTOM_CLAIM_ROLES] ?? (normalizedUser?.roles as unknown),
   );
   appendPermissions(collected, rolesToPermissions(userRoles));
 
   if (collected.size > 0) return Array.from(collected);
 
   const claims = decodeJwt(accessToken);
-  const tokenCustom = toStringArray(
-    claims?.['https://simuhire.com/permissions'],
-  );
+  const tokenCustom = toStringArray(claims?.[CUSTOM_CLAIM_PERMISSIONS]);
   appendPermissions(collected, tokenCustom);
   appendPermissions(collected, toStringArray(claims?.permissions));
   appendPermissions(
     collected,
-    parsePermissionsString(claims?.['https://simuhire.com/permissions_str']),
+    parsePermissionsString(claims?.[CUSTOM_CLAIM_PERMISSIONS_STR]),
   );
   appendPermissions(
     collected,
     rolesToPermissions(
-      toStringArray(claims?.['https://simuhire.com/roles'] ?? claims?.roles),
+      toStringArray(claims?.[CUSTOM_CLAIM_ROLES] ?? claims?.roles),
     ),
   );
 
@@ -98,7 +134,8 @@ export function hasPermission(perms: string[], required: string) {
 }
 
 export function getUserEmail(user?: Claims | null): string | null {
-  const customEmail = user?.['https://simuhire.com/email'];
+  const normalized = normalizeUserClaims(user);
+  const customEmail = normalized?.[CUSTOM_CLAIM_EMAIL];
   if (typeof customEmail === 'string' && customEmail.trim()) {
     return customEmail.trim();
   }

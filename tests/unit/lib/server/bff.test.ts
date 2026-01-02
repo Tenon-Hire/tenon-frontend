@@ -57,30 +57,32 @@ import {
   parseUpstreamBody,
 } from '@/lib/server/bff';
 
-const originalEnv = process.env.BACKEND_BASE_URL;
+const originalEnv = process.env.TENON_BACKEND_BASE_URL;
 
 jest.mock('@/lib/auth0', () => ({
   auth0: {
     getSession: jest.fn(),
   },
   getAccessToken: jest.fn(),
+  getSessionNormalized: jest.fn(),
 }));
 
-const { auth0, getAccessToken } = jest.requireMock('@/lib/auth0');
+const { getAccessToken, getSessionNormalized } =
+  jest.requireMock('@/lib/auth0');
 
 describe('bff helpers', () => {
   beforeEach(() => {
     jest.resetAllMocks();
-    process.env.BACKEND_BASE_URL = 'http://api.test';
+    process.env.TENON_BACKEND_BASE_URL = 'http://api.test';
   });
 
   afterAll(() => {
-    process.env.BACKEND_BASE_URL = originalEnv;
+    process.env.TENON_BACKEND_BASE_URL = originalEnv;
   });
 
   describe('getBackendBaseUrl', () => {
     it('strips trailing api segment and slashes', () => {
-      process.env.BACKEND_BASE_URL = 'http://api.test/api///';
+      process.env.TENON_BACKEND_BASE_URL = 'http://api.test/api///';
       expect(getBackendBaseUrl()).toBe('http://api.test');
     });
   });
@@ -120,7 +122,7 @@ describe('bff helpers', () => {
 
   describe('ensureAccessToken', () => {
     it('returns 401 NextResponse when no session', async () => {
-      auth0.getSession.mockResolvedValue(null);
+      getSessionNormalized.mockResolvedValue(null);
 
       const res = await ensureAccessToken();
       expect(res).toBeInstanceOf(NextResponse);
@@ -130,7 +132,7 @@ describe('bff helpers', () => {
     });
 
     it('returns 401 NextResponse when token retrieval fails', async () => {
-      auth0.getSession.mockResolvedValue({ user: { sub: 'x' } });
+      getSessionNormalized.mockResolvedValue({ user: { sub: 'x' } });
       getAccessToken.mockRejectedValue(new Error('boom'));
 
       const res = await ensureAccessToken();
@@ -143,7 +145,7 @@ describe('bff helpers', () => {
     });
 
     it('returns access token payload when session and token available', async () => {
-      auth0.getSession.mockResolvedValue({ user: { sub: 'x' } });
+      getSessionNormalized.mockResolvedValue({ user: { sub: 'x' } });
       getAccessToken.mockResolvedValue('token-123');
 
       const res = await ensureAccessToken();
@@ -153,7 +155,7 @@ describe('bff helpers', () => {
 
   describe('forwardJson', () => {
     it('proxies request to backend with auth header and returns upstream body/status', async () => {
-      process.env.BACKEND_BASE_URL = 'http://backend.example.com';
+      process.env.TENON_BACKEND_BASE_URL = 'http://backend.example.com';
       const fetchMock = jest.fn().mockResolvedValue(
         new Response(JSON.stringify({ ok: true }), {
           status: 201,
@@ -188,7 +190,7 @@ describe('bff helpers', () => {
   });
 
   it('withAuthGuard short-circuits when auth is missing', async () => {
-    auth0.getSession.mockResolvedValue(null);
+    getSessionNormalized.mockResolvedValue(null);
     const { withAuthGuard } = await import('@/lib/server/bff');
 
     const result = await withAuthGuard(async () =>

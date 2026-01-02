@@ -6,6 +6,7 @@ import {
   loadCodeDraft,
   saveCodeDraft,
 } from '@/lib/storage/candidateDrafts';
+import { BRAND_SLUG } from '@/lib/brand';
 
 describe('codeDrafts helpers', () => {
   beforeEach(() => {
@@ -79,12 +80,12 @@ describe('codeDrafts helpers', () => {
   it('clears only code drafts when running clearAllCodeDrafts', () => {
     sessionStorage.setItem(codeDraftKey(1, 1), 'draft-one');
     sessionStorage.setItem(codeDraftKey('user', 'task'), 'draft-two');
-    sessionStorage.setItem('simuhire:other:key', 'keep');
+    sessionStorage.setItem(`${BRAND_SLUG}:other:key`, 'keep');
 
     clearAllCodeDrafts();
 
     expect(sessionStorage.getItem(codeDraftKey(1, 1))).toBeNull();
     expect(sessionStorage.getItem(codeDraftKey('user', 'task'))).toBeNull();
-    expect(sessionStorage.getItem('simuhire:other:key')).toBe('keep');
+    expect(sessionStorage.getItem(`${BRAND_SLUG}:other:key`)).toBe('keep');
   });
 });

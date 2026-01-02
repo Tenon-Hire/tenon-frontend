@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import LoginPage from '@/features/auth/LoginPage';
+import { BRAND_NAME } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Recruiter login | SimuHire',
-  description: 'Sign in to access your SimuHire dashboard.',
+  title: `Recruiter login | ${BRAND_NAME}`,
+  description: `Sign in to access your ${BRAND_NAME} dashboard.`,
 };
 
 type SearchParams = Promise<{ returnTo?: string; mode?: string }>;

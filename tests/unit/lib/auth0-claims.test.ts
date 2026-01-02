@@ -2,7 +2,14 @@ import {
   extractPermissions,
   getUserEmail,
   hasPermission,
+  normalizeUserClaims,
 } from '@/lib/auth0-claims';
+import {
+  CUSTOM_CLAIM_EMAIL,
+  CUSTOM_CLAIM_PERMISSIONS,
+  CUSTOM_CLAIM_PERMISSIONS_STR,
+  CUSTOM_CLAIM_ROLES,
+} from '@/lib/brand';
 
 describe('auth0-claims helpers', () => {
   it('extracts permissions from user object', () => {
@@ -20,7 +27,7 @@ describe('auth0-claims helpers', () => {
       Buffer.from(
         JSON.stringify({
           permissions: ['recruiter:access'],
-          'https://simuhire.com/permissions': ['candidate:access'],
+          [CUSTOM_CLAIM_PERMISSIONS]: ['candidate:access'],
         }),
       ).toString('base64') +
       '.sig';
@@ -32,7 +39,7 @@ describe('auth0-claims helpers', () => {
 
   it('maps custom permissions claim on user', () => {
     const perms = extractPermissions(
-      { 'https://simuhire.com/permissions': ['recruiter:access'] },
+      { [CUSTOM_CLAIM_PERMISSIONS]: ['recruiter:access'] },
       null,
     );
     expect(perms).toEqual(['recruiter:access']);
@@ -41,8 +48,7 @@ describe('auth0-claims helpers', () => {
   it('supports permissions string claim', () => {
     const perms = extractPermissions(
       {
-        'https://simuhire.com/permissions_str':
-          'recruiter:access, candidate:access',
+        [CUSTOM_CLAIM_PERMISSIONS_STR]: 'recruiter:access, candidate:access',
       },
       null,
     );
@@ -53,7 +59,7 @@ describe('auth0-claims helpers', () => {
 
   it('maps roles to permissions when permissions are missing', () => {
     const perms = extractPermissions(
-      { 'https://simuhire.com/roles': ['RecruiterAdmin'] },
+      { [CUSTOM_CLAIM_ROLES]: ['RecruiterAdmin'] },
       null,
     );
     expect(perms).toContain('recruiter:access');
@@ -65,7 +71,7 @@ describe('auth0-claims helpers', () => {
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
       Buffer.from(
         JSON.stringify({
-          'https://simuhire.com/roles': ['CandidateUser'],
+          [CUSTOM_CLAIM_ROLES]: ['CandidateUser'],
         }),
       ).toString('base64') +
       '.sig';
@@ -74,12 +80,25 @@ describe('auth0-claims helpers', () => {
   });
 
   it('prefers custom email claim then email', () => {
-    expect(
-      getUserEmail({ 'https://simuhire.com/email': 'custom@example.com' }),
-    ).toBe('custom@example.com');
+    expect(getUserEmail({ [CUSTOM_CLAIM_EMAIL]: 'custom@example.com' })).toBe(
+      'custom@example.com',
+    );
     expect(getUserEmail({ email: 'user@example.com' })).toBe(
       'user@example.com',
     );
     expect(getUserEmail(null)).toBeNull();
+  });
+
+  it('normalizes namespaced claims into standard fields', () => {
+    const normalized = normalizeUserClaims({
+      permissions: [],
+      [CUSTOM_CLAIM_PERMISSIONS]: ['candidate:access'],
+      [CUSTOM_CLAIM_ROLES]: ['Recruiter'],
+      [CUSTOM_CLAIM_EMAIL]: 'tenon@example.com',
+    });
+
+    expect(normalized.permissions).toEqual(['candidate:access']);
+    expect(normalized.roles).toEqual(['Recruiter']);
+    expect(normalized.email).toBe('tenon@example.com');
   });
 });

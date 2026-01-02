@@ -20,7 +20,7 @@ type RequestOptions = {
   cache?: RequestCache;
 };
 
-const DEFAULT_BASE_PATH = process.env.NEXT_PUBLIC_API_BASE_URL ?? '/api';
+const DEFAULT_BASE_PATH = process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api';
 
 function normalizeUrl(basePath: string, path: string): string {
   const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;

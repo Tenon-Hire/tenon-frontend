@@ -3,9 +3,10 @@ import {
   loadCodeDraft,
   saveCodeDraft,
 } from '@/lib/storage/candidateDrafts';
+import { BRAND_SLUG } from '@/lib/brand';
 
 function textDraftKey(taskId: number) {
-  return `simuhire:candidate:textDraft:${String(taskId)}`;
+  return `${BRAND_SLUG}:candidate:textDraft:${String(taskId)}`;
 }
 
 export function loadTextDraft(taskId: number): string {

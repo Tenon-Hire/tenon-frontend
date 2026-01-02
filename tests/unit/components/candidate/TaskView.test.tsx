@@ -6,6 +6,7 @@ import {
   saveCodeDraft,
   clearCodeDraft,
 } from '@/lib/storage/candidateDrafts';
+import { BRAND_SLUG } from '@/lib/brand';
 
 jest.mock('@/components/ui/CodeEditor', () => ({
   __esModule: true,
@@ -64,7 +65,10 @@ describe('TaskView', () => {
 
   it('loads and auto-saves text drafts', async () => {
     jest.useFakeTimers();
-    sessionStorage.setItem('simuhire:candidate:textDraft:5', 'Saved draft');
+    sessionStorage.setItem(
+      `${BRAND_SLUG}:candidate:textDraft:5`,
+      'Saved draft',
+    );
 
     render(
       <TaskView
@@ -85,7 +89,7 @@ describe('TaskView', () => {
       jest.advanceTimersByTime(400);
     });
 
-    expect(sessionStorage.getItem('simuhire:candidate:textDraft:5')).toBe(
+    expect(sessionStorage.getItem(`${BRAND_SLUG}:candidate:textDraft:5`)).toBe(
       'Updated draft',
     );
   });
@@ -116,7 +120,10 @@ describe('TaskView', () => {
   });
 
   it('submits trimmed text, shows progress, and clears draft', async () => {
-    sessionStorage.setItem('simuhire:candidate:textDraft:5', '  Needs trim  ');
+    sessionStorage.setItem(
+      `${BRAND_SLUG}:candidate:textDraft:5`,
+      '  Needs trim  ',
+    );
     const onSubmit = jest.fn().mockResolvedValue({
       submissionId: 1,
       taskId: 5,
@@ -152,7 +159,9 @@ describe('TaskView', () => {
       await screen.findByRole('button', { name: /submitted ✓/i }),
     ).toBeDisabled();
     expect(screen.getByText(/Progress: 1\/5/i)).toBeInTheDocument();
-    expect(sessionStorage.getItem('simuhire:candidate:textDraft:5')).toBeNull();
+    expect(
+      sessionStorage.getItem(`${BRAND_SLUG}:candidate:textDraft:5`),
+    ).toBeNull();
   });
 
   it('loads code drafts and auto-saves new code', async () => {
@@ -290,7 +299,7 @@ describe('TaskView', () => {
     const saveBtn = screen.getByRole('button', { name: /save draft/i });
     fireEvent.click(saveBtn);
 
-    expect(sessionStorage.getItem('simuhire:candidate:textDraft:5')).toBe(
+    expect(sessionStorage.getItem(`${BRAND_SLUG}:candidate:textDraft:5`)).toBe(
       'manual draft',
     );
     expect(screen.getByText(/Draft saved/)).toBeInTheDocument();

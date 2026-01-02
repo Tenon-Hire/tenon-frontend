@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { auth0, getAccessToken } from '@/lib/auth0';
+import { getAccessToken, getSessionNormalized } from '@/lib/auth0';
+import { BRAND_SLUG } from '@/lib/brand';
+
+export const UPSTREAM_HEADER = `x-${BRAND_SLUG}-upstream-status`;
 
 function stripTrailingApi(raw: string) {
   const trimmed = raw.replace(/\/+$/, '');
@@ -7,7 +10,7 @@ function stripTrailingApi(raw: string) {
 }
 
 export function getBackendBaseUrl(): string {
-  const raw = process.env.BACKEND_BASE_URL ?? 'http://localhost:8000';
+  const raw = process.env.TENON_BACKEND_BASE_URL ?? 'http://localhost:8000';
   return stripTrailingApi(raw);
 }
 
@@ -31,7 +34,7 @@ export async function parseUpstreamBody(res: Response): Promise<unknown> {
 export async function ensureAccessToken(): Promise<
   NextResponse | { accessToken: string }
 > {
-  const session = await auth0.getSession();
+  const session = await getSessionNormalized();
   if (!session) {
     return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
   }
@@ -79,7 +82,7 @@ export async function forwardJson(options: ForwardOptions) {
   const parsed = await parseUpstreamBody(upstream);
   return NextResponse.json(parsed, {
     status: upstream.status,
-    headers: { 'x-simuhire-upstream-status': String(upstream.status) },
+    headers: { [UPSTREAM_HEADER]: String(upstream.status) },
   });
 }
 

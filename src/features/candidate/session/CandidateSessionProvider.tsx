@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useReducer,
 } from 'react';
+import { BRAND_SLUG } from '@/lib/brand';
 
 type SimulationSummary = {
   title: string;
@@ -180,7 +181,7 @@ type Ctx = {
 
 const CandidateSessionContext = createContext<Ctx | null>(null);
 
-const STORAGE_KEY = 'simuhire:candidate_session_v1';
+const STORAGE_KEY = `${BRAND_SLUG}:candidate_session_v1`;
 
 type PersistedState = {
   inviteToken: string | null;

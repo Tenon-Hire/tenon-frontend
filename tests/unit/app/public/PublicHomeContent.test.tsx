@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import MarketingHomePage from '@/features/marketing/home/MarketingHomePage';
+import { BRAND_NAME } from '@/lib/brand';
 
 describe('PublicHomeContent', () => {
   it('shows signed-in state with user links', () => {
@@ -21,7 +22,7 @@ describe('PublicHomeContent', () => {
   it('shows signed-out state with auth entry points', () => {
     render(<MarketingHomePage />);
 
-    expect(screen.getByText('Welcome to SimuHire')).toBeInTheDocument();
+    expect(screen.getByText(`Welcome to ${BRAND_NAME}`)).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Recruiter login' }),
     ).toHaveAttribute(

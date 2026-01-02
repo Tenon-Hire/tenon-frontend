@@ -1,14 +1,20 @@
 import { Buffer } from 'buffer';
 import { Auth0Client } from '@auth0/nextjs-auth0/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { normalizeUserClaims } from '@/lib/auth0-claims';
+import {
+  CUSTOM_CLAIM_PERMISSIONS,
+  CUSTOM_CLAIM_PERMISSIONS_STR,
+  CUSTOM_CLAIM_ROLES,
+} from '@/lib/brand';
 
 function hasAuth0Env() {
   return Boolean(
-    process.env.AUTH0_SECRET &&
-    process.env.AUTH0_DOMAIN &&
-    process.env.AUTH0_CLIENT_ID &&
-    process.env.AUTH0_CLIENT_SECRET &&
-    process.env.APP_BASE_URL,
+    process.env.TENON_AUTH0_SECRET &&
+    process.env.TENON_AUTH0_DOMAIN &&
+    process.env.TENON_AUTH0_CLIENT_ID &&
+    process.env.TENON_AUTH0_CLIENT_SECRET &&
+    process.env.TENON_APP_BASE_URL,
   );
 }
 
@@ -67,20 +73,27 @@ function createClient() {
   };
 
   return new Auth0Client({
+    appBaseUrl: process.env.TENON_APP_BASE_URL,
+    domain: process.env.TENON_AUTH0_DOMAIN,
+    clientId: process.env.TENON_AUTH0_CLIENT_ID,
+    clientSecret: process.env.TENON_AUTH0_CLIENT_SECRET,
+    secret: process.env.TENON_AUTH0_SECRET,
     authorizationParameters: {
-      audience: process.env.AUTH0_AUDIENCE,
-      scope: process.env.AUTH0_SCOPE,
+      audience: process.env.TENON_AUTH0_AUDIENCE,
+      scope: process.env.TENON_AUTH0_SCOPE,
     },
     signInReturnToPath: '/dashboard',
     beforeSessionSaved: async (session, idToken) => {
-      const user = (session.user ?? {}) as Record<string, unknown>;
+      const user = normalizeUserClaims(
+        (session.user ?? {}) as Record<string, unknown>,
+      );
       const userPerms = [
-        ...toStringArray(user['https://simuhire.com/permissions']),
+        ...toStringArray(user[CUSTOM_CLAIM_PERMISSIONS]),
         ...toStringArray(user.permissions),
-        ...parsePermissionsString(user['https://simuhire.com/permissions_str']),
+        ...parsePermissionsString(user[CUSTOM_CLAIM_PERMISSIONS_STR]),
       ];
       const userRoles = toStringArray(
-        user['https://simuhire.com/roles'] ?? (user.roles as unknown),
+        user[CUSTOM_CLAIM_ROLES] ?? (user.roles as unknown),
       );
 
       const accessToken = normalizeAccessToken(
@@ -88,15 +101,12 @@ function createClient() {
       );
       const tokenClaims = decodeJwt(accessToken) ?? decodeJwt(idToken) ?? {};
       const tokenPerms = [
-        ...toStringArray(tokenClaims['https://simuhire.com/permissions']),
+        ...toStringArray(tokenClaims[CUSTOM_CLAIM_PERMISSIONS]),
         ...toStringArray(tokenClaims.permissions as unknown),
-        ...parsePermissionsString(
-          tokenClaims['https://simuhire.com/permissions_str'],
-        ),
+        ...parsePermissionsString(tokenClaims[CUSTOM_CLAIM_PERMISSIONS_STR]),
       ];
       const tokenRoles = toStringArray(
-        tokenClaims['https://simuhire.com/roles'] ??
-          (tokenClaims.roles as unknown),
+        tokenClaims[CUSTOM_CLAIM_ROLES] ?? (tokenClaims.roles as unknown),
       );
 
       const normalizedPerms =
@@ -109,20 +119,19 @@ function createClient() {
             ];
       const normalizedRoles = userRoles.length > 0 ? userRoles : tokenRoles;
 
+      const merged: Record<string, unknown> = {
+        ...user,
+        permissions:
+          normalizedPerms.length > 0 ? normalizedPerms : user.permissions,
+        roles: normalizedRoles.length > 0 ? normalizedRoles : user.roles,
+      };
       if (normalizedPerms.length > 0) {
-        session.user = {
-          ...session.user,
-          'https://simuhire.com/permissions': normalizedPerms,
-        };
+        merged[CUSTOM_CLAIM_PERMISSIONS] = normalizedPerms;
       }
-
       if (normalizedRoles.length > 0) {
-        session.user = {
-          ...session.user,
-          'https://simuhire.com/roles': normalizedRoles,
-        };
+        merged[CUSTOM_CLAIM_ROLES] = normalizedRoles;
       }
-
+      session.user = merged as typeof session.user;
       return session;
     },
   });
@@ -148,4 +157,24 @@ export const getAccessToken = async () => {
   }
 
   return tokenResult.token;
+};
+
+export const getSessionNormalized = async (
+  request?: NextRequest,
+): Promise<
+  | (Awaited<ReturnType<typeof auth0.getSession>> & {
+      user?: Record<string, unknown>;
+    })
+  | null
+> => {
+  const session = request
+    ? await auth0.getSession(request)
+    : await auth0.getSession();
+  if (!session?.user) return session;
+  return {
+    ...session,
+    user: normalizeUserClaims(
+      session.user as Record<string, unknown>,
+    ) as typeof session.user,
+  };
 };

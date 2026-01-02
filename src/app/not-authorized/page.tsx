@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { BRAND_NAME } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Not authorized | SimuHire',
+  title: `Not authorized | ${BRAND_NAME}`,
   description: 'You do not have access to this area.',
 };
 

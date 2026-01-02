@@ -2,10 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import { ReactNode } from 'react';
 import './globals.css';
 import AppShell from '@/features/shared/layout/AppShell';
+import { BRAND_NAME } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'SimuHire',
-  description: 'Simulation-based hiring platform',
+  title: BRAND_NAME,
+  description: `${BRAND_NAME} simulation-based hiring platform`,
 };
 
 export const viewport: Viewport = {

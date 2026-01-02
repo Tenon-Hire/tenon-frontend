@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { forwardJson, withAuthGuard } from '@/lib/server/bff';
+import { BRAND_SLUG } from '@/lib/brand';
+
+export const BFF_HEADER = `x-${BRAND_SLUG}-bff`;
 
 type ForwardArgs = {
   path: string;
@@ -19,7 +22,7 @@ export async function forwardWithAuth({
   );
 
   if (resp instanceof NextResponse && tag) {
-    resp.headers.set('x-simuhire-bff', tag);
+    resp.headers.set(BFF_HEADER, tag);
   }
 
   return resp;

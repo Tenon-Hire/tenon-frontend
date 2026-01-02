@@ -1,5 +1,6 @@
 import Button from '@/components/ui/Button';
 import LoginLink from '@/features/auth/LoginLink';
+import { BRAND_NAME } from '@/lib/brand';
 import { AuthPageLayout } from './AuthPageLayout';
 import type { LoginMode } from './authPaths';
 
@@ -20,18 +21,18 @@ export default function LoginPage({
     : 'Recruiter login';
   const subtitle = isCandidate
     ? 'Sign in to verify your invite and continue.'
-    : 'Sign in to access your SimuHire dashboard.';
+    : `Sign in to access your ${BRAND_NAME} dashboard.`;
   const missingCandidateConnection =
     process.env.NODE_ENV !== 'production' &&
     isCandidate &&
-    !(process.env.NEXT_PUBLIC_AUTH0_CANDIDATE_CONNECTION ?? '').trim();
+    !(process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION ?? '').trim();
 
   return (
     <AuthPageLayout title={title} subtitle={subtitle}>
       {missingCandidateConnection ? (
         <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">
-          Dev warning: set NEXT_PUBLIC_AUTH0_CANDIDATE_CONNECTION so candidate
-          logins use the correct Auth0 connection.
+          Dev warning: set NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION so
+          candidate logins use the correct Auth0 connection.
         </div>
       ) : null}
       <p className="mb-4 text-sm text-gray-600">

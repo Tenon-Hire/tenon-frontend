@@ -3,6 +3,7 @@ import React from 'react';
 import AppShell from '@/features/shared/layout/AppShell';
 import { AppHeader } from '@/features/shared/layout/AppHeader';
 import { AppNav } from '@/features/shared/layout/AppNav';
+import { BRAND_NAME } from '@/lib/brand';
 
 jest.mock('next/link', () => {
   function LinkMock({
@@ -26,9 +27,11 @@ jest.mock('@/lib/auth0', () => ({
   auth0: {
     getSession: jest.fn(),
   },
+  getSessionNormalized: jest.fn(),
 }));
 
-const { auth0 } = jest.requireMock('@/lib/auth0');
+const getSessionNormalizedMock = jest.requireMock('@/lib/auth0')
+  .getSessionNormalized as jest.Mock;
 
 describe('shared layout components', () => {
   afterEach(() => {
@@ -46,17 +49,17 @@ describe('shared layout components', () => {
 
   it('renders AppHeader with brand and nested nav', () => {
     render(<AppHeader isAuthed />);
-    expect(screen.getByText('SimuHire')).toBeInTheDocument();
+    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument();
     expect(screen.getByText(/Dashboard/)).toBeInTheDocument();
   });
 
   it('renders AppShell with auth-driven header and children', async () => {
-    auth0.getSession.mockResolvedValue({ user: { sub: 'abc' } });
+    getSessionNormalizedMock.mockResolvedValue({ user: { sub: 'abc' } });
     const element = await AppShell({ children: <div data-testid="child" /> });
     render(element);
 
     expect(screen.getByTestId('child')).toBeInTheDocument();
-    expect(screen.getByText('SimuHire')).toBeInTheDocument();
+    expect(screen.getByText(BRAND_NAME)).toBeInTheDocument();
     expect(screen.getByText(/Dashboard/)).toBeInTheDocument();
   });
 });
