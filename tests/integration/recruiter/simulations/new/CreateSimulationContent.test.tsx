@@ -94,9 +94,7 @@ describe('SimulationCreatePage', () => {
       screen.getByRole('button', { name: /Create simulation/i }),
     );
 
-    await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/auth/login'),
-    );
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/login'));
   });
 
   it('surfaces backend error message on failure', async () => {
