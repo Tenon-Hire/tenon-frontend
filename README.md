@@ -5,14 +5,14 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 ## Architecture
 
 - App Router under `src/app`; shared shell in `src/features/shared/layout/AppShell`.
-- Auth0 for recruiter portal; `src/middleware.ts` redirects unauthenticated recruiters to `/auth/login?returnTo=…`.
+- Auth0 for recruiter portal; `src/proxy.ts` enforces access and redirects unauthenticated recruiters to `/login?returnTo=…`.
 - Candidate portal talks directly to the backend with token headers. Recruiter portal uses Next API routes as a BFF that forward to the backend with Auth0 access tokens.
 - Styling via Tailwind utility classes and shared UI primitives in `src/components/ui`.
 
 ## Routes
 
 - Marketing: `/` (`src/app/(marketing)/page.tsx`).
-- Auth: `/auth/login`, `/auth/logout`.
+- Auth: `/login` (UI), `/auth/login` (Auth0 start), `/auth/logout`.
 - Candidate portal: `/candidate/session/[token]` (wrapped by `CandidateSessionProvider` layout; `/candidate-sessions/[token]` redirects here).
 - Candidate dashboard: `/candidate/dashboard`.
 - Recruiter portal: `/dashboard`, `/dashboard/simulations/new`, `/dashboard/simulations/[id]`, `/dashboard/simulations/[id]/candidates/[candidateSessionId]`.

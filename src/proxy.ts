@@ -5,6 +5,7 @@ import { extractPermissions, hasPermission } from './lib/auth0-claims';
 
 const PUBLIC_PATHS = new Set([
   '/',
+  '/login',
   '/auth/login',
   '/auth/logout',
   '/not-authorized',
@@ -23,7 +24,7 @@ function redirect(to: string, request: NextRequest) {
 }
 
 function buildLoginRedirect(request: NextRequest) {
-  const url = new URL('/auth/login', request.url);
+  const url = new URL('/login', request.url);
   url.searchParams.set(
     'returnTo',
     request.nextUrl.pathname + request.nextUrl.search,
@@ -88,7 +89,7 @@ function normalizeAccessToken(raw: unknown): string | null {
   return null;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const authResponse = await auth0.middleware(request);
@@ -113,7 +114,7 @@ export async function middleware(request: NextRequest) {
     return redirectNotAuthorized('candidate', request);
   }
 
-  if (pathname === '/' || pathname === '/auth/login') {
+  if (pathname === '/') {
     if (hasPermission(permissions, 'recruiter:access')) {
       return redirect('/dashboard', request);
     }

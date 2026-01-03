@@ -88,7 +88,7 @@ export default function SimulationCreatePage() {
       const status = err.status ?? err.response?.status;
 
       if (status === 401) {
-        router.push('/auth/login');
+        router.push('/login');
         return;
       }
 

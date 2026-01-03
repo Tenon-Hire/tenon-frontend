@@ -1,4 +1,4 @@
-import { middleware } from '@/middleware';
+import { proxy } from '@/proxy';
 import { CUSTOM_CLAIM_PERMISSIONS, CUSTOM_CLAIM_ROLES } from '@/lib/brand';
 
 jest.mock('next/server', () => {
@@ -52,7 +52,7 @@ const mockAuth0 = jest.requireMock('@/lib/auth0').auth0 as {
 const getSessionNormalizedMock = jest.requireMock('@/lib/auth0')
   .getSessionNormalized as jest.Mock;
 
-describe('middleware', () => {
+describe('proxy', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getSessionNormalizedMock.mockReset();
@@ -65,11 +65,11 @@ describe('middleware', () => {
     const req = new NextRequest(
       new URL('http://localhost/candidate/dashboard'),
     );
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
-      'http://localhost/auth/login?returnTo=%2Fcandidate%2Fdashboard&mode=candidate',
+      'http://localhost/login?returnTo=%2Fcandidate%2Fdashboard&mode=candidate',
     );
   });
 
@@ -77,11 +77,11 @@ describe('middleware', () => {
     getSessionNormalizedMock.mockResolvedValue(null);
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
-      'http://localhost/auth/login?returnTo=%2Fdashboard&mode=recruiter',
+      'http://localhost/login?returnTo=%2Fdashboard&mode=recruiter',
     );
   });
 
@@ -93,7 +93,7 @@ describe('middleware', () => {
     const req = new NextRequest(
       new URL('http://localhost/candidate/session/tok_123'),
     );
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.headers.get('location')).toBeNull();
     expect(mockAuth0.middleware).toHaveBeenCalled();
@@ -105,7 +105,7 @@ describe('middleware', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
@@ -119,7 +119,7 @@ describe('middleware', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(200);
   });
@@ -133,7 +133,7 @@ describe('middleware', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(200);
   });
@@ -144,7 +144,7 @@ describe('middleware', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toContain('/not-authorized');
@@ -156,7 +156,7 @@ describe('middleware', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(200);
   });
@@ -169,7 +169,7 @@ describe('middleware', () => {
     const req = new NextRequest(
       new URL('http://localhost/candidate/dashboard'),
     );
-    const res = await middleware(req);
+    const res = await proxy(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
