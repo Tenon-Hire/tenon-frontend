@@ -61,19 +61,20 @@ const originalEnv = process.env.TENON_BACKEND_BASE_URL;
 
 jest.mock('@/lib/auth0', () => ({
   auth0: {
-    getSession: jest.fn(),
+    getAccessToken: jest.fn(),
   },
-  getAccessToken: jest.fn(),
-  getSessionNormalized: jest.fn(),
 }));
 
-const { getAccessToken, getSessionNormalized } =
-  jest.requireMock('@/lib/auth0');
+const mockAuth0 = jest.requireMock('@/lib/auth0').auth0 as unknown as {
+  getAccessToken: jest.Mock;
+};
+const { getAccessToken } = mockAuth0;
 
 describe('bff helpers', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     process.env.TENON_BACKEND_BASE_URL = 'http://api.test';
+    (global.fetch as jest.Mock | undefined) = jest.fn();
   });
 
   afterAll(() => {
@@ -121,35 +122,41 @@ describe('bff helpers', () => {
   });
 
   describe('ensureAccessToken', () => {
-    it('returns 401 NextResponse when no session', async () => {
-      getSessionNormalized.mockResolvedValue(null);
-
-      const res = await ensureAccessToken();
-      expect(res).toBeInstanceOf(NextResponse);
-      if (res instanceof NextResponse) {
-        expect(res.status).toBe(401);
-      }
-    });
-
     it('returns 401 NextResponse when token retrieval fails', async () => {
-      getSessionNormalized.mockResolvedValue({ user: { sub: 'x' } });
       getAccessToken.mockRejectedValue(new Error('boom'));
+      (global.fetch as jest.Mock).mockResolvedValue(
+        new Response(null, { status: 404 }),
+      );
 
       const res = await ensureAccessToken();
+      expect(getAccessToken).toHaveBeenCalledTimes(2);
       expect(res).toBeInstanceOf(NextResponse);
       if (res instanceof NextResponse) {
         expect(res.status).toBe(401);
         const body = await res.json();
-        expect(body).toMatchObject({ message: 'Not authenticated' });
+        expect(body).toEqual({ error: 'unauthorized' });
       }
     });
 
-    it('returns access token payload when session and token available', async () => {
-      getSessionNormalized.mockResolvedValue({ user: { sub: 'x' } });
-      getAccessToken.mockResolvedValue('token-123');
+    it('returns access token payload when refresh attempt succeeds', async () => {
+      getAccessToken
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ token: 'token-123' });
+      (global.fetch as jest.Mock).mockResolvedValue(
+        new Response(null, { status: 404 }),
+      );
 
       const res = await ensureAccessToken();
+      expect(getAccessToken).toHaveBeenCalledTimes(2);
+      expect(getAccessToken).toHaveBeenLastCalledWith({ refresh: true });
       expect(res).toEqual({ accessToken: 'token-123' });
+    });
+
+    it('returns access token payload when first call succeeds', async () => {
+      getAccessToken.mockResolvedValue('token-abc');
+
+      const res = await ensureAccessToken();
+      expect(res).toEqual({ accessToken: 'token-abc' });
     });
   });
 
@@ -190,7 +197,10 @@ describe('bff helpers', () => {
   });
 
   it('withAuthGuard short-circuits when auth is missing', async () => {
-    getSessionNormalized.mockResolvedValue(null);
+    getAccessToken.mockRejectedValue(new Error('missing'));
+    (global.fetch as jest.Mock).mockResolvedValue(
+      new Response(null, { status: 404 }),
+    );
     const { withAuthGuard } = await import('@/lib/server/bff');
 
     const result = await withAuthGuard(async () =>

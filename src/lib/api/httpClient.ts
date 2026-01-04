@@ -24,7 +24,10 @@ type RequestOptions = {
 
 const DEFAULT_BASE_PATH = process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api';
 const NOT_AUTHORIZED_PATH = '/not-authorized';
+const BFF_PREFIX = '/api';
 let authRedirectInFlight = false;
+const retryingRequests = new Set<string>();
+const RETRY_DELAY_MS = 200;
 
 function normalizeUrl(basePath: string, path: string): string {
   const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
@@ -107,19 +110,85 @@ function safeAssign(url: string) {
   } catch {}
 }
 
-function handleAuthRedirect(status: number) {
-  if (typeof window === 'undefined') return;
+function isBrowser() {
+  return typeof window !== 'undefined';
+}
+
+function buildRetryKey(url: string, method: string) {
+  return `${method.toUpperCase()}::${url}`;
+}
+
+function isBffUrl(targetUrl: string): boolean {
+  try {
+    const parsed = new URL(
+      targetUrl,
+      isBrowser() && typeof window.location?.origin === 'string'
+        ? window.location.origin
+        : 'http://localhost',
+    );
+    return (
+      parsed.pathname === BFF_PREFIX ||
+      parsed.pathname.startsWith(`${BFF_PREFIX}/`)
+    );
+  } catch {
+    return targetUrl.startsWith(BFF_PREFIX);
+  }
+}
+
+async function primeSessionForRetry() {
+  if (!isBrowser()) return;
+  try {
+    await fetch('/auth/access-token', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+  } catch {}
+
+  await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+}
+
+async function retryBffRequest(
+  fetchRequest: () => Promise<Response>,
+  retryKey: string,
+) {
+  retryingRequests.add(retryKey);
+  try {
+    await primeSessionForRetry();
+    return await fetchRequest();
+  } finally {
+    retryingRequests.delete(retryKey);
+  }
+}
+
+function shouldRetryBff401(
+  status: number,
+  targetUrl: string,
+  retryKey: string,
+  alreadyRetried: boolean,
+) {
+  return (
+    status === 401 &&
+    !alreadyRetried &&
+    isBrowser() &&
+    !retryingRequests.has(retryKey) &&
+    isBffUrl(targetUrl)
+  );
+}
+
+function redirectForAuthError(status: number, returnTo?: string) {
+  if (!isBrowser()) return;
   if (status !== 401 && status !== 403) return;
   if (authRedirectInFlight) return;
 
   const pathname = window.location.pathname || '/';
   const search = window.location.search || '';
   const mode = loginModeForPath(pathname);
-  const returnTo = `${pathname}${search}`;
+  const resolvedReturnTo = returnTo ?? `${pathname}${search}`;
   const target =
     status === 401
-      ? buildLoginHref(returnTo, mode)
-      : buildNotAuthorizedHref(returnTo, mode);
+      ? buildLoginHref(resolvedReturnTo, mode)
+      : buildNotAuthorizedHref(resolvedReturnTo, mode);
 
   authRedirectInFlight = true;
   safeAssign(target);
@@ -127,6 +196,7 @@ function handleAuthRedirect(status: number) {
 
 export function __resetAuthRedirectForTests() {
   authRedirectInFlight = false;
+  retryingRequests.clear();
 }
 
 async function request<TResponse = unknown>(
@@ -140,6 +210,7 @@ async function request<TResponse = unknown>(
   clientOptions: ApiClientOptions = {},
 ): Promise<TResponse> {
   const basePath = clientOptions.basePath ?? DEFAULT_BASE_PATH;
+  const targetUrl = normalizeUrl(basePath, path);
 
   const headers: Record<string, string> = {
     ...(options.headers ?? {}),
@@ -167,21 +238,33 @@ async function request<TResponse = unknown>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(normalizeUrl(basePath, path), {
-    method: options.method ?? 'GET',
-    headers,
-    body:
-      options.body === undefined
-        ? undefined
-        : isFormData
-          ? (options.body as FormData)
-          : JSON.stringify(options.body),
-    credentials: 'include',
-    cache: options.cache,
-  });
+  const method = options.method ?? 'GET';
+  const retryKey = buildRetryKey(targetUrl, method);
+
+  const fetchRequest = () =>
+    fetch(targetUrl, {
+      method,
+      headers,
+      body:
+        options.body === undefined
+          ? undefined
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
+      credentials: 'include',
+      cache: options.cache,
+    });
+
+  let response = await fetchRequest();
+  let retried = false;
+
+  if (shouldRetryBff401(response.status, targetUrl, retryKey, retried)) {
+    response = await retryBffRequest(fetchRequest, retryKey);
+    retried = true;
+  }
 
   if (!response.ok) {
-    handleAuthRedirect(response.status);
+    redirectForAuthError(response.status);
     const errorBody = await parseResponseBody(response);
     const error: ApiErrorShape = {
       message: extractErrorMessage(errorBody, response.status),

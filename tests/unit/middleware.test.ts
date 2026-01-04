@@ -1,7 +1,24 @@
-import { proxy, config as proxyConfig } from '@/proxy';
+import { middleware, config as middlewareConfig } from '@/middleware';
 import { CUSTOM_CLAIM_PERMISSIONS, CUSTOM_CLAIM_ROLES } from '@/lib/brand';
 
 jest.mock('next/server', () => {
+  const createCookies = () => {
+    const jar: { name: string; value: string }[] = [];
+    return {
+      getAll: () => jar,
+      set: (
+        input: string | { name: string; value: string },
+        value?: string,
+      ) => {
+        if (typeof input === 'string') {
+          jar.push({ name: input, value: value ?? '' });
+          return;
+        }
+        jar.push({ name: input.name, value: input.value });
+      },
+    };
+  };
+
   const buildHeaders = (location?: string) => {
     const store = new Map<string, string>();
     if (location) store.set('location', location);
@@ -11,16 +28,16 @@ jest.mock('next/server', () => {
     };
   };
 
+  const buildResponse = (status: number, location?: string) => ({
+    status,
+    headers: buildHeaders(location),
+    cookies: createCookies(),
+  });
+
   return {
     NextResponse: {
-      redirect: (url: URL | string) => ({
-        status: 307,
-        headers: buildHeaders(url.toString()),
-      }),
-      next: () => ({
-        status: 200,
-        headers: buildHeaders(),
-      }),
+      redirect: (url: URL | string) => buildResponse(307, url.toString()),
+      next: () => buildResponse(200),
     },
     NextRequest: class {
       url: string;
@@ -52,7 +69,7 @@ const mockAuth0 = jest.requireMock('@/lib/auth0').auth0 as {
 const getSessionNormalizedMock = jest.requireMock('@/lib/auth0')
   .getSessionNormalized as jest.Mock;
 
-describe('proxy', () => {
+describe('middleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getSessionNormalizedMock.mockReset();
@@ -60,9 +77,27 @@ describe('proxy', () => {
   });
 
   it('enables auth middleware on API routes via matcher config', () => {
-    expect(proxyConfig.matcher).toContain(
+    expect(middlewareConfig.matcher).toContain(
       '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
     );
+  });
+
+  it('passes through API routes while still running auth middleware', async () => {
+    const req = new NextRequest(new URL('http://localhost/api/simulations'));
+    const res = await middleware(req);
+
+    expect(mockAuth0.middleware).toHaveBeenCalledWith(req);
+    expect(res?.status).toBe(200);
+    expect(getSessionNormalizedMock).not.toHaveBeenCalled();
+  });
+
+  it('does not block /auth routes', async () => {
+    const req = new NextRequest(new URL('http://localhost/auth/login'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+    expect(res?.headers.get('location')).toBeNull();
+    expect(mockAuth0.middleware).toHaveBeenCalledWith(req);
   });
 
   it('redirects unauthenticated candidate dashboard to login with mode', async () => {
@@ -71,7 +106,7 @@ describe('proxy', () => {
     const req = new NextRequest(
       new URL('http://localhost/candidate/dashboard'),
     );
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
@@ -83,7 +118,7 @@ describe('proxy', () => {
     getSessionNormalizedMock.mockResolvedValue(null);
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
@@ -99,7 +134,7 @@ describe('proxy', () => {
     const req = new NextRequest(
       new URL('http://localhost/candidate/session/tok_123'),
     );
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.headers.get('location')).toBeNull();
     expect(mockAuth0.middleware).toHaveBeenCalled();
@@ -111,7 +146,7 @@ describe('proxy', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
@@ -125,7 +160,7 @@ describe('proxy', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(200);
   });
@@ -139,7 +174,7 @@ describe('proxy', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(200);
   });
@@ -150,7 +185,7 @@ describe('proxy', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toContain('/not-authorized');
@@ -162,7 +197,7 @@ describe('proxy', () => {
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(200);
   });
@@ -175,7 +210,7 @@ describe('proxy', () => {
     const req = new NextRequest(
       new URL('http://localhost/candidate/dashboard'),
     );
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
@@ -191,7 +226,7 @@ describe('proxy', () => {
     const req = new NextRequest(
       new URL('http://localhost/dashboard/simulations/new'),
     );
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(200);
     expect(res?.headers.get('location')).toBeNull();
@@ -203,7 +238,7 @@ describe('proxy', () => {
     const req = new NextRequest(
       new URL('http://localhost/dashboard/simulations/new'),
     );
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(
@@ -219,7 +254,7 @@ describe('proxy', () => {
     const req = new NextRequest(
       new URL('http://localhost/dashboard/simulations/new'),
     );
-    const res = await proxy(req);
+    const res = await middleware(req);
 
     expect(res?.status).toBe(307);
     expect(res?.headers.get('location')).toBe(

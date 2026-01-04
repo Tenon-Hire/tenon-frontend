@@ -1,12 +1,11 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-import { auth0, getSessionNormalized } from './lib/auth0';
-import { extractPermissions, hasPermission } from './lib/auth0-claims';
+import { NextResponse, type NextRequest } from 'next/server';
+import { auth0, getSessionNormalized } from '@/lib/auth0';
+import { extractPermissions, hasPermission } from '@/lib/auth0-claims';
 import {
   loginModeForPath,
   requiresCandidateAccess,
   requiresRecruiterAccess,
-} from './lib/auth/access';
+} from '@/lib/auth/access';
 
 const PUBLIC_PATHS = new Set([
   '/',
@@ -16,7 +15,7 @@ const PUBLIC_PATHS = new Set([
   '/not-authorized',
 ]);
 const PUBLIC_PREFIXES = ['/auth'];
-const IS_PROD = process.env.NODE_ENV === 'production';
+const API_PREFIX = '/api';
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.has(pathname)) return true;
@@ -37,12 +36,6 @@ function buildLoginRedirect(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
-function shouldSkipAuth(pathname: string) {
-  if (pathname.startsWith('/api/')) return true;
-  if (isPublicPath(pathname)) return true;
-  return false;
-}
-
 function redirectNotAuthorized(
   mode: 'candidate' | 'recruiter',
   request: NextRequest,
@@ -56,20 +49,6 @@ function redirectNotAuthorized(
   return NextResponse.redirect(url);
 }
 
-async function optionalAccessToken(): Promise<string | null> {
-  try {
-    const tokenResult = await auth0.getAccessToken();
-    if (!tokenResult) return null;
-    if (typeof tokenResult === 'string') return tokenResult;
-    const maybeToken =
-      (tokenResult as { token?: string }).token ??
-      (tokenResult as { accessToken?: string }).accessToken;
-    return typeof maybeToken === 'string' ? maybeToken : null;
-  } catch {
-    return null;
-  }
-}
-
 function normalizeAccessToken(raw: unknown): string | null {
   if (typeof raw === 'string') return raw;
   if (raw && typeof raw === 'object') {
@@ -81,45 +60,64 @@ function normalizeAccessToken(raw: unknown): string | null {
   return null;
 }
 
-export async function proxy(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+function mergeAuthCookies(
+  target: NextResponse,
+  authResponse: NextResponse,
+): NextResponse {
+  authResponse.cookies.getAll().forEach((cookie) => {
+    target.cookies.set(cookie);
+  });
+  return target;
+}
 
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
   const authResponse = await auth0.middleware(request);
 
-  if (shouldSkipAuth(pathname)) return authResponse;
+  if (pathname.startsWith(API_PREFIX)) {
+    return authResponse;
+  }
+
+  if (isPublicPath(pathname)) {
+    return authResponse;
+  }
 
   const session = await getSessionNormalized(request);
 
-  if (IS_PROD) {
-    // eslint-disable-next-line no-console
-    console.info(
-      `[auth-proxy] path=${pathname} session=${session ? 'present' : 'missing'}`,
-    );
+  if (!session) {
+    return mergeAuthCookies(buildLoginRedirect(request), authResponse);
   }
 
-  if (!session) return buildLoginRedirect(request);
-
-  const fallbackAccessToken =
-    normalizeAccessToken((session as { accessToken?: unknown }).accessToken) ??
-    (await optionalAccessToken());
+  const fallbackAccessToken = normalizeAccessToken(
+    (session as { accessToken?: unknown }).accessToken,
+  );
   const permissions = extractPermissions(session.user, fallbackAccessToken);
   const wantsRecruiter = requiresRecruiterAccess(pathname);
   const wantsCandidate = requiresCandidateAccess(pathname);
 
   if (wantsRecruiter && !hasPermission(permissions, 'recruiter:access')) {
-    return redirectNotAuthorized('recruiter', request);
+    return mergeAuthCookies(
+      redirectNotAuthorized('recruiter', request),
+      authResponse,
+    );
   }
 
   if (wantsCandidate && !hasPermission(permissions, 'candidate:access')) {
-    return redirectNotAuthorized('candidate', request);
+    return mergeAuthCookies(
+      redirectNotAuthorized('candidate', request),
+      authResponse,
+    );
   }
 
   if (pathname === '/') {
     if (hasPermission(permissions, 'recruiter:access')) {
-      return redirect('/dashboard', request);
+      return mergeAuthCookies(redirect('/dashboard', request), authResponse);
     }
     if (hasPermission(permissions, 'candidate:access')) {
-      return redirect('/candidate/dashboard', request);
+      return mergeAuthCookies(
+        redirect('/candidate/dashboard', request),
+        authResponse,
+      );
     }
   }
 

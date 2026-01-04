@@ -276,10 +276,55 @@ describe('apiClient request helpers', () => {
     expect(failure.error?.message).toBe('bad');
   });
 
-  it('redirects 401 responses to auth login with returnTo + mode', async () => {
-    fetchMock.mockResolvedValue(
-      responseHelpers.jsonResponse({ message: 'Not authorized' }, 401),
-    );
+  it('retries a 401 from BFF once before redirecting', async () => {
+    let apiCalls = 0;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = responseHelpers.getRequestUrl(input);
+      if (url === '/auth/access-token') {
+        return Promise.resolve(responseHelpers.jsonResponse({ ok: true }));
+      }
+
+      if (url === '/api/simulations') {
+        apiCalls += 1;
+        if (apiCalls === 1) {
+          return Promise.resolve(
+            responseHelpers.jsonResponse({ message: 'Not authorized' }, 401),
+          );
+        }
+        return Promise.resolve(
+          responseHelpers.jsonResponse({ message: 'ok' }, 200),
+        );
+      }
+
+      throw new Error(`Unexpected fetch to ${url}`);
+    });
+
+    const { assign, restore } = mockLocation('/dashboard/simulations/new', '');
+
+    const resp = await apiClient.post('/simulations');
+
+    expect(apiCalls).toBe(2);
+    expect(resp).toEqual({ message: 'ok' });
+    expect(assign).not.toHaveBeenCalled();
+
+    restore();
+  });
+
+  it('redirects to login when 401 persists after retry', async () => {
+    let apiCalls = 0;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = responseHelpers.getRequestUrl(input);
+      if (url === '/auth/access-token') {
+        return Promise.resolve(responseHelpers.jsonResponse({ ok: true }));
+      }
+      if (url === '/api/simulations') {
+        apiCalls += 1;
+        return Promise.resolve(
+          responseHelpers.jsonResponse({ message: 'Not authorized' }, 401),
+        );
+      }
+      throw new Error(`Unexpected fetch to ${url}`);
+    });
 
     const { assign, restore } = mockLocation(
       '/candidate/dashboard',
@@ -290,17 +335,14 @@ describe('apiClient request helpers', () => {
       status: 401,
     });
 
+    expect(apiCalls).toBe(2);
     expect(assign).toHaveBeenCalledWith(
       '/auth/login?returnTo=%2Fcandidate%2Fdashboard%3Ftab%3Dopen&mode=candidate',
     );
-    expect(assign).not.toHaveBeenCalledWith(
-      expect.stringContaining('/auth/logout'),
-    );
-
     restore();
   });
 
-  it('redirects 403 responses to not-authorized with context', async () => {
+  it('redirects 403 responses to not-authorized without retrying', async () => {
     fetchMock.mockResolvedValue(
       responseHelpers.jsonResponse({ message: 'Forbidden' }, 403),
     );
@@ -311,6 +353,7 @@ describe('apiClient request helpers', () => {
       status: 403,
     });
 
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(assign).toHaveBeenCalledWith(
       '/not-authorized?mode=recruiter&returnTo=%2Fdashboard',
     );
@@ -318,32 +361,21 @@ describe('apiClient request helpers', () => {
     restore();
   });
 
-  it('redirects recruiter pages using current path as returnTo', async () => {
-    fetchMock.mockResolvedValue(
-      responseHelpers.jsonResponse({ message: 'Not authorized' }, 401),
-    );
-
-    const { assign, restore } = mockLocation('/dashboard/simulations/new', '');
-
-    await expect(apiClient.get('/simulations')).rejects.toMatchObject({
-      status: 401,
-    });
-
-    expect(assign).toHaveBeenCalledWith(
-      '/auth/login?returnTo=%2Fdashboard%2Fsimulations%2Fnew&mode=recruiter',
-    );
-
-    restore();
-  });
-
   it('debounces multiple auth redirects to a single navigation', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        responseHelpers.jsonResponse({ message: 'Nope' }, 401),
-      )
-      .mockResolvedValueOnce(
-        responseHelpers.jsonResponse({ message: 'Still nope' }, 401),
-      );
+    let apiCalls = 0;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = responseHelpers.getRequestUrl(input);
+      if (url === '/auth/access-token') {
+        return Promise.resolve(responseHelpers.jsonResponse({ ok: true }));
+      }
+      if (url === '/api/simulations') {
+        apiCalls += 1;
+        return Promise.resolve(
+          responseHelpers.jsonResponse({ message: `Nope ${apiCalls}` }, 401),
+        );
+      }
+      throw new Error(`Unexpected fetch to ${url}`);
+    });
 
     const { assign, restore } = mockLocation('/dashboard');
 
@@ -354,6 +386,7 @@ describe('apiClient request helpers', () => {
       status: 401,
     });
 
+    expect(apiCalls).toBe(4); // two API attempts for each request
     expect(assign).toHaveBeenCalledTimes(1);
 
     restore();

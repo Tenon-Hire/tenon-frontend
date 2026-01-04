@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { getAccessToken, getSessionNormalized } from '@/lib/auth0';
+import { NextResponse, type NextRequest } from 'next/server';
+import { requireApiAccessToken } from '@/lib/server/apiAuth';
 import { BRAND_SLUG } from '@/lib/brand';
 
 export const UPSTREAM_HEADER = `x-${BRAND_SLUG}-upstream-status`;
@@ -31,25 +31,7 @@ export async function parseUpstreamBody(res: Response): Promise<unknown> {
   }
 }
 
-export async function ensureAccessToken(): Promise<
-  NextResponse | { accessToken: string }
-> {
-  const session = await getSessionNormalized();
-  if (!session) {
-    return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
-  }
-
-  try {
-    const accessToken = await getAccessToken();
-    return { accessToken };
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Unknown token error';
-    return NextResponse.json(
-      { message: 'Not authenticated', details: msg },
-      { status: 401 },
-    );
-  }
-}
+export const ensureAccessToken = requireApiAccessToken;
 
 type ForwardOptions = {
   path: string;
@@ -88,8 +70,9 @@ export async function forwardJson(options: ForwardOptions) {
 
 export async function withAuthGuard(
   handler: (accessToken: string) => Promise<NextResponse>,
+  request?: NextRequest,
 ) {
-  const auth = await ensureAccessToken();
+  const auth = await ensureAccessToken(request);
   if (auth instanceof NextResponse) return auth;
   return handler(auth.accessToken);
 }
