@@ -8,80 +8,17 @@ import {
   CUSTOM_CLAIM_ROLES,
 } from '@/lib/brand';
 
-type Auth0EnvConfig = {
-  secret?: string;
-  domain?: string;
-  clientId?: string;
-  clientSecret?: string;
-  appBaseUrl?: string;
-  audience?: string;
-  scope?: string;
-};
-
-function trimOrUndefined(value?: string | null) {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
-}
-
-function issuerToDomain(issuer?: string) {
-  if (!issuer) return undefined;
-  try {
-    const url = new URL(issuer);
-    return url.host || undefined;
-  } catch {
-    return issuer.replace(/^https?:\/\//, '').replace(/\/+$/, '') || undefined;
-  }
-}
-
-function loadAuth0Env(): Auth0EnvConfig {
-  const issuerRaw =
-    trimOrUndefined(process.env.TENON_AUTH0_ISSUER_BASE_URL) ??
-    trimOrUndefined(process.env.AUTH0_ISSUER_BASE_URL);
-  const appBaseUrl =
-    trimOrUndefined(process.env.TENON_APP_BASE_URL) ??
-    trimOrUndefined(process.env.AUTH0_BASE_URL) ??
-    trimOrUndefined(process.env.APP_BASE_URL);
-
-  const domainFromIssuer = issuerToDomain(issuerRaw);
-
-  return {
-    secret:
-      trimOrUndefined(process.env.TENON_AUTH0_SECRET) ??
-      trimOrUndefined(process.env.AUTH0_SECRET),
-    domain:
-      trimOrUndefined(process.env.TENON_AUTH0_DOMAIN) ??
-      domainFromIssuer ??
-      trimOrUndefined(process.env.AUTH0_DOMAIN),
-    clientId:
-      trimOrUndefined(process.env.TENON_AUTH0_CLIENT_ID) ??
-      trimOrUndefined(process.env.AUTH0_CLIENT_ID),
-    clientSecret:
-      trimOrUndefined(process.env.TENON_AUTH0_CLIENT_SECRET) ??
-      trimOrUndefined(process.env.AUTH0_CLIENT_SECRET),
-    appBaseUrl,
-    audience:
-      trimOrUndefined(process.env.TENON_AUTH0_AUDIENCE) ??
-      trimOrUndefined(process.env.AUTH0_AUDIENCE),
-    scope:
-      trimOrUndefined(process.env.TENON_AUTH0_SCOPE) ??
-      trimOrUndefined(process.env.AUTH0_SCOPE),
-  };
-}
-
-const auth0Env = loadAuth0Env();
-
-function hasAuth0Env(config: Auth0EnvConfig) {
+function hasAuth0Env() {
   return Boolean(
-    config.secret &&
-    config.domain &&
-    config.clientId &&
-    config.clientSecret &&
-    config.appBaseUrl,
+    process.env.TENON_AUTH0_SECRET &&
+    process.env.TENON_AUTH0_DOMAIN &&
+    process.env.TENON_AUTH0_CLIENT_ID &&
+    process.env.TENON_AUTH0_CLIENT_SECRET &&
+    process.env.TENON_APP_BASE_URL,
   );
 }
 
-function createClient(config: Auth0EnvConfig) {
+function createClient() {
   const toStringArray = (value: unknown): string[] =>
     Array.isArray(value)
       ? (value.filter((v) => typeof v === 'string') as string[])
@@ -136,14 +73,14 @@ function createClient(config: Auth0EnvConfig) {
   };
 
   return new Auth0Client({
-    appBaseUrl: config.appBaseUrl,
-    domain: config.domain,
-    clientId: config.clientId,
-    clientSecret: config.clientSecret,
-    secret: config.secret,
+    appBaseUrl: process.env.TENON_APP_BASE_URL,
+    domain: process.env.TENON_AUTH0_DOMAIN,
+    clientId: process.env.TENON_AUTH0_CLIENT_ID,
+    clientSecret: process.env.TENON_AUTH0_CLIENT_SECRET,
+    secret: process.env.TENON_AUTH0_SECRET,
     authorizationParameters: {
-      audience: config.audience,
-      scope: config.scope || 'openid profile email',
+      audience: process.env.TENON_AUTH0_AUDIENCE,
+      scope: process.env.TENON_AUTH0_SCOPE,
     },
     signInReturnToPath: '/dashboard',
     beforeSessionSaved: async (session, idToken) => {
@@ -200,8 +137,8 @@ function createClient(config: Auth0EnvConfig) {
   });
 }
 
-export const auth0 = hasAuth0Env(auth0Env)
-  ? createClient(auth0Env)
+export const auth0 = hasAuth0Env()
+  ? createClient()
   : {
       middleware: async () => NextResponse.next(),
       getSession: async () => null,
@@ -214,17 +151,12 @@ export const auth0 = hasAuth0Env(auth0Env)
 
 export const getAccessToken = async () => {
   const tokenResult = await auth0.getAccessToken();
-  const token =
-    typeof tokenResult === 'string'
-      ? tokenResult
-      : ((tokenResult as { token?: unknown })?.token ??
-        (tokenResult as { accessToken?: unknown })?.accessToken);
 
-  if (typeof token !== 'string' || !token) {
+  if (!tokenResult?.token) {
     throw new Error('No access token found in Auth0 session');
   }
 
-  return token;
+  return tokenResult.token;
 };
 
 export const getSessionNormalized = async (

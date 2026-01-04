@@ -1,9 +1,4 @@
-import {
-  apiClient,
-  login,
-  safeRequest,
-  __resetAuthRedirectForTests,
-} from '@/lib/api/httpClient';
+import { apiClient, login, safeRequest } from '@/lib/api/httpClient';
 import { getAuthToken } from '@/lib/auth';
 import { responseHelpers } from '../../setup';
 
@@ -14,35 +9,10 @@ jest.mock('@/lib/auth', () => ({
 const fetchMock = jest.fn();
 
 describe('apiClient request helpers', () => {
-  const originalLocation = window.location;
-
-  function mockLocation(pathname: string, search = '') {
-    const assign = jest.fn();
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: {
-        ...originalLocation,
-        pathname,
-        search,
-        assign,
-      } as Location,
-    });
-    return { assign, restore: () => mockRestoreLocation() };
-  }
-
-  function mockRestoreLocation() {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
-  }
-
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
     (getAuthToken as jest.Mock).mockReset();
-    mockRestoreLocation();
-    __resetAuthRedirectForTests();
   });
 
   it('attaches auth token by default and normalizes URLs', async () => {
@@ -274,136 +244,5 @@ describe('apiClient request helpers', () => {
     expect(failure.data).toBeNull();
     expect(failure.error).toBeInstanceOf(Error);
     expect(failure.error?.message).toBe('bad');
-  });
-
-  it('retries a 401 from BFF once before redirecting', async () => {
-    let apiCalls = 0;
-    fetchMock.mockImplementation((input: RequestInfo | URL) => {
-      const url = responseHelpers.getRequestUrl(input);
-      if (url === '/auth/access-token') {
-        return Promise.resolve(responseHelpers.jsonResponse({ ok: true }));
-      }
-
-      if (url === '/api/simulations') {
-        apiCalls += 1;
-        if (apiCalls === 1) {
-          return Promise.resolve(
-            responseHelpers.jsonResponse({ message: 'Not authorized' }, 401),
-          );
-        }
-        return Promise.resolve(
-          responseHelpers.jsonResponse({ message: 'ok' }, 200),
-        );
-      }
-
-      throw new Error(`Unexpected fetch to ${url}`);
-    });
-
-    const { assign, restore } = mockLocation('/dashboard/simulations/new', '');
-
-    const resp = await apiClient.post('/simulations');
-
-    expect(apiCalls).toBe(2);
-    expect(resp).toEqual({ message: 'ok' });
-    expect(assign).not.toHaveBeenCalled();
-
-    restore();
-  });
-
-  it('redirects to login when 401 persists after retry', async () => {
-    let apiCalls = 0;
-    fetchMock.mockImplementation((input: RequestInfo | URL) => {
-      const url = responseHelpers.getRequestUrl(input);
-      if (url === '/auth/access-token') {
-        return Promise.resolve(responseHelpers.jsonResponse({ ok: true }));
-      }
-      if (url === '/api/simulations') {
-        apiCalls += 1;
-        return Promise.resolve(
-          responseHelpers.jsonResponse({ message: 'Not authorized' }, 401),
-        );
-      }
-      throw new Error(`Unexpected fetch to ${url}`);
-    });
-
-    const { assign, restore } = mockLocation(
-      '/candidate/dashboard',
-      '?tab=open',
-    );
-
-    await expect(apiClient.get('/simulations')).rejects.toMatchObject({
-      status: 401,
-    });
-
-    expect(apiCalls).toBe(2);
-    expect(assign).toHaveBeenCalledWith(
-      '/auth/login?returnTo=%2Fcandidate%2Fdashboard%3Ftab%3Dopen&mode=candidate',
-    );
-    restore();
-  });
-
-  it('redirects 403 responses to not-authorized without retrying', async () => {
-    fetchMock.mockResolvedValue(
-      responseHelpers.jsonResponse({ message: 'Forbidden' }, 403),
-    );
-
-    const { assign, restore } = mockLocation('/dashboard');
-
-    await expect(apiClient.post('/simulations')).rejects.toMatchObject({
-      status: 403,
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(assign).toHaveBeenCalledWith(
-      '/not-authorized?mode=recruiter&returnTo=%2Fdashboard',
-    );
-
-    restore();
-  });
-
-  it('debounces multiple auth redirects to a single navigation', async () => {
-    let apiCalls = 0;
-    fetchMock.mockImplementation((input: RequestInfo | URL) => {
-      const url = responseHelpers.getRequestUrl(input);
-      if (url === '/auth/access-token') {
-        return Promise.resolve(responseHelpers.jsonResponse({ ok: true }));
-      }
-      if (url === '/api/simulations') {
-        apiCalls += 1;
-        return Promise.resolve(
-          responseHelpers.jsonResponse({ message: `Nope ${apiCalls}` }, 401),
-        );
-      }
-      throw new Error(`Unexpected fetch to ${url}`);
-    });
-
-    const { assign, restore } = mockLocation('/dashboard');
-
-    await expect(apiClient.get('/simulations')).rejects.toMatchObject({
-      status: 401,
-    });
-    await expect(apiClient.post('/simulations')).rejects.toMatchObject({
-      status: 401,
-    });
-
-    expect(apiCalls).toBe(4); // two API attempts for each request
-    expect(assign).toHaveBeenCalledTimes(1);
-
-    restore();
-  });
-
-  it('is a no-op for redirects when window is unavailable (SSR/RSC)', async () => {
-    const globalAny = global as unknown as { window?: unknown };
-    const realWindow = globalAny.window;
-    delete globalAny.window;
-
-    fetchMock.mockResolvedValue(
-      responseHelpers.jsonResponse({ message: 'Not authorized' }, 401),
-    );
-
-    await expect(apiClient.get('/simulations')).rejects.toMatchObject({
-      status: 401,
-    });
-    globalAny.window = realWindow;
   });
 });

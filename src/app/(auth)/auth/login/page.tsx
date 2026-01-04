@@ -3,8 +3,8 @@ import LoginPage from '@/features/auth/LoginPage';
 import { BRAND_NAME } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: `Sign in | ${BRAND_NAME}`,
-  description: `Sign in to access your ${BRAND_NAME} account.`,
+  title: `Recruiter login | ${BRAND_NAME}`,
+  description: `Sign in to access your ${BRAND_NAME} dashboard.`,
 };
 
 type SearchParams = Promise<{ returnTo?: string; mode?: string }>;

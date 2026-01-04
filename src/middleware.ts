@@ -1,21 +1,17 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { auth0, getSessionNormalized } from '@/lib/auth0';
-import { extractPermissions, hasPermission } from '@/lib/auth0-claims';
-import {
-  loginModeForPath,
-  requiresCandidateAccess,
-  requiresRecruiterAccess,
-} from '@/lib/auth/access';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { auth0, getSessionNormalized } from './lib/auth0';
+import { extractPermissions, hasPermission } from './lib/auth0-claims';
 
 const PUBLIC_PATHS = new Set([
   '/',
-  '/login',
   '/auth/login',
   '/auth/logout',
   '/not-authorized',
 ]);
 const PUBLIC_PREFIXES = ['/auth'];
-const API_PREFIX = '/api';
+const CANDIDATE_PREFIXES = ['/candidate-sessions', '/candidate'];
+const RECRUITER_PREFIXES = ['/dashboard'];
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.has(pathname)) return true;
@@ -27,13 +23,31 @@ function redirect(to: string, request: NextRequest) {
 }
 
 function buildLoginRedirect(request: NextRequest) {
-  const url = new URL('/login', request.url);
+  const url = new URL('/auth/login', request.url);
   url.searchParams.set(
     'returnTo',
     request.nextUrl.pathname + request.nextUrl.search,
   );
   url.searchParams.set('mode', loginModeForPath(request.nextUrl.pathname));
   return NextResponse.redirect(url);
+}
+
+function shouldSkipAuth(pathname: string) {
+  if (pathname.startsWith('/api/')) return true;
+  if (isPublicPath(pathname)) return true;
+  return false;
+}
+
+function requiresCandidateAccess(pathname: string) {
+  return CANDIDATE_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function requiresRecruiterAccess(pathname: string) {
+  return RECRUITER_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function loginModeForPath(pathname: string): 'candidate' | 'recruiter' {
+  return requiresCandidateAccess(pathname) ? 'candidate' : 'recruiter';
 }
 
 function redirectNotAuthorized(
@@ -49,6 +63,20 @@ function redirectNotAuthorized(
   return NextResponse.redirect(url);
 }
 
+async function optionalAccessToken(): Promise<string | null> {
+  try {
+    const tokenResult = await auth0.getAccessToken();
+    if (!tokenResult) return null;
+    if (typeof tokenResult === 'string') return tokenResult;
+    const maybeToken =
+      (tokenResult as { token?: string }).token ??
+      (tokenResult as { accessToken?: string }).accessToken;
+    return typeof maybeToken === 'string' ? maybeToken : null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeAccessToken(raw: unknown): string | null {
   if (typeof raw === 'string') return raw;
   if (raw && typeof raw === 'object') {
@@ -60,64 +88,37 @@ function normalizeAccessToken(raw: unknown): string | null {
   return null;
 }
 
-function mergeAuthCookies(
-  target: NextResponse,
-  authResponse: NextResponse,
-): NextResponse {
-  authResponse.cookies.getAll().forEach((cookie) => {
-    target.cookies.set(cookie);
-  });
-  return target;
-}
-
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
   const authResponse = await auth0.middleware(request);
 
-  if (pathname.startsWith(API_PREFIX)) {
-    return authResponse;
-  }
-
-  if (isPublicPath(pathname)) {
-    return authResponse;
-  }
+  if (shouldSkipAuth(pathname)) return authResponse;
 
   const session = await getSessionNormalized(request);
+  if (!session) return buildLoginRedirect(request);
 
-  if (!session) {
-    return mergeAuthCookies(buildLoginRedirect(request), authResponse);
-  }
-
-  const fallbackAccessToken = normalizeAccessToken(
-    (session as { accessToken?: unknown }).accessToken,
-  );
+  const fallbackAccessToken =
+    normalizeAccessToken((session as { accessToken?: unknown }).accessToken) ??
+    (await optionalAccessToken());
   const permissions = extractPermissions(session.user, fallbackAccessToken);
   const wantsRecruiter = requiresRecruiterAccess(pathname);
   const wantsCandidate = requiresCandidateAccess(pathname);
 
   if (wantsRecruiter && !hasPermission(permissions, 'recruiter:access')) {
-    return mergeAuthCookies(
-      redirectNotAuthorized('recruiter', request),
-      authResponse,
-    );
+    return redirectNotAuthorized('recruiter', request);
   }
 
   if (wantsCandidate && !hasPermission(permissions, 'candidate:access')) {
-    return mergeAuthCookies(
-      redirectNotAuthorized('candidate', request),
-      authResponse,
-    );
+    return redirectNotAuthorized('candidate', request);
   }
 
-  if (pathname === '/') {
+  if (pathname === '/' || pathname === '/auth/login') {
     if (hasPermission(permissions, 'recruiter:access')) {
-      return mergeAuthCookies(redirect('/dashboard', request), authResponse);
+      return redirect('/dashboard', request);
     }
     if (hasPermission(permissions, 'candidate:access')) {
-      return mergeAuthCookies(
-        redirect('/candidate/dashboard', request),
-        authResponse,
-      );
+      return redirect('/candidate/dashboard', request);
     }
   }
 
@@ -126,6 +127,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };

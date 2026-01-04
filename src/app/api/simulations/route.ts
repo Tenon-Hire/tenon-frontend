@@ -1,21 +1,17 @@
-import { NextRequest } from 'next/server';
 import { forwardWithAuth, errorResponse } from '@/app/api/utils';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     return await forwardWithAuth({
       path: '/api/simulations',
       tag: 'simulations-list',
-      request: req,
     });
   } catch (e: unknown) {
     return errorResponse(e);
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const body = (await req.json()) as unknown;
 
@@ -25,7 +21,6 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body,
       tag: 'simulations-create',
-      request: req,
     });
   } catch (e: unknown) {
     return errorResponse(e);

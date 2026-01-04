@@ -1,16 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSessionNormalized } from '@/lib/auth0';
 import { extractPermissions } from '@/lib/auth0-claims';
 import { CUSTOM_CLAIM_ROLES } from '@/lib/brand';
 
-export const dynamic = 'force-dynamic';
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ message: 'Not found' }, { status: 404 });
   }
 
-  const session = await getSessionNormalized(req);
+  const session = await getSessionNormalized();
   if (!session) {
     return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
   }

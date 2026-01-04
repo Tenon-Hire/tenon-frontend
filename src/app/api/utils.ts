@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { forwardJson, withAuthGuard } from '@/lib/server/bff';
 import { BRAND_SLUG } from '@/lib/brand';
 
@@ -11,16 +11,14 @@ type ForwardArgs = {
   body?: unknown;
   cache?: RequestCache;
   tag?: string;
-  request?: NextRequest;
 };
 
 export async function forwardWithAuth({
   tag,
   ...args
 }: ForwardArgs): Promise<NextResponse> {
-  const resp = await withAuthGuard(
-    (accessToken) => forwardJson({ ...args, accessToken }),
-    args.request,
+  const resp = await withAuthGuard((accessToken) =>
+    forwardJson({ ...args, accessToken }),
   );
 
   if (resp instanceof NextResponse && tag) {
