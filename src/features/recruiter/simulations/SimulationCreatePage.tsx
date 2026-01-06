@@ -76,19 +76,32 @@ export default function SimulationCreatePage() {
     try {
       const res = await createSimulation(payload);
 
-      if (!res.id) {
-        setErrors({ form: 'Simulation created but no id was returned.' });
+      if (!res.ok || !res.id) {
+        const fallback = !res.ok
+          ? 'Unable to create simulation right now.'
+          : 'Simulation created but no id was returned.';
+        setErrors({ form: res.message ?? fallback });
         return;
       }
 
-      router.push('/dashboard');
-      router.refresh();
+      router.push(`/dashboard/simulations/${encodeURIComponent(res.id)}`);
     } catch (caught: unknown) {
       const err = caught as HttpishError;
       const status = err.status ?? err.response?.status;
 
+      const current = `${window.location.pathname}${window.location.search}`;
+
       if (status === 401) {
-        router.push('/auth/login');
+        window.location.assign(
+          `/auth/login?mode=recruiter&returnTo=${encodeURIComponent(current)}`,
+        );
+        return;
+      }
+
+      if (status === 403) {
+        window.location.assign(
+          `/not-authorized?mode=recruiter&returnTo=${encodeURIComponent(current)}`,
+        );
         return;
       }
 

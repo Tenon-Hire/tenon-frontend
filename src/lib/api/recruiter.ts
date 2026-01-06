@@ -24,6 +24,9 @@ export type CreateSimulationInput = {
 };
 
 export type CreateSimulationResponse = {
+  ok: boolean;
+  status?: number;
+  message?: string;
   id: string;
 };
 
@@ -106,10 +109,22 @@ export async function inviteCandidate(
 
 function normalizeCreateSimulationResponse(
   raw: unknown,
+  status: number,
 ): CreateSimulationResponse {
-  if (!isRecord(raw)) return { id: '' };
+  if (!isRecord(raw)) return { ok: false, status, id: '' };
   const id = getId(raw.id ?? raw.simulationId ?? raw.simulation_id);
-  return { id };
+  const message =
+    typeof raw.message === 'string'
+      ? raw.message
+      : typeof raw.detail === 'string'
+        ? raw.detail
+        : undefined;
+  return {
+    ok: status >= 200 && status < 300 && Boolean(id),
+    status,
+    id,
+    message,
+  };
 }
 
 export async function createSimulation(
@@ -120,16 +135,25 @@ export async function createSimulation(
   const safeTechStack = input.techStack.trim();
 
   if (!safeTitle || !safeRole || !safeTechStack) {
-    return { id: '' };
+    return {
+      id: '',
+      ok: false,
+      status: 400,
+      message: 'Missing required fields',
+    };
   }
 
-  const data = await apiClient.post<unknown>('/simulations', {
-    title: safeTitle,
-    role: safeRole,
-    techStack: safeTechStack,
-    seniority: input.seniority,
-    focus: input.focus?.trim() ? input.focus.trim() : undefined,
-  });
+  const data = await apiClient.post<unknown>(
+    '/simulations',
+    {
+      title: safeTitle,
+      role: safeRole,
+      techStack: safeTechStack,
+      seniority: input.seniority,
+      focus: input.focus?.trim() ? input.focus.trim() : undefined,
+    },
+    { cache: 'no-store' },
+  );
 
-  return normalizeCreateSimulationResponse(data);
+  return normalizeCreateSimulationResponse(data, 201);
 }

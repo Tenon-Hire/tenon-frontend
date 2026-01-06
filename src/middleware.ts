@@ -92,7 +92,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const authResponse = await auth0.middleware(request);
-
+  if (pathname.startsWith('/api/')) return authResponse;
   if (shouldSkipAuth(pathname)) return authResponse;
 
   const session = await getSessionNormalized(request);
@@ -127,6 +127,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };

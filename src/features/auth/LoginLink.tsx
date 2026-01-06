@@ -16,7 +16,7 @@ export default function LoginLink({
 }: LoginLinkProps) {
   const href = buildLoginHref(returnTo, mode);
   return (
-    <a href={href} className={className}>
+    <a href={href} className={className} data-nav="login-link" rel="noopener">
       {children}
     </a>
   );

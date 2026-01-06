@@ -10,6 +10,8 @@ jest.mock('@/lib/api/recruiter', () => ({
   createSimulation: jest.fn(),
 }));
 
+const assignSpy = jest.fn();
+
 const createSimulationMock = createSimulation as jest.MockedFunction<
   typeof createSimulation
 >;
@@ -17,6 +19,14 @@ const createSimulationMock = createSimulation as jest.MockedFunction<
 describe('SimulationCreatePage', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    assignSpy.mockReset();
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: {
+        ...window.location,
+        assign: assignSpy,
+      },
+    });
   });
 
   it('validates required fields before submitting', async () => {
@@ -37,9 +47,9 @@ describe('SimulationCreatePage', () => {
     expect(createSimulationMock).not.toHaveBeenCalled();
   });
 
-  it('creates simulation and redirects to dashboard', async () => {
+  it('creates simulation and redirects to detail page', async () => {
     const user = userEvent.setup();
-    createSimulationMock.mockResolvedValueOnce({ id: 'sim_123' });
+    createSimulationMock.mockResolvedValueOnce({ id: 'sim_123', ok: true });
 
     render(<SimulationCreatePage />);
 
@@ -64,13 +74,14 @@ describe('SimulationCreatePage', () => {
       });
     });
 
-    expect(routerMock.push).toHaveBeenCalledWith('/dashboard');
-    expect(routerMock.refresh).toHaveBeenCalled();
+    expect(routerMock.push).toHaveBeenCalledWith(
+      '/dashboard/simulations/sim_123',
+    );
   });
 
   it('shows form error when backend returns no id', async () => {
     const user = userEvent.setup();
-    createSimulationMock.mockResolvedValueOnce({ id: '' });
+    createSimulationMock.mockResolvedValueOnce({ id: '', ok: true });
 
     render(<SimulationCreatePage />);
 
@@ -95,7 +106,9 @@ describe('SimulationCreatePage', () => {
     );
 
     await waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/auth/login'),
+      expect(assignSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/login?mode=recruiter'),
+      ),
     );
   });
 

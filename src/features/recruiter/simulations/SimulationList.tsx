@@ -35,6 +35,7 @@ export function SimulationList({ simulations, onInvite }: SimulationListProps) {
             <div className="col-span-4">
               <Link
                 href={`/dashboard/simulations/${sim.id}`}
+                prefetch
                 className="font-medium text-blue-600 hover:underline"
               >
                 {sim.title}

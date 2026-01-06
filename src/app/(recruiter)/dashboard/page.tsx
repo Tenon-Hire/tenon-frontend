@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const session = await getSessionNormalized();
 
   if (!session) {
-    redirect('/auth/login');
+    redirect('/auth/login?mode=recruiter&returnTo=/dashboard');
   }
 
   const { profile, error } = await fetchRecruiterProfile();

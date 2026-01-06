@@ -188,7 +188,12 @@ describe('recruiterApi', () => {
         seniority: 'Mid',
       });
 
-      expect(result).toEqual({ id: '' });
+      expect(result).toEqual({
+        id: '',
+        ok: false,
+        status: 400,
+        message: 'Missing required fields',
+      });
       expect(mockedPost).not.toHaveBeenCalled();
     });
 
@@ -203,15 +208,24 @@ describe('recruiterApi', () => {
         focus: '  Focus ',
       });
 
-      expect(mockedPost).toHaveBeenCalledWith('/simulations', {
-        title: 'Backend Sim',
-        role: 'Backend',
-        techStack: 'Node',
-        seniority: 'Senior',
-        focus: 'Focus',
-      });
+      expect(mockedPost).toHaveBeenCalledWith(
+        '/simulations',
+        {
+          title: 'Backend Sim',
+          role: 'Backend',
+          techStack: 'Node',
+          seniority: 'Senior',
+          focus: 'Focus',
+        },
+        { cache: 'no-store' },
+      );
 
-      expect(result).toEqual({ id: 'sim_99' });
+      expect(result).toEqual({
+        id: 'sim_99',
+        ok: true,
+        status: 201,
+        message: undefined,
+      });
     });
 
     it('normalizes snake_case id responses', async () => {
@@ -224,7 +238,12 @@ describe('recruiterApi', () => {
         seniority: 'Junior',
       });
 
-      expect(result).toEqual({ id: '42' });
+      expect(result).toEqual({
+        id: '42',
+        ok: true,
+        status: 201,
+        message: undefined,
+      });
     });
 
     it('omits focus field when blank after trimming', async () => {
@@ -238,15 +257,24 @@ describe('recruiterApi', () => {
         focus: '   ',
       });
 
-      expect(mockedPost).toHaveBeenCalledWith('/simulations', {
-        title: 'Sim',
-        role: 'Backend',
-        techStack: 'Node',
-        seniority: 'Junior',
-        focus: undefined,
-      });
+      expect(mockedPost).toHaveBeenCalledWith(
+        '/simulations',
+        {
+          title: 'Sim',
+          role: 'Backend',
+          techStack: 'Node',
+          seniority: 'Junior',
+          focus: undefined,
+        },
+        { cache: 'no-store' },
+      );
 
-      expect(result).toEqual({ id: 'sim_200' });
+      expect(result).toEqual({
+        id: 'sim_200',
+        ok: true,
+        status: 201,
+        message: undefined,
+      });
     });
   });
 

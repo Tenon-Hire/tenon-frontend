@@ -18,6 +18,7 @@ export default async function NotAuthorizedPage({
   const rawMode = resolved?.mode;
   const mode =
     rawMode === 'candidate' || rawMode === 'recruiter' ? rawMode : undefined;
+  const returnTo = resolved?.returnTo;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
@@ -34,13 +35,15 @@ export default async function NotAuthorizedPage({
 
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/candidate/dashboard"
+          href={
+            returnTo && mode === 'candidate' ? returnTo : '/candidate/dashboard'
+          }
           className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
         >
           Go to Candidate Portal
         </Link>
         <Link
-          href="/dashboard"
+          href={returnTo && mode === 'recruiter' ? returnTo : '/dashboard'}
           className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
         >
           Go to Recruiter Dashboard
