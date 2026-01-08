@@ -158,26 +158,30 @@ export default function CandidateDashboardPage() {
 
   const loadInvites = useCallback(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    const run = async () => {
+      setLoading(true);
+      setError(null);
 
-    void fetchAccessToken()
-      .then(async (accessToken) => {
+      try {
+        const accessToken = await fetchAccessToken();
         if (!accessToken) {
           throw new Error('Not authenticated. Please sign in again.');
         }
         const data = await listCandidateInvites(accessToken);
         if (cancelled) return;
         setInvites(data);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         setError(toUserMessage(err, 'Unable to load your invites right now.'));
-      })
-      .finally(() => {
+      } finally {
         if (cancelled) return;
         setLoading(false);
-      });
+      }
+    };
+
+    Promise.resolve().then(() => {
+      void run();
+    });
 
     return () => {
       cancelled = true;
@@ -185,12 +189,8 @@ export default function CandidateDashboardPage() {
   }, []);
 
   useEffect(() => {
-    let cancel: (() => void) | undefined;
-    const timer = setTimeout(() => {
-      cancel = loadInvites();
-    }, 0);
+    const cancel = loadInvites();
     return () => {
-      clearTimeout(timer);
       cancel?.();
     };
   }, [loadInvites]);

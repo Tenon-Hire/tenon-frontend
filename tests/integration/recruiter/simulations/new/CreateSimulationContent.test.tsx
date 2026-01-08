@@ -49,7 +49,11 @@ describe('SimulationCreatePage', () => {
 
   it('creates simulation and redirects to detail page', async () => {
     const user = userEvent.setup();
-    createSimulationMock.mockResolvedValueOnce({ id: 'sim_123', ok: true });
+    createSimulationMock.mockResolvedValueOnce({
+      id: 'sim_123',
+      ok: true,
+      status: 201,
+    });
 
     render(<SimulationCreatePage />);
 
@@ -81,7 +85,11 @@ describe('SimulationCreatePage', () => {
 
   it('shows form error when backend returns no id', async () => {
     const user = userEvent.setup();
-    createSimulationMock.mockResolvedValueOnce({ id: '', ok: true });
+    createSimulationMock.mockResolvedValueOnce({
+      id: '',
+      ok: true,
+      status: 201,
+    });
 
     render(<SimulationCreatePage />);
 
@@ -96,7 +104,11 @@ describe('SimulationCreatePage', () => {
 
   it('redirects to login on 401 response', async () => {
     const user = userEvent.setup();
-    createSimulationMock.mockRejectedValueOnce({ status: 401 });
+    createSimulationMock.mockResolvedValueOnce({
+      id: '',
+      ok: false,
+      status: 401,
+    });
 
     render(<SimulationCreatePage />);
 
@@ -114,9 +126,11 @@ describe('SimulationCreatePage', () => {
 
   it('surfaces backend error message on failure', async () => {
     const user = userEvent.setup();
-    createSimulationMock.mockRejectedValueOnce({
+    createSimulationMock.mockResolvedValueOnce({
       status: 500,
-      body: { detail: 'Server exploded' },
+      id: '',
+      ok: false,
+      message: 'Server exploded',
     });
 
     render(<SimulationCreatePage />);

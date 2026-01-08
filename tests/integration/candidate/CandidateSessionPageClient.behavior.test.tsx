@@ -67,7 +67,7 @@ describe('CandidateSessionPage (auth flow)', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/candidate/session/valid-token/claim',
+      '/api/backend/candidate/session/valid-token/claim',
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -76,7 +76,7 @@ describe('CandidateSessionPage (auth flow)', () => {
       }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/candidate/session/321/current_task',
+      '/api/backend/candidate/session/321/current_task',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer auth-token',

@@ -4,6 +4,9 @@ import { extractPermissions } from '@/lib/auth0-claims';
 import { CUSTOM_CLAIM_ROLES } from '@/lib/brand';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function GET() {
   if (process.env.NODE_ENV === 'production') {

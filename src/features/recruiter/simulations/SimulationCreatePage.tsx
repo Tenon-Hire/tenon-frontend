@@ -10,16 +10,15 @@ import {
   createSimulation,
   type CreateSimulationInput,
 } from '@/lib/api/recruiter';
+import {
+  buildLoginUrl,
+  buildNotAuthorizedUrl,
+  buildReturnTo,
+} from '@/lib/auth/routing';
+import { toUserMessage } from '@/lib/utils/errors';
 
 type FieldErrors = Partial<Record<keyof CreateSimulationInput, string>> & {
   form?: string;
-};
-
-type HttpishError = {
-  status?: number;
-  response?: { status?: number };
-  body?: { message?: string; detail?: string };
-  message?: string;
 };
 
 const SENIORITY_OPTIONS: CreateSimulationInput['seniority'][] = [
@@ -77,41 +76,37 @@ export default function SimulationCreatePage() {
       const res = await createSimulation(payload);
 
       if (!res.ok || !res.id) {
-        const fallback = !res.ok
-          ? 'Unable to create simulation right now.'
-          : 'Simulation created but no id was returned.';
-        setErrors({ form: res.message ?? fallback });
+        const status = res.status ?? null;
+        const returnTo = buildReturnTo();
+
+        if (status === 401) {
+          window.location.assign(buildLoginUrl('recruiter', returnTo));
+          return;
+        }
+
+        if (status === 403) {
+          window.location.assign(buildNotAuthorizedUrl('recruiter', returnTo));
+          return;
+        }
+
+        const fallback = res.message
+          ? res.message
+          : !res.ok
+            ? 'Unable to create simulation right now.'
+            : 'Simulation created but no id was returned.';
+        setErrors({ form: fallback });
         return;
       }
 
       router.push(`/dashboard/simulations/${encodeURIComponent(res.id)}`);
     } catch (caught: unknown) {
-      const err = caught as HttpishError;
-      const status = err.status ?? err.response?.status;
-
-      const current = `${window.location.pathname}${window.location.search}`;
-
-      if (status === 401) {
-        window.location.assign(
-          `/auth/login?mode=recruiter&returnTo=${encodeURIComponent(current)}`,
-        );
-        return;
-      }
-
-      if (status === 403) {
-        window.location.assign(
-          `/not-authorized?mode=recruiter&returnTo=${encodeURIComponent(current)}`,
-        );
-        return;
-      }
-
-      const message =
-        err.body?.message ??
-        err.body?.detail ??
-        err.message ??
-        'Failed to create simulation. Please try again.';
-
-      setErrors({ form: message });
+      setErrors({
+        form: toUserMessage(
+          caught,
+          'Failed to create simulation. Please try again.',
+          { includeDetail: true },
+        ),
+      });
     } finally {
       setIsSubmitting(false);
     }

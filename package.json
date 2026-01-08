@@ -15,7 +15,8 @@
     "test:ci": "jest --ci --runInBand --coverage",
     "test:e2e": "npx playwright test -c tests/e2e/playwright.config.ts",
     "format": "prettier . --write",
-    "prettier:write": "prettier . --write"
+    "prettier:write": "prettier . --write",
+    "loadtest:dashboard": "node scripts/loadtest-dashboard.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.13.2",
@@ -24,7 +25,8 @@
     "monaco-editor": "^0.55.1",
     "next": "16.0.8",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "undici": "^7.18.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
@@ -38,6 +40,7 @@
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^8.49.0",
     "@typescript-eslint/parser": "^8.49.0",
+    "autocannon": "^8.0.0",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.8",

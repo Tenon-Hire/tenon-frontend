@@ -6,20 +6,31 @@ import { InviteCandidateModal } from '@/features/recruiter/invitations/InviteCan
 import { InviteToast } from '@/features/recruiter/invitations/InviteToast';
 import { ProfileCard } from './components/ProfileCard';
 import { useInviteCandidateFlow } from './hooks/useInviteCandidateFlow';
-import { useSimulations } from './hooks/useSimulations';
 import type { InviteModalState, RecruiterProfile } from './types';
+import type { SimulationListItem } from '@/types/recruiter';
 import { DashboardHeader } from './components/DashboardHeader';
 import { SimulationSection } from './components/SimulationSection';
 
 type DashboardViewProps = {
   profile: RecruiterProfile | null;
   error: string | null;
+  profileLoading?: boolean;
+  simulations: SimulationListItem[];
+  simulationsError: string | null;
+  simulationsLoading: boolean;
+  onRefresh: () => void;
 };
 
-export default function DashboardView({ profile, error }: DashboardViewProps) {
+export default function DashboardView({
+  profile,
+  error,
+  profileLoading = false,
+  simulations,
+  simulationsError,
+  simulationsLoading,
+  onRefresh,
+}: DashboardViewProps) {
   const router = useRouter();
-
-  const { simulations, loading, error: simError, refresh } = useSimulations();
 
   const [modal, setModal] = useState<InviteModalState>({
     open: false,
@@ -76,7 +87,7 @@ export default function DashboardView({ profile, error }: DashboardViewProps) {
       toastTimerRef.current = null;
     }, 6500);
 
-    void refresh();
+    void onRefresh();
   };
 
   return (
@@ -110,12 +121,21 @@ export default function DashboardView({ profile, error }: DashboardViewProps) {
         />
       ) : null}
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {!profile && !error && profileLoading ? (
+        <div className="rounded border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+          <div className="mt-2 h-3 w-48 animate-pulse rounded bg-gray-100" />
+        </div>
+      ) : null}
+
+      {!profile && !profileLoading && error ? (
+        <p className="text-sm text-red-600">{error}</p>
+      ) : null}
 
       <SimulationSection
         simulations={simulations}
-        loading={loading}
-        error={simError}
+        loading={simulationsLoading}
+        error={simulationsError}
         onInvite={(sim) => openInvite(sim.id, sim.title)}
       />
 

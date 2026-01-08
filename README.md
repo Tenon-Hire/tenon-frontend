@@ -6,7 +6,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 
 - App Router under `src/app`; shared shell in `src/features/shared/layout/AppShell`.
 - Auth0 for recruiter portal; `src/middleware.ts` redirects unauthenticated recruiters to `/auth/login?returnTo=…`.
-- Candidate portal talks directly to the backend with token headers. Recruiter portal uses Next API routes as a BFF that forward to the backend with Auth0 access tokens.
+- Candidate portal uses a same-origin proxy under `/api/backend/*` by default (can point to an absolute backend URL); requests carry bearer tokens. Recruiter portal uses Next API routes as a BFF that forward to the backend with Auth0 access tokens.
 - Styling via Tailwind utility classes and shared UI primitives in `src/components/ui`.
 
 ## Routes
@@ -16,7 +16,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - Candidate portal: `/candidate/session/[token]` (wrapped by `CandidateSessionProvider` layout; `/candidate-sessions/[token]` redirects here).
 - Candidate dashboard: `/candidate/dashboard`.
 - Recruiter portal: `/dashboard`, `/dashboard/simulations/new`, `/dashboard/simulations/[id]`, `/dashboard/simulations/[id]/candidates/[candidateSessionId]`.
-- API BFF: `/api/simulations` (+ `/[id]/invite`, `/[id]/candidates`), `/api/submissions`, `/api/submissions/[submissionId]`, `/api/dev/access-token`.
+- API BFF: `/api/simulations` (+ `/[id]/invite`, `/[id]/candidates`), `/api/submissions`, `/api/submissions/[submissionId]`, `/api/dev/access-token`, `/api/auth/me`, `/api/backend/[...path]` proxy to the upstream backend, `/api/health` passthrough.
 
 ## Key Components & Features
 
@@ -24,10 +24,11 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - Candidate flow: open invite → auto-claim via Auth0 → bootstrap session → intro → current task fetch → text/code editor with local drafts → submit → progress tracker; friendly error messages and retry hooks.
 - Recruiter dashboard: `DashboardView` + `SimulationList` with invite modal/toast, profile card, and navigation to creation/detail/submission views.
 - Submissions viewer: renders per-day artifacts (prompt, text, code with copy/download, testResults JSON if present).
+- API responses include correlation/debug headers: `x-tenon-request-id`, `x-tenon-bff`, `x-tenon-upstream-status` (+ per-upstream status on `/api/dashboard`) and `Server-Timing` (`bff;dur=…`, `retry;desc="count=N"`).
 
 ## API Integration
 
-- Base config: `NEXT_PUBLIC_TENON_API_BASE_URL` (defaults to `/api`); BFF targets `TENON_BACKEND_BASE_URL` (default `http://localhost:8000`).
+- Base config: `NEXT_PUBLIC_TENON_API_BASE_URL` (defaults to `/api/backend` proxy); BFF targets `TENON_BACKEND_BASE_URL` (default `http://localhost:8000`; `/api` suffix trimmed).
 - Candidate calls (direct with Auth0 bearer + `candidate:access`):
   - `GET /candidate/session/{token}` bootstrap/resolve invite.
   - `POST /candidate/session/{token}/claim` (no body) to claim invite with signed-in email.
@@ -51,6 +52,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
   - `NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION`
   - `NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION`
 - Optional helper script: `./runFrontend.sh` echoes `TENON_BACKEND_BASE_URL` then runs `npm run dev`.
+- Optional upstream connection pooling: set `TENON_USE_FETCH_DISPATCHER=1` to enable an undici `Agent` (Node 18+); disabled by default for serverless safety.
 
 ## Local Development
 
@@ -58,6 +60,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - Run dev: `npm run dev` (<http://localhost:3000>). Build: `npm run build`; start: `npm start`.
 - Tests/checks: `npm test`, `npm run test:coverage`, `npm run test:e2e`, `npm run typecheck`, `npm run lint`, `./precommit.sh`.
 - Point to local backend: set `TENON_BACKEND_BASE_URL` and `NEXT_PUBLIC_TENON_API_BASE_URL` in `.env.local`.
+- Load test `/api/dashboard` locally (optional): `npm run loadtest:dashboard` (override with `LOADTEST_URL`, `LOADTEST_CONN`, `LOADTEST_DURATION`, `LOADTEST_COOKIE`, `LOADTEST_AUTH_HEADER` for authenticated calls; without auth you will mostly hit 401/403).
 
 ## Typical Flows
 
@@ -81,3 +84,6 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - Candidate trying recruiter dashboard sees Not authorized with links to the right portal.
 - Recruiter trying candidate portal sees Not authorized with dashboard link.
 - Verify Auth0 `/authorize` request includes the correct `connection` parameter for the candidate flow.
+- API sanity: `/api/*` returns JSON (401/403 on auth failures) with no `Location` redirects; `/api/backend/*` stays same-origin; recruiter dashboard makes a single `/api/dashboard` call (tagged with `x-tenon-bff`/`x-tenon-upstream-status`/`x-tenon-request-id`).
+- API responses expose `Server-Timing` (total + retry count) and never leak `Location` headers; oversized request/response bodies are rejected with JSON and a request-id for correlation.
+- Network hygiene (Vercel): recruiter flows hit `/api/**` only (no calls to absolute `NEXT_PUBLIC_TENON_API_BASE_URL`); login navigations are document requests only (no XHR/prefetch to `/authorize`); create simulation first attempt returns 201 JSON with id.

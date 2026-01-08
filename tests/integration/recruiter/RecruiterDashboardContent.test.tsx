@@ -9,18 +9,23 @@ import {
 import userEvent from '@testing-library/user-event';
 import RecruiterDashboardPage from '@/features/recruiter/dashboard/RecruiterDashboardPage';
 import type { RecruiterProfile } from '@/types/recruiter';
-import { inviteCandidate, listSimulations } from '@/lib/api/recruiter';
+import { inviteCandidate } from '@/lib/api/recruiter';
+import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
 
 jest.mock('@/lib/api/recruiter', () => ({
   listSimulations: jest.fn(),
   inviteCandidate: jest.fn(),
 }));
 
-const mockedListSimulations = listSimulations as jest.MockedFunction<
-  typeof listSimulations
->;
+jest.mock('@/features/recruiter/dashboard/hooks/useDashboardData', () => ({
+  useDashboardData: jest.fn(),
+}));
+
 const mockedInviteCandidate = inviteCandidate as jest.MockedFunction<
   typeof inviteCandidate
+>;
+const mockUseDashboardData = useDashboardData as jest.MockedFunction<
+  typeof useDashboardData
 >;
 
 describe('RecruiterDashboardPage', () => {
@@ -33,6 +38,15 @@ describe('RecruiterDashboardPage', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
   });
 
   afterEach(() => {
@@ -40,9 +54,17 @@ describe('RecruiterDashboardPage', () => {
   });
 
   it('renders profile details when available', async () => {
-    mockedListSimulations.mockResolvedValueOnce([]);
+    mockUseDashboardData.mockReturnValue({
+      profile,
+      profileError: null,
+      simulations: [],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
-    render(<RecruiterDashboardPage profile={profile} error={null} />);
+    render(<RecruiterDashboardPage />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Jordan Doe')).toBeInTheDocument();
@@ -53,36 +75,48 @@ describe('RecruiterDashboardPage', () => {
   });
 
   it('shows an error message when provided', async () => {
-    mockedListSimulations.mockResolvedValueOnce([]);
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: 'Unable to fetch profile',
+      simulations: [],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
-    render(
-      <RecruiterDashboardPage profile={null} error="Unable to fetch profile" />,
-    );
+    render(<RecruiterDashboardPage />);
 
     expect(screen.getByText('Unable to fetch profile')).toBeInTheDocument();
-    expect(await screen.findByText('No simulations yet.')).toBeInTheDocument();
+    expect(screen.getByText('No simulations yet.')).toBeInTheDocument();
   });
 
   it('shows empty state when recruiter has no simulations', async () => {
-    mockedListSimulations.mockResolvedValueOnce([]);
+    render(<RecruiterDashboardPage />);
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
-
-    expect(await screen.findByText('No simulations yet.')).toBeInTheDocument();
+    expect(screen.getByText('No simulations yet.')).toBeInTheDocument();
   });
 
   it('renders simulations list with metadata', async () => {
-    mockedListSimulations.mockResolvedValueOnce([
-      {
-        id: 'sim_1',
-        title: 'Backend Engineer - Node',
-        role: 'Backend Engineer',
-        createdAt: '2025-12-10T10:00:00Z',
-        candidateCount: 2,
-      },
-    ]);
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
+        {
+          id: 'sim_1',
+          title: 'Backend Engineer - Node',
+          role: 'Backend Engineer',
+          createdAt: '2025-12-10T10:00:00Z',
+          candidateCount: 2,
+        },
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
     expect(
       await screen.findByText('Backend Engineer - Node'),
@@ -95,39 +129,41 @@ describe('RecruiterDashboardPage', () => {
   });
 
   it('shows inline error state when listSimulations fails', async () => {
-    mockedListSimulations.mockRejectedValueOnce({
-      message: 'Unauthorized',
-      status: 401,
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [],
+      simError: 'Unauthorized',
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
     });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
-    expect(
-      await screen.findByText('Couldn’t load simulations'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Couldn’t load simulations')).toBeInTheDocument();
     expect(screen.getByText('Unauthorized')).toBeInTheDocument();
   });
 
   it('invites a candidate and displays invite url + token', async () => {
     const user = userEvent.setup();
 
-    mockedListSimulations
-      .mockResolvedValueOnce([
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
         {
           id: 'sim_1',
           title: 'Sim 1',
           role: 'Backend',
           createdAt: '2025-12-10T10:00:00Z',
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'sim_1',
-          title: 'Sim 1',
-          role: 'Backend',
-          createdAt: '2025-12-10T10:00:00Z',
-        },
-      ]);
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_1',
@@ -135,7 +171,7 @@ describe('RecruiterDashboardPage', () => {
       inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
     });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -175,23 +211,22 @@ describe('RecruiterDashboardPage', () => {
       configurable: true,
     });
 
-    mockedListSimulations
-      .mockResolvedValueOnce([
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
         {
           id: 'sim_1',
           title: 'Sim 1',
           role: 'Backend',
           createdAt: '2025-12-10T10:00:00Z',
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'sim_1',
-          title: 'Sim 1',
-          role: 'Backend',
-          createdAt: '2025-12-10T10:00:00Z',
-        },
-      ]);
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_1',
@@ -199,7 +234,7 @@ describe('RecruiterDashboardPage', () => {
       inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
     });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -239,18 +274,26 @@ describe('RecruiterDashboardPage', () => {
   }, 15000);
 
   it('shows invite error when backend fails', async () => {
-    mockedListSimulations.mockResolvedValue([
-      {
-        id: 'sim_1',
-        title: 'Sim 1',
-        role: 'Backend',
-        createdAt: '2025-12-10T10:00:00Z',
-      },
-    ]);
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
+        {
+          id: 'sim_1',
+          title: 'Sim 1',
+          role: 'Backend',
+          createdAt: '2025-12-10T10:00:00Z',
+        },
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
     mockedInviteCandidate.mockRejectedValueOnce({ message: 'Invite failed' });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -271,13 +314,19 @@ describe('RecruiterDashboardPage', () => {
   });
 
   it('shows inline load error when listSimulations throws', async () => {
-    mockedListSimulations.mockRejectedValueOnce({ message: 'Auth failed' });
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [],
+      simError: 'Auth failed',
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
-    expect(
-      await screen.findByText('Couldn’t load simulations'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Couldn’t load simulations')).toBeInTheDocument();
     expect(screen.getByText('Auth failed')).toBeInTheDocument();
   });
 
@@ -290,23 +339,22 @@ describe('RecruiterDashboardPage', () => {
       configurable: true,
     });
 
-    mockedListSimulations
-      .mockResolvedValueOnce([
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
         {
           id: 'sim_2',
           title: 'Sim 2',
           role: 'Backend',
           createdAt: '2025-12-10T10:00:00Z',
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'sim_2',
-          title: 'Sim 2',
-          role: 'Backend',
-          createdAt: '2025-12-10T10:00:00Z',
-        },
-      ]);
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_2',
@@ -314,7 +362,24 @@ describe('RecruiterDashboardPage', () => {
       inviteUrl: 'http://localhost:3000/candidate/session/tok_456',
     });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
+        {
+          id: 'sim_2',
+          title: 'Sim 2',
+          role: 'Backend',
+          createdAt: '2025-12-10T10:00:00Z',
+        },
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
+
+    render(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -343,23 +408,22 @@ describe('RecruiterDashboardPage', () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
-    mockedListSimulations
-      .mockResolvedValueOnce([
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
         {
           id: 'sim_3',
           title: 'Sim 3',
           role: 'Backend',
           createdAt: '2025-12-10T10:00:00Z',
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'sim_3',
-          title: 'Sim 3',
-          role: 'Backend',
-          createdAt: '2025-12-10T10:00:00Z',
-        },
-      ]);
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_3',
@@ -367,7 +431,7 @@ describe('RecruiterDashboardPage', () => {
       inviteUrl: 'http://localhost:3000/candidate/session/tok_789',
     });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -402,23 +466,22 @@ describe('RecruiterDashboardPage', () => {
       configurable: true,
     });
 
-    mockedListSimulations
-      .mockResolvedValueOnce([
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
         {
           id: 'sim_4',
           title: 'Sim 4',
           role: 'Backend',
           createdAt: '2025-12-10T10:00:00Z',
         },
-      ])
-      .mockResolvedValueOnce([
-        {
-          id: 'sim_4',
-          title: 'Sim 4',
-          role: 'Backend',
-          createdAt: '2025-12-10T10:00:00Z',
-        },
-      ]);
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
 
     mockedInviteCandidate.mockResolvedValueOnce({
       candidateSessionId: 'cs_4',
@@ -426,7 +489,7 @@ describe('RecruiterDashboardPage', () => {
       inviteUrl: 'http://localhost:3000/candidate/session/tok_999',
     });
 
-    render(<RecruiterDashboardPage profile={null} error={null} />);
+    render(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',

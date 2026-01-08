@@ -8,9 +8,9 @@ import {
 
 export { HttpError };
 
-const API_BASE = process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api';
+const API_BASE = process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api/backend';
 const baseClientOptions: ApiClientOptions = {
-  basePath: API_BASE || '/api',
+  basePath: API_BASE || '/api/backend',
   skipAuth: false,
 };
 

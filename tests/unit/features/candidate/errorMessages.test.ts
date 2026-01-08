@@ -24,6 +24,10 @@ describe('candidate error messages', () => {
       'different email',
     );
     expect(friendlyClaimError(new HttpError(410, 'x'))).toContain('expired');
+    expect(friendlyClaimError(new HttpError(401, 'use this'))).toBe('use this');
+    expect(friendlyClaimError(new HttpError(500, ''))).toContain(
+      'Unable to claim',
+    );
   });
 
   it('maps task errors for missing session and network', () => {
@@ -33,6 +37,12 @@ describe('candidate error messages', () => {
     expect(friendlyTaskError(new HttpError(0, 'offline'))).toContain(
       'Network error',
     );
+    expect(friendlyTaskError(new HttpError(500, 'Custom task'))).toBe(
+      'Custom task',
+    );
+    expect(friendlyTaskError(new HttpError(502, ''))).toBe(
+      'Something went wrong loading your current task.',
+    );
   });
 
   it('maps submit errors for order and conflict', () => {
@@ -41,6 +51,18 @@ describe('candidate error messages', () => {
     );
     expect(friendlySubmitError(new HttpError(409, 'conflict'))).toBe(
       'Task already submitted.',
+    );
+    expect(friendlySubmitError(new HttpError(0, ''))).toContain(
+      'Network error',
+    );
+    expect(friendlySubmitError(new HttpError(500, 'specific'))).toBe(
+      'specific',
+    );
+  });
+
+  it('handles bootstrap defaults when status present', () => {
+    expect(friendlyBootstrapError(new HttpError(502, ''))).toBe(
+      'Something went wrong loading your simulation.',
     );
   });
 });

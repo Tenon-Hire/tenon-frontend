@@ -18,14 +18,34 @@ export interface ApiErrorShape {
 type RequestOptions = {
   headers?: Record<string, string>;
   cache?: RequestCache;
+  credentials?: RequestCredentials;
+  signal?: AbortSignal;
 };
 
-const DEFAULT_BASE_PATH = process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api';
+const DEFAULT_BASE_PATH =
+  process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api/backend';
+const BFF_CLIENT_OPTIONS: ApiClientOptions = {
+  basePath: '/api',
+  skipAuth: true,
+};
 
 function normalizeUrl(basePath: string, path: string): string {
   const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
   const p = path.startsWith('/') ? path : `/${path}`;
   return `${base}${p}`;
+}
+
+export function isSameOriginRequest(url: string): boolean {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    try {
+      const base = window.location.origin;
+      return new URL(url, base).origin === base;
+    } catch {
+      return url.startsWith('/') && !url.startsWith('//');
+    }
+  }
+
+  return url.startsWith('/') && !url.startsWith('//');
 }
 
 function extractErrorMessage(errorBody: unknown, status: number): string {
@@ -68,17 +88,19 @@ function isApiClientOptions(value: unknown): value is ApiClientOptions {
   return 'basePath' in v || 'authToken' in v || 'skipAuth' in v;
 }
 
+type InternalRequestOptions = {
+  method?: HttpMethod;
+  body?: unknown;
+} & RequestOptions;
+
 async function request<TResponse = unknown>(
   path: string,
-  options: {
-    method?: HttpMethod;
-    body?: unknown;
-    headers?: Record<string, string>;
-    cache?: RequestCache;
-  } = {},
+  options: InternalRequestOptions = {},
   clientOptions: ApiClientOptions = {},
 ): Promise<TResponse> {
   const basePath = clientOptions.basePath ?? DEFAULT_BASE_PATH;
+  const targetUrl = normalizeUrl(basePath, path);
+  const sameOrigin = isSameOriginRequest(targetUrl);
 
   const headers: Record<string, string> = {
     ...(options.headers ?? {}),
@@ -106,7 +128,13 @@ async function request<TResponse = unknown>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(normalizeUrl(basePath, path), {
+  const cache =
+    options.cache ?? (basePath.startsWith('/api') ? 'no-store' : undefined);
+
+  const credentials =
+    options.credentials ?? (sameOrigin ? ('include' as const) : 'omit');
+
+  const response = await fetch(targetUrl, {
     method: options.method ?? 'GET',
     headers,
     body:
@@ -115,8 +143,9 @@ async function request<TResponse = unknown>(
         : isFormData
           ? (options.body as FormData)
           : JSON.stringify(options.body),
-    credentials: 'include',
-    cache: options.cache,
+    credentials,
+    cache,
+    signal: options.signal,
   });
 
   if (!response.ok) {
@@ -133,6 +162,62 @@ async function request<TResponse = unknown>(
 
   return (await parseResponseBody(response)) as TResponse;
 }
+
+function buildScopedClient(defaultOptions: ApiClientOptions) {
+  return {
+    get: async <T = unknown>(path: string, requestOptions?: RequestOptions) =>
+      request<T>(
+        path,
+        { method: 'GET', ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    post: async <T = unknown>(
+      path: string,
+      body?: unknown,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'POST', body, ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    put: async <T = unknown>(
+      path: string,
+      body?: unknown,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'PUT', body, ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    patch: async <T = unknown>(
+      path: string,
+      body?: unknown,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'PATCH', body, ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    delete: async <T = unknown>(
+      path: string,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'DELETE', ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+  };
+}
+
+export const recruiterBffClient = buildScopedClient(BFF_CLIENT_OPTIONS);
 
 export interface LoginResponseUser {
   id: string | number;
@@ -153,12 +238,7 @@ export interface LoginPayload {
 
 export async function safeRequest<T>(
   path: string,
-  options?: {
-    method?: HttpMethod;
-    body?: unknown;
-    headers?: Record<string, string>;
-    cache?: RequestCache;
-  },
+  options?: InternalRequestOptions,
   clientOptions?: ApiClientOptions,
 ): Promise<Result<T>> {
   try {

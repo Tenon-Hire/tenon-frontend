@@ -1,4 +1,5 @@
-import { apiClient, safeRequest } from './httpClient';
+import { recruiterBffClient, safeRequest } from './httpClient';
+import { extractBackendMessage, fallbackStatus } from './utils/errors';
 import { getId, getNumber, getString, isRecord } from './utils/normalize';
 
 export type SimulationListItem = {
@@ -28,6 +29,14 @@ export type CreateSimulationResponse = {
   status?: number;
   message?: string;
   id: string;
+};
+type ListSimulationsOptions = {
+  signal?: AbortSignal;
+  cache?: RequestCache;
+};
+type CreateSimulationOptions = {
+  signal?: AbortSignal;
+  cache?: RequestCache;
 };
 
 function normalizeSimulation(raw: unknown): SimulationListItem {
@@ -61,14 +70,22 @@ function normalizeSimulation(raw: unknown): SimulationListItem {
   return { id, title, role, createdAt, candidateCount };
 }
 
-export async function listSimulations(): Promise<SimulationListItem[]> {
-  const data = await apiClient.get<unknown>('/simulations');
+export async function listSimulations(
+  options?: ListSimulationsOptions,
+): Promise<SimulationListItem[]> {
+  const data = await recruiterBffClient.get<unknown>(
+    '/simulations',
+    options ?? undefined,
+  );
   if (!Array.isArray(data)) return [];
   return data.map(normalizeSimulation);
 }
 
 export async function listSimulationsSafe() {
-  return safeRequest<SimulationListItem[]>('/simulations');
+  return safeRequest<SimulationListItem[]>('/simulations', undefined, {
+    basePath: '/api',
+    skipAuth: true,
+  });
 }
 
 function normalizeInviteResponse(raw: unknown): InviteCandidateResponse {
@@ -99,10 +116,13 @@ export async function inviteCandidate(
     return { candidateSessionId: '', token: '', inviteUrl: '' };
   }
 
-  const data = await apiClient.post<unknown>(`/simulations/${safeId}/invite`, {
-    candidateName: safeName,
-    inviteEmail: safeEmail,
-  });
+  const data = await recruiterBffClient.post<unknown>(
+    `/simulations/${safeId}/invite`,
+    {
+      candidateName: safeName,
+      inviteEmail: safeEmail,
+    },
+  );
 
   return normalizeInviteResponse(data);
 }
@@ -129,6 +149,7 @@ function normalizeCreateSimulationResponse(
 
 export async function createSimulation(
   input: CreateSimulationInput,
+  options?: CreateSimulationOptions,
 ): Promise<CreateSimulationResponse> {
   const safeTitle = input.title.trim();
   const safeRole = input.role.trim();
@@ -143,17 +164,49 @@ export async function createSimulation(
     };
   }
 
-  const data = await apiClient.post<unknown>(
-    '/simulations',
-    {
+  try {
+    const payload = {
       title: safeTitle,
       role: safeRole,
       techStack: safeTechStack,
       seniority: input.seniority,
       focus: input.focus?.trim() ? input.focus.trim() : undefined,
-    },
-    { cache: 'no-store' },
-  );
+    };
 
-  return normalizeCreateSimulationResponse(data, 201);
+    const data = await recruiterBffClient.post<unknown>(
+      '/simulations',
+      payload,
+      {
+        cache: options?.cache,
+        signal: options?.signal,
+      },
+    );
+
+    const statusFromData =
+      typeof data === 'object' && data !== null
+        ? (data as { status?: unknown }).status
+        : undefined;
+    const normalized = normalizeCreateSimulationResponse(
+      data,
+      typeof statusFromData === 'number' ? statusFromData : 201,
+    );
+    if (!normalized.ok) {
+      const message =
+        normalized.message ??
+        extractBackendMessage(data, true) ??
+        'Unable to create simulation. Please try again shortly.';
+      return { ...normalized, message };
+    }
+    return normalized;
+  } catch (caught: unknown) {
+    const status = fallbackStatus(caught, 0);
+    const message =
+      extractBackendMessage(
+        (caught as { details?: unknown })?.details ?? caught,
+        true,
+      ) ??
+      (caught instanceof Error ? caught.message : null) ??
+      'Unable to create simulation right now.';
+    return { ok: false, status, id: '', message };
+  }
 }

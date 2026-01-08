@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getSessionNormalized } from '@/lib/auth0';
+import { getCachedSessionNormalized } from '@/lib/auth0';
 import { BRAND_NAME } from '@/lib/brand';
 import MarketingHomePage from '@/features/marketing/home/MarketingHomePage';
 
@@ -10,6 +10,6 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const session = await getSessionNormalized();
+  const session = await getCachedSessionNormalized();
   return <MarketingHomePage user={session?.user} />;
 }

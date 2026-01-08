@@ -32,9 +32,9 @@ export function AppNav({ isAuthed, permissions = [] }: AppNavProps) {
           Candidate Portal
         </Link>
       ) : null}
-      <Link href="/auth/logout" className="text-gray-700 hover:text-gray-900">
+      <a href="/auth/logout" className="text-gray-700 hover:text-gray-900">
         Logout
-      </Link>
+      </a>
     </nav>
   );
 }

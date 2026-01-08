@@ -14,11 +14,13 @@ export function SimulationSection({
   error,
   onInvite,
 }: SimulationSectionProps) {
+  const hasSimulations = simulations.length > 0;
+
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">Simulations</h2>
 
-      {loading ? (
+      {loading && !hasSimulations ? (
         <p className="text-sm text-gray-600">Loading simulations…</p>
       ) : null}
 
@@ -31,7 +33,16 @@ export function SimulationSection({
         </div>
       ) : null}
 
-      {!loading && !error ? (
+      {hasSimulations ? (
+        <div className="flex flex-col gap-1">
+          {loading ? (
+            <p className="text-xs text-gray-500">Refreshing…</p>
+          ) : null}
+          <SimulationList simulations={simulations} onInvite={onInvite} />
+        </div>
+      ) : null}
+
+      {!loading && !error && !hasSimulations ? (
         <SimulationList simulations={simulations} onInvite={onInvite} />
       ) : null}
     </section>

@@ -23,12 +23,16 @@ describe('apiClient request helpers', () => {
 
     await apiClient.get('/jobs');
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/jobs', {
-      method: 'GET',
-      headers: { Authorization: 'Bearer token-123' },
-      body: undefined,
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/jobs',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { Authorization: 'Bearer token-123' },
+        body: undefined,
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+    );
   });
 
   it('respects skipAuth and custom basePath', async () => {
@@ -42,12 +46,15 @@ describe('apiClient request helpers', () => {
       { basePath: 'https://api.example.com', skipAuth: true },
     );
 
-    expect(fetchMock).toHaveBeenCalledWith('https://api.example.com/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: 'New' }),
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.com/tasks',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New' }),
+        credentials: 'omit',
+      }),
+    );
   });
 
   it('does not stringify FormData bodies', async () => {
@@ -148,12 +155,15 @@ describe('apiClient request helpers', () => {
       { basePath: 'https://api.dev' },
     );
 
-    expect(fetchMock).toHaveBeenCalledWith('https://api.dev/custom-delete', {
-      method: 'DELETE',
-      headers: { 'X-Del': '1' },
-      body: undefined,
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.dev/custom-delete',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: { 'X-Del': '1' },
+        body: undefined,
+        credentials: 'omit',
+      }),
+    );
   });
 
   it('passes through provided authToken to request helper', async () => {
@@ -161,15 +171,19 @@ describe('apiClient request helpers', () => {
 
     await apiClient.post('/auth', { ok: true }, { authToken: 'tok' });
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer tok',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ok: true }),
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/auth',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer tok',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ok: true }),
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+    );
   });
 
   it('uses explicit authToken and merges headers for put/patch/delete', async () => {
@@ -192,7 +206,7 @@ describe('apiClient request helpers', () => {
     const patchCall = fetchMock.mock.calls[1] as unknown[];
     const deleteCall = fetchMock.mock.calls[2] as unknown[];
 
-    expect(putCall[0]).toBe('/api/put-me');
+    expect(putCall[0]).toBe('/api/backend/put-me');
     expect(putCall[1]).toMatchObject({
       method: 'PUT',
       headers: {
@@ -222,12 +236,16 @@ describe('apiClient request helpers', () => {
 
     await apiClient.get('/auth-pref', { authToken: 'from-opts' });
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth-pref', {
-      method: 'GET',
-      headers: { Authorization: 'Bearer from-opts' },
-      body: undefined,
-      credentials: 'include',
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/auth-pref',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { Authorization: 'Bearer from-opts' },
+        body: undefined,
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+    );
   });
 
   it('safeRequest returns data and wraps unknown errors', async () => {

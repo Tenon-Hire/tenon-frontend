@@ -1,9 +1,4 @@
-type LoginMode = 'candidate' | 'recruiter';
-
-function normalizeReturnTo(returnTo: string | null | undefined): string {
-  if (typeof returnTo !== 'string') return '/';
-  return returnTo.trim() || '/';
-}
+import { buildReturnTo, modeForPath, type LoginMode } from '@/lib/auth/routing';
 
 function connectionForMode(mode?: LoginMode): string | null {
   if (mode === 'candidate') {
@@ -17,9 +12,10 @@ function connectionForMode(mode?: LoginMode): string | null {
 
 export function buildLoginHref(returnTo?: string, mode?: LoginMode): string {
   const params = new URLSearchParams();
-  params.set('returnTo', normalizeReturnTo(returnTo));
-  if (mode) params.set('mode', mode);
-  const connection = connectionForMode(mode);
+  params.set('returnTo', buildReturnTo(returnTo));
+  const resolvedMode = mode ?? 'recruiter';
+  params.set('mode', resolvedMode);
+  const connection = connectionForMode(resolvedMode);
   if (connection) params.set('connection', connection);
 
   const query = params.toString();
@@ -29,7 +25,8 @@ export function buildLoginHref(returnTo?: string, mode?: LoginMode): string {
 export function buildLogoutHref(returnTo?: string): string {
   const base = '/auth/logout';
   if (!returnTo) return base;
-  return `${base}?returnTo=${encodeURIComponent(normalizeReturnTo(returnTo))}`;
+  return `${base}?returnTo=${encodeURIComponent(buildReturnTo(returnTo))}`;
 }
 
 export type { LoginMode };
+export { modeForPath };

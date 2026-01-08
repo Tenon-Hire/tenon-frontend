@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer';
 import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextResponse, type NextRequest } from 'next/server';
+import { cache } from 'react';
 import { normalizeUserClaims } from '@/lib/auth0-claims';
 import {
   CUSTOM_CLAIM_PERMISSIONS,
@@ -167,14 +168,24 @@ export const getSessionNormalized = async (
     })
   | null
 > => {
+  const start = process.env.TENON_DEBUG_PERF ? Date.now() : null;
   const session = request
     ? await auth0.getSession(request)
     : await auth0.getSession();
   if (!session?.user) return session;
-  return {
+  const normalized = {
     ...session,
     user: normalizeUserClaims(
       session.user as Record<string, unknown>,
     ) as typeof session.user,
   };
+  if (start !== null) {
+    // eslint-disable-next-line no-console
+    console.log(`[perf:session] session normalized in ${Date.now() - start}ms`);
+  }
+  return normalized;
 };
+
+export const getCachedSessionNormalized = cache(async () =>
+  getSessionNormalized(),
+);

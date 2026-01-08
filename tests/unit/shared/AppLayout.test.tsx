@@ -28,10 +28,11 @@ jest.mock('@/lib/auth0', () => ({
     getSession: jest.fn(),
   },
   getSessionNormalized: jest.fn(),
+  getCachedSessionNormalized: jest.fn(),
 }));
 
 const getSessionNormalizedMock = jest.requireMock('@/lib/auth0')
-  .getSessionNormalized as jest.Mock;
+  .getCachedSessionNormalized as jest.Mock;
 
 describe('shared layout components', () => {
   afterEach(() => {
