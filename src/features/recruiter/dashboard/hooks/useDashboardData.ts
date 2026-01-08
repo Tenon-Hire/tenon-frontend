@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/routing';
 import { toUserMessage } from '@/lib/utils/errors';
 import type { RecruiterProfile, SimulationListItem } from '@/types/recruiter';
+import { dashboardPerfDebugEnabled, logPerf, nowMs } from '../utils/perf';
 
 type Options = {
   initialProfile?: RecruiterProfile | null;
@@ -65,6 +66,7 @@ export function useDashboardData(options?: Options) {
     controllersRef.current.dashboard?.abort();
     const controller = new AbortController();
     controllersRef.current.dashboard = controller;
+    const startedAt = nowMs();
 
     const promise = (async () => {
       const res = await fetch('/api/dashboard', {
@@ -73,6 +75,9 @@ export function useDashboardData(options?: Options) {
         signal: controller.signal,
       });
       const parsed: unknown = await res.json().catch(() => null);
+      if (dashboardPerfDebugEnabled) {
+        logPerf('/api/dashboard response', startedAt, { status: res.status });
+      }
 
       if (!res.ok) {
         const status = res.status;

@@ -1,9 +1,13 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import DashboardView from '@/features/recruiter/dashboard/DashboardView';
 import { useDashboardData } from './hooks/useDashboardData';
+import { logPerf, nowMs } from './utils/perf';
 
 export default function RecruiterDashboardPage() {
+  const renderStartRef = useRef(nowMs());
+
   const {
     profile,
     profileError,
@@ -13,6 +17,10 @@ export default function RecruiterDashboardPage() {
     loadingSimulations,
     refresh,
   } = useDashboardData();
+
+  useEffect(() => {
+    logPerf('dashboard-shell-first-render', renderStartRef.current);
+  }, []);
 
   return (
     <DashboardView

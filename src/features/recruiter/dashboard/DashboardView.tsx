@@ -1,15 +1,38 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { InviteCandidateModal } from '@/features/recruiter/invitations/InviteCandidateModal';
-import { InviteToast } from '@/features/recruiter/invitations/InviteToast';
 import { ProfileCard } from './components/ProfileCard';
 import { useInviteCandidateFlow } from './hooks/useInviteCandidateFlow';
 import type { InviteModalState, RecruiterProfile } from './types';
 import type { SimulationListItem } from '@/types/recruiter';
 import { DashboardHeader } from './components/DashboardHeader';
 import { SimulationSection } from './components/SimulationSection';
+
+const InviteCandidateModal = dynamic(
+  () =>
+    import('@/features/recruiter/invitations/InviteCandidateModal').then(
+      (mod) => mod.InviteCandidateModal,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
+        <div className="rounded bg-white px-4 py-3 text-sm text-gray-700 shadow">
+          Loading invite form…
+        </div>
+      </div>
+    ),
+  },
+);
+
+const InviteToast = dynamic(
+  () =>
+    import('@/features/recruiter/invitations/InviteToast').then(
+      (mod) => mod.InviteToast,
+    ),
+  { ssr: false, loading: () => null },
+);
 
 type DashboardViewProps = {
   profile: RecruiterProfile | null;
@@ -30,8 +53,6 @@ export default function DashboardView({
   simulationsLoading,
   onRefresh,
 }: DashboardViewProps) {
-  const router = useRouter();
-
   const [modal, setModal] = useState<InviteModalState>({
     open: false,
     simulationId: '',
@@ -92,26 +113,26 @@ export default function DashboardView({
 
   return (
     <main className="flex flex-col gap-4 py-8">
-      <DashboardHeader
-        onNewSimulation={() => router.push('/dashboard/simulations/new')}
-      />
+      <DashboardHeader />
 
-      <InviteToast
-        toast={toast}
-        copied={copied}
-        onDismiss={dismissToast}
-        onCopyStateChange={(next) => {
-          setCopied(next);
-          if (copiedTimerRef.current)
-            window.clearTimeout(copiedTimerRef.current);
-          if (next) {
-            copiedTimerRef.current = window.setTimeout(() => {
-              setCopied(false);
-              copiedTimerRef.current = null;
-            }, 1800);
-          }
-        }}
-      />
+      {toast.open ? (
+        <InviteToast
+          toast={toast}
+          copied={copied}
+          onDismiss={dismissToast}
+          onCopyStateChange={(next) => {
+            setCopied(next);
+            if (copiedTimerRef.current)
+              window.clearTimeout(copiedTimerRef.current);
+            if (next) {
+              copiedTimerRef.current = window.setTimeout(() => {
+                setCopied(false);
+                copiedTimerRef.current = null;
+              }, 1800);
+            }
+          }}
+        />
+      ) : null}
 
       {profile ? (
         <ProfileCard
@@ -139,21 +160,23 @@ export default function DashboardView({
         onInvite={(sim) => openInvite(sim.id, sim.title)}
       />
 
-      <InviteCandidateModal
-        open={modal.open}
-        title={inviteWho}
-        state={
-          inviteFlow.state.status === 'error'
-            ? { status: 'error', message: inviteFlow.state.message ?? '' }
-            : { status: inviteFlow.state.status }
-        }
-        onClose={() =>
-          setModal({ open: false, simulationId: '', simulationTitle: '' })
-        }
-        onSubmit={submitInvite}
-        initialName=""
-        initialEmail=""
-      />
+      {modal.open ? (
+        <InviteCandidateModal
+          open={modal.open}
+          title={inviteWho}
+          state={
+            inviteFlow.state.status === 'error'
+              ? { status: 'error', message: inviteFlow.state.message ?? '' }
+              : { status: inviteFlow.state.status }
+          }
+          onClose={() =>
+            setModal({ open: false, simulationId: '', simulationTitle: '' })
+          }
+          onSubmit={submitInvite}
+          initialName=""
+          initialEmail=""
+        />
+      ) : null}
     </main>
   );
 }

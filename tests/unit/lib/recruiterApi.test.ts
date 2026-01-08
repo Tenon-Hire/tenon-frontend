@@ -210,6 +210,21 @@ describe('recruiterApi', () => {
       });
       expect(mockedBffPost).not.toHaveBeenCalled();
     });
+
+    it('guards against non-string inputs without throwing', async () => {
+      const result = await inviteCandidate(
+        { bad: true } as unknown as string,
+        { value: 'Name' } as unknown as string,
+        { value: 'Email' } as unknown as string,
+      );
+
+      expect(result).toEqual({
+        candidateSessionId: '',
+        token: '',
+        inviteUrl: '',
+      });
+      expect(mockedBffPost).not.toHaveBeenCalled();
+    });
   });
 
   describe('createSimulation', () => {
