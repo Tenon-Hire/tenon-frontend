@@ -3,7 +3,7 @@ import Button from '@/components/ui/Button';
 import Link from 'next/link';
 
 type DashboardHeaderProps = {
-  onNewSimulation: () => void;
+  onNewSimulation?: () => void;
 };
 
 export function DashboardHeader({ onNewSimulation }: DashboardHeaderProps) {

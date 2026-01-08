@@ -108,9 +108,14 @@ export async function inviteCandidate(
   candidateName: string,
   inviteEmail: string,
 ): Promise<InviteCandidateResponse> {
-  const safeId = simulationId.trim();
-  const safeName = candidateName.trim();
-  const safeEmail = inviteEmail.trim();
+  const safeTrim = (value: unknown) =>
+    typeof value === 'string' || typeof value === 'number'
+      ? String(value).trim()
+      : '';
+
+  const safeId = safeTrim(simulationId);
+  const safeName = safeTrim(candidateName);
+  const safeEmail = safeTrim(inviteEmail).toLowerCase();
 
   if (!safeId || !safeName || !safeEmail) {
     return { candidateSessionId: '', token: '', inviteUrl: '' };
