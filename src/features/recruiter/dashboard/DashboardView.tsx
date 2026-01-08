@@ -14,9 +14,14 @@ import { SimulationSection } from './components/SimulationSection';
 type DashboardViewProps = {
   profile: RecruiterProfile | null;
   error: string | null;
+  profileLoading?: boolean;
 };
 
-export default function DashboardView({ profile, error }: DashboardViewProps) {
+export default function DashboardView({
+  profile,
+  error,
+  profileLoading = false,
+}: DashboardViewProps) {
   const router = useRouter();
 
   const { simulations, loading, error: simError, refresh } = useSimulations();
@@ -110,7 +115,16 @@ export default function DashboardView({ profile, error }: DashboardViewProps) {
         />
       ) : null}
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {!profile && !error && profileLoading ? (
+        <div className="rounded border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+          <div className="mt-2 h-3 w-48 animate-pulse rounded bg-gray-100" />
+        </div>
+      ) : null}
+
+      {!profile && !profileLoading && error ? (
+        <p className="text-sm text-red-600">{error}</p>
+      ) : null}
 
       <SimulationSection
         simulations={simulations}

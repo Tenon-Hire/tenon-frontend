@@ -21,6 +21,10 @@ type RequestOptions = {
 };
 
 const DEFAULT_BASE_PATH = process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api';
+const BFF_CLIENT_OPTIONS: ApiClientOptions = {
+  basePath: '/api',
+  skipAuth: true,
+};
 
 function normalizeUrl(basePath: string, path: string): string {
   const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
@@ -133,6 +137,62 @@ async function request<TResponse = unknown>(
 
   return (await parseResponseBody(response)) as TResponse;
 }
+
+function buildScopedClient(defaultOptions: ApiClientOptions) {
+  return {
+    get: async <T = unknown>(path: string, requestOptions?: RequestOptions) =>
+      request<T>(
+        path,
+        { method: 'GET', ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    post: async <T = unknown>(
+      path: string,
+      body?: unknown,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'POST', body, ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    put: async <T = unknown>(
+      path: string,
+      body?: unknown,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'PUT', body, ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    patch: async <T = unknown>(
+      path: string,
+      body?: unknown,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'PATCH', body, ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+
+    delete: async <T = unknown>(
+      path: string,
+      requestOptions?: RequestOptions,
+    ) =>
+      request<T>(
+        path,
+        { method: 'DELETE', ...(requestOptions ?? {}) },
+        defaultOptions,
+      ),
+  };
+}
+
+export const recruiterBffClient = buildScopedClient(BFF_CLIENT_OPTIONS);
 
 export interface LoginResponseUser {
   id: string | number;

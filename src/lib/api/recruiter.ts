@@ -1,4 +1,4 @@
-import { apiClient, safeRequest } from './httpClient';
+import { recruiterBffClient, safeRequest } from './httpClient';
 import { getId, getNumber, getString, isRecord } from './utils/normalize';
 
 export type SimulationListItem = {
@@ -62,13 +62,16 @@ function normalizeSimulation(raw: unknown): SimulationListItem {
 }
 
 export async function listSimulations(): Promise<SimulationListItem[]> {
-  const data = await apiClient.get<unknown>('/simulations');
+  const data = await recruiterBffClient.get<unknown>('/simulations');
   if (!Array.isArray(data)) return [];
   return data.map(normalizeSimulation);
 }
 
 export async function listSimulationsSafe() {
-  return safeRequest<SimulationListItem[]>('/simulations');
+  return safeRequest<SimulationListItem[]>('/simulations', undefined, {
+    basePath: '/api',
+    skipAuth: true,
+  });
 }
 
 function normalizeInviteResponse(raw: unknown): InviteCandidateResponse {
@@ -99,10 +102,13 @@ export async function inviteCandidate(
     return { candidateSessionId: '', token: '', inviteUrl: '' };
   }
 
-  const data = await apiClient.post<unknown>(`/simulations/${safeId}/invite`, {
-    candidateName: safeName,
-    inviteEmail: safeEmail,
-  });
+  const data = await recruiterBffClient.post<unknown>(
+    `/simulations/${safeId}/invite`,
+    {
+      candidateName: safeName,
+      inviteEmail: safeEmail,
+    },
+  );
 
   return normalizeInviteResponse(data);
 }
@@ -143,7 +149,7 @@ export async function createSimulation(
     };
   }
 
-  const data = await apiClient.post<unknown>(
+  const data = await recruiterBffClient.post<unknown>(
     '/simulations',
     {
       title: safeTitle,
