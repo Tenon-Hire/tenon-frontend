@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event';
 import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 import { CandidateSessionProvider } from '@/features/candidate/session/CandidateSessionProvider';
 import {
-  HttpError,
   getCandidateCurrentTask,
-  claimCandidateInvite,
+  resolveCandidateInviteToken,
 } from '@/lib/api/candidate';
+import { setAuthToken } from '@/lib/auth';
 
 jest.mock('@/lib/api/candidate', () => {
   const actual = jest.requireActual('@/lib/api/candidate');
@@ -15,14 +15,9 @@ jest.mock('@/lib/api/candidate', () => {
     __esModule: true,
     ...actual,
     getCandidateCurrentTask: jest.fn(),
-    claimCandidateInvite: jest.fn(),
+    resolveCandidateInviteToken: jest.fn(),
   };
 });
-
-jest.mock('@auth0/nextjs-auth0/client', () => ({
-  getAccessToken: jest.fn(),
-  useUser: () => ({ user: { email: 'user@example.com' } }),
-}));
 
 const routerMock = {
   push: jest.fn(),
@@ -38,9 +33,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 const currentTaskMock = getCandidateCurrentTask as unknown as jest.Mock;
-const claimMock = claimCandidateInvite as unknown as jest.Mock;
-const getAccessTokenMock = jest.requireMock('@auth0/nextjs-auth0/client')
-  .getAccessToken as jest.Mock;
+const resolveMock = resolveCandidateInviteToken as unknown as jest.Mock;
 
 function renderWithProvider(ui: React.ReactNode) {
   return render(<CandidateSessionProvider>{ui}</CandidateSessionProvider>);
@@ -51,8 +44,8 @@ describe('CandidateSessionPage', () => {
     jest.resetAllMocks();
     Object.values(routerMock).forEach((fn) => fn.mockReset());
     sessionStorage.clear();
-    getAccessTokenMock.mockResolvedValue('auth-token');
-    claimMock.mockResolvedValue({
+    localStorage.clear();
+    resolveMock.mockResolvedValue({
       candidateSessionId: 123,
       status: 'in_progress',
       simulation: { title: 'Sim', role: 'Backend' },
@@ -60,7 +53,7 @@ describe('CandidateSessionPage', () => {
   });
 
   it('claims invite and starts current task', async () => {
-    claimMock.mockResolvedValueOnce({
+    resolveMock.mockResolvedValueOnce({
       candidateSessionId: 123,
       status: 'in_progress',
       simulation: { title: 'Backend Engineer Simulation', role: 'Backend' },
@@ -77,13 +70,14 @@ describe('CandidateSessionPage', () => {
       },
     });
 
+    setAuthToken('candidate-token');
     renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     expect(
       await screen.findByText('Backend Engineer Simulation'),
     ).toBeInTheDocument();
 
-    await waitFor(() => expect(claimMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(resolveMock).toHaveBeenCalledTimes(1));
 
     expect(
       await screen.findByRole('button', { name: /Start simulation/i }),
@@ -93,31 +87,24 @@ describe('CandidateSessionPage', () => {
 
     expect(await screen.findByText(/Role:\s*Backend/i)).toBeInTheDocument();
     expect(await screen.findByText('Day 1 — Architecture')).toBeInTheDocument();
-    expect(currentTaskMock).toHaveBeenCalledWith(123, 'auth-token');
+    expect(currentTaskMock).toHaveBeenCalledWith(123, 'candidate-token');
   });
 
-  it('renders mismatch state when claim is rejected', async () => {
-    claimMock.mockRejectedValue(
-      Object.assign(new HttpError(403, 'invite@example.com'), {
-        invitedEmail: 'invite@example.com',
-      }),
-    );
+  it('shows verification screen when access token is missing', async () => {
+    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
+
+    expect(await screen.findByText(/Verify your invite/i)).toBeInTheDocument();
+  });
+
+  it('returns to verification when the stored token is invalid', async () => {
+    setAuthToken('candidate-token');
+    resolveMock.mockRejectedValueOnce({ status: 401 });
 
     renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
-    expect(await screen.findByText(/invite@example.com/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Verify your invite/i)).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /Log out/i }),
-    ).toBeInTheDocument();
-  });
-
-  it('shows auth session error when access token load fails', async () => {
-    getAccessTokenMock.mockRejectedValueOnce(new Error('No session'));
-
-    renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
-
-    expect(
-      await screen.findByText(/Unable to load your login session/i),
+      await screen.findByText(/verification session expired/i),
     ).toBeInTheDocument();
   });
 });

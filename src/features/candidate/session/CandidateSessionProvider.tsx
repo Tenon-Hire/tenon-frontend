@@ -9,6 +9,7 @@ import React, {
   useReducer,
 } from 'react';
 import { BRAND_SLUG } from '@/lib/brand';
+import { getAuthToken, setAuthToken } from '@/lib/auth';
 
 type SimulationSummary = {
   title: string;
@@ -57,7 +58,7 @@ type CandidateSessionState = {
 
 type Action =
   | { type: 'SET_INVITE_TOKEN'; inviteToken: string }
-  | { type: 'SET_TOKEN'; token: string }
+  | { type: 'SET_TOKEN'; token: string | null }
   | { type: 'SET_VERIFIED_EMAIL'; email: string }
   | { type: 'SET_CANDIDATE_SESSION_ID'; candidateSessionId: number | null }
   | { type: 'SET_BOOTSTRAP'; bootstrap: CandidateBootstrap }
@@ -162,7 +163,7 @@ function reducer(
 type Ctx = {
   state: CandidateSessionState;
   setInviteToken: (token: string) => void;
-  setToken: (token: string) => void;
+  setToken: (token: string | null) => void;
   setVerifiedEmail: (email: string) => void;
   setCandidateSessionId: (id: number | null) => void;
   setBootstrap: (b: CandidateBootstrap) => void;
@@ -203,10 +204,10 @@ export function CandidateSessionProvider({
       dispatch({ type: 'SET_INVITE_TOKEN', inviteToken: token }),
     [],
   );
-  const setToken = useCallback(
-    (token: string) => dispatch({ type: 'SET_TOKEN', token }),
-    [],
-  );
+  const setToken = useCallback((token: string | null) => {
+    setAuthToken(token);
+    dispatch({ type: 'SET_TOKEN', token });
+  }, []);
   const setVerifiedEmail = useCallback(
     (email: string) => dispatch({ type: 'SET_VERIFIED_EMAIL', email }),
     [],
@@ -225,7 +226,10 @@ export function CandidateSessionProvider({
     (started: boolean) => dispatch({ type: 'SET_STARTED', started }),
     [],
   );
-  const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
+  const reset = useCallback(() => {
+    setAuthToken(null);
+    dispatch({ type: 'RESET' });
+  }, []);
 
   const setTaskLoading = useCallback(
     () => dispatch({ type: 'TASK_LOADING' }),
@@ -250,6 +254,10 @@ export function CandidateSessionProvider({
 
   useEffect(() => {
     try {
+      const storedToken = getAuthToken();
+      if (storedToken) {
+        dispatch({ type: 'SET_TOKEN', token: storedToken });
+      }
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return;
 

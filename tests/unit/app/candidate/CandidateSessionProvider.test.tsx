@@ -5,6 +5,7 @@ import {
   useCandidateSession,
 } from '@/features/candidate/session/CandidateSessionProvider';
 import { BRAND_SLUG } from '@/lib/brand';
+import { getAuthToken, setAuthToken } from '@/lib/auth';
 
 const STORAGE_KEY = `${BRAND_SLUG}:candidate_session_v1`;
 
@@ -76,6 +77,7 @@ function renderHarness() {
 describe('CandidateSessionProvider', () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
   });
 
   it('restores persisted token/bootstrap/started state from sessionStorage', () => {
@@ -120,6 +122,7 @@ describe('CandidateSessionProvider', () => {
     expect(persisted.candidateSessionId).toBe(42);
     expect(persisted.verifiedEmail).toBe('user@example.com');
     expect(persisted.started).toBe(true);
+    expect(getAuthToken()).toBe('tok_abc');
   });
 
   it('handles storage errors gracefully without throwing', () => {
@@ -155,5 +158,13 @@ describe('CandidateSessionProvider', () => {
     expect(screen.getByTestId('token')).toHaveTextContent('none');
     expect(screen.getByTestId('verified-email')).toHaveTextContent('none');
     expect(screen.getByTestId('started')).toHaveTextContent('false');
+    expect(getAuthToken()).toBeNull();
+  });
+
+  it('restores token from localStorage on mount', () => {
+    setAuthToken('stored-token');
+    renderHarness();
+
+    expect(screen.getByTestId('token')).toHaveTextContent('stored-token');
   });
 });

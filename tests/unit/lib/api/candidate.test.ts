@@ -55,6 +55,87 @@ describe('candidate api helpers', () => {
     });
   });
 
+  it('sends verification code and returns masked email', async () => {
+    apiClient.post.mockResolvedValueOnce({
+      status: 'sent',
+      maskedEmail: 't***@example.com',
+      expiresAt: '2025-01-01T00:00:00Z',
+    });
+
+    const { sendCandidateVerificationCode } =
+      await import('@/lib/api/candidate');
+    const result = await sendCandidateVerificationCode('abc');
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/candidate/session/abc/verification/code/send',
+      undefined,
+      { cache: 'no-store' },
+      expect.objectContaining({ skipAuth: true }),
+    );
+    expect(result).toMatchObject({
+      status: 'sent',
+      maskedEmail: 't***@example.com',
+    });
+  });
+
+  it('attaches otp metadata for resend cooldown', async () => {
+    apiClient.post.mockRejectedValueOnce({
+      status: 429,
+      details: { error: 'otp_cooldown', retryAfterSeconds: 12 },
+    });
+
+    const { sendCandidateVerificationCode } =
+      await import('@/lib/api/candidate');
+
+    await expect(sendCandidateVerificationCode('abc')).rejects.toMatchObject({
+      status: 429,
+      otpError: 'otp_cooldown',
+      retryAfterSeconds: 12,
+    });
+  });
+
+  it('normalizes otp metadata with alternate detail shapes', async () => {
+    apiClient.post.mockRejectedValueOnce({
+      status: 429,
+      details: { otp_error: 'otp_locked', retry_after_seconds: 90 },
+    });
+
+    const { confirmCandidateVerificationCode } =
+      await import('@/lib/api/candidate');
+
+    await expect(
+      confirmCandidateVerificationCode('abc', 'user@example.com', '123456'),
+    ).rejects.toMatchObject({
+      status: 429,
+      otpError: 'otp_locked',
+      retryAfterSeconds: 90,
+    });
+  });
+
+  it('confirms verification code and returns access token', async () => {
+    apiClient.post.mockResolvedValueOnce({
+      verified: true,
+      candidateAccessToken: 'candidate-token',
+      expiresAt: '2025-01-02T00:00:00Z',
+    });
+
+    const { confirmCandidateVerificationCode } =
+      await import('@/lib/api/candidate');
+    const result = await confirmCandidateVerificationCode(
+      'abc',
+      'user@example.com',
+      '123456',
+    );
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/candidate/session/abc/verification/code/confirm',
+      { email: 'user@example.com', code: '123456' },
+      { cache: 'no-store' },
+      expect.objectContaining({ skipAuth: true }),
+    );
+    expect(result.candidateAccessToken).toBe('candidate-token');
+  });
+
   it('maps backend errors to HttpError responses', async () => {
     const { claimCandidateInvite, HttpError } =
       await import('@/lib/api/candidate');

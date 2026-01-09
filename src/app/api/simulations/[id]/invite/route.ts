@@ -12,19 +12,20 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-  const payload: unknown = await req.json().catch(() => undefined);
 
   return withRecruiterAuth(
     req,
     { tag: 'invite', requirePermission: 'recruiter:access' },
-    async (auth) =>
-      forwardJson({
+    async (auth) => {
+      const payload: unknown = await req.json().catch(() => undefined);
+      return forwardJson({
         path: `/api/simulations/${encodeURIComponent(id)}/invite`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload ?? {},
         accessToken: auth.accessToken,
         requestId: auth.requestId,
-      }),
+      });
+    },
   );
 }

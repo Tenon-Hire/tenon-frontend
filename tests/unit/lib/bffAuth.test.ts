@@ -99,9 +99,12 @@ describe('requireBffAuth', () => {
   it('returns 401 when no session', async () => {
     getSessionNormalized.mockResolvedValue(null);
 
-    const result = await requireBffAuth({} as never);
+    const req = {} as never;
+    const result = await requireBffAuth(req);
 
     expect(result.ok).toBe(false);
+    expect(getSessionNormalized).toHaveBeenCalledWith();
+    expect(getSessionNormalized).not.toHaveBeenCalledWith(req);
     if (!result.ok) {
       expect(result.response.status).toBe(401);
     }

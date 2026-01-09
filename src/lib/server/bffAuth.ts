@@ -55,7 +55,7 @@ export async function requireBffAuth(
     }
   };
 
-  const session = await getSessionNormalized(req);
+  const session = await getSessionNormalized();
   if (!session) {
     logPerf('unauthenticated');
     return {

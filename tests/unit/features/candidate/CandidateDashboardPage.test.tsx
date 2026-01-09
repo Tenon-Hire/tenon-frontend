@@ -4,11 +4,7 @@ import CandidateDashboardPage, {
 } from '@/features/candidate/dashboard/CandidateDashboardPage';
 import { CandidateSessionProvider } from '@/features/candidate/session/CandidateSessionProvider';
 import { listCandidateInvites } from '@/lib/api/candidate';
-
-jest.mock('@auth0/nextjs-auth0/client', () => ({
-  useUser: () => ({ user: { email: 'dash@example.com' } }),
-  getAccessToken: jest.fn().mockResolvedValue('auth-token'),
-}));
+import { setAuthToken } from '@/lib/auth';
 
 jest.mock('@/lib/api/candidate', () => ({
   listCandidateInvites: jest.fn(),
@@ -42,6 +38,8 @@ describe('CandidateDashboardPage', () => {
     Object.values(routerMock).forEach((fn) => fn.mockReset());
     listInvitesMock.mockReset();
     listInvitesMock.mockResolvedValue([]);
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('shows invites list with continue CTA', async () => {
@@ -60,6 +58,7 @@ describe('CandidateDashboardPage', () => {
       },
     ]);
 
+    setAuthToken('candidate-token');
     renderPage();
 
     expect(await screen.findByText(/Infra Simulation/i)).toBeInTheDocument();
@@ -71,6 +70,7 @@ describe('CandidateDashboardPage', () => {
   it('shows empty state when no invites', async () => {
     listInvitesMock.mockResolvedValue([]);
 
+    setAuthToken('candidate-token');
     renderPage();
 
     await waitFor(() =>
@@ -94,6 +94,7 @@ describe('CandidateDashboardPage', () => {
       },
     ]);
 
+    setAuthToken('candidate-token');
     renderPage();
 
     expect(await screen.findByText(/Old Simulation/i)).toBeInTheDocument();
@@ -101,6 +102,15 @@ describe('CandidateDashboardPage', () => {
       name: /Start simulation|Continue/i,
     });
     expect(cta).toBeDisabled();
+  });
+
+  it('prompts for verification when no token is available', async () => {
+    renderPage();
+
+    expect(
+      await screen.findByText(/Verify an invite to see your simulations/i),
+    ).toBeInTheDocument();
+    expect(listInvitesMock).not.toHaveBeenCalled();
   });
 
   it('parses canonical invite links and navigates', () => {

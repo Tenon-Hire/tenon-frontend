@@ -88,6 +88,9 @@ async function readStreamWithLimit(
 
 async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
   const start = process.env.TENON_DEBUG_PERF ? Date.now() : null;
+  const debugProxy =
+    process.env.TENON_DEBUG_PROXY === 'true' ||
+    process.env.TENON_DEBUG === 'true';
   const requestId = resolveRequestId(req.headers);
   const params = await context.params;
   const rawPath = params?.path;
@@ -113,6 +116,12 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
   });
 
   try {
+    if (debugProxy) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[debug:backend-proxy] [req ${requestId}] ${req.method} ${req.nextUrl.pathname}${search} -> ${targetUrl}`,
+      );
+    }
     let body: ArrayBuffer | undefined;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       const limited = await readBodyWithLimit(req, MAX_PROXY_BODY_BYTES);
@@ -158,6 +167,12 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
     });
     const upstreamStatus = upstream.status;
     const blockedRedirect = upstreamStatus >= 300 && upstreamStatus < 400;
+    if (debugProxy) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[debug:backend-proxy] [req ${requestId}] upstream ${upstreamStatus}`,
+      );
+    }
 
     const upstreamHeaders = new Headers();
     upstream.headers.forEach((value, key) => {
