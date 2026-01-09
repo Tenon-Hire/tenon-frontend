@@ -8,7 +8,9 @@ import {
 
 export { HttpError };
 
-const API_BASE = process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api/backend';
+const RAW_API_BASE =
+  process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api/backend';
+const API_BASE = RAW_API_BASE === '/api' ? '/api/backend' : RAW_API_BASE;
 const baseClientOptions: ApiClientOptions = {
   basePath: API_BASE || '/api/backend',
   skipAuth: false,
@@ -20,6 +22,19 @@ export type CandidateSessionBootstrapResponse = {
   candidateSessionId: number;
   status: 'not_started' | 'in_progress' | 'completed' | 'expired';
   simulation: SimulationSummary;
+};
+
+export type CandidateVerificationSendResponse = {
+  status: string;
+  maskedEmail: string;
+  expiresAt: string | null;
+  retryAfterSeconds?: number;
+};
+
+export type CandidateVerificationConfirmResponse = {
+  verified: boolean;
+  candidateAccessToken: string;
+  expiresAt: string;
 };
 
 type TaskType =
@@ -133,6 +148,50 @@ function parseSessionResponse(
   };
 }
 
+function parseOtpDetails(details: unknown): {
+  code?: string;
+  retryAfterSeconds?: number;
+} {
+  if (!details || typeof details !== 'object') return {};
+  const record = details as Record<string, unknown>;
+  const code =
+    typeof record.error === 'string'
+      ? record.error
+      : typeof record.code === 'string'
+        ? record.code
+        : typeof record.otpError === 'string'
+          ? record.otpError
+          : typeof record.otp_error === 'string'
+            ? record.otp_error
+            : typeof (record.error as { code?: unknown })?.code === 'string'
+              ? ((record.error as { code: string }).code as string)
+              : undefined;
+  const retryAfterSeconds =
+    typeof record.retryAfterSeconds === 'number'
+      ? record.retryAfterSeconds
+      : typeof record.retry_after_seconds === 'number'
+        ? record.retry_after_seconds
+        : typeof record.retry_after === 'number'
+          ? record.retry_after
+          : undefined;
+  return { code, retryAfterSeconds };
+}
+
+function attachOtpMetadata(
+  error: HttpError,
+  details: unknown,
+): HttpError & { otpError?: string; retryAfterSeconds?: number } {
+  const parsed = parseOtpDetails(details);
+  if (parsed.code) {
+    (error as { otpError?: string }).otpError = parsed.code;
+  }
+  if (typeof parsed.retryAfterSeconds === 'number') {
+    (error as { retryAfterSeconds?: number }).retryAfterSeconds =
+      parsed.retryAfterSeconds;
+  }
+  return error;
+}
+
 export async function claimCandidateInvite(
   inviteToken: string,
   authToken: string,
@@ -202,6 +261,135 @@ export async function claimCandidateInvite(
     throw toHttpError(err, {
       status: 500,
       message: 'Unable to claim your invite right now. Please try again.',
+    });
+  }
+}
+
+export async function sendCandidateVerificationCode(
+  inviteToken: string,
+): Promise<CandidateVerificationSendResponse> {
+  const safeInviteToken = inviteToken.trim();
+  if (!safeInviteToken) {
+    throw new HttpError(400, 'Missing invite token.');
+  }
+  const path = `/candidate/session/${encodeURIComponent(
+    safeInviteToken,
+  )}/verification/code/send`;
+
+  try {
+    const data = await apiClient.post<CandidateVerificationSendResponse>(
+      path,
+      undefined,
+      { cache: 'no-store' },
+      { ...baseClientOptions, skipAuth: true },
+    );
+    return {
+      status: typeof data.status === 'string' ? data.status : 'sent',
+      maskedEmail: typeof data.maskedEmail === 'string' ? data.maskedEmail : '',
+      expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : null,
+      retryAfterSeconds:
+        typeof data.retryAfterSeconds === 'number'
+          ? data.retryAfterSeconds
+          : typeof (data as Record<string, unknown>).retry_after_seconds ===
+              'number'
+            ? ((data as Record<string, unknown>).retry_after_seconds as number)
+            : undefined,
+    };
+  } catch (err: unknown) {
+    if (err && typeof err === 'object') {
+      const status = (err as { status?: unknown }).status;
+      const details = (err as { details?: unknown }).details;
+      if (status === 404)
+        throw new HttpError(404, 'That invite link is invalid.');
+      if (status === 410)
+        throw new HttpError(410, 'That invite link has expired.');
+      if (status === 429) {
+        const error = new HttpError(
+          429,
+          'Please wait before requesting another code.',
+        );
+        throw attachOtpMetadata(error, details);
+      }
+
+      const backendMsg = extractBackendMessage(details, false);
+      const message =
+        backendMsg ?? 'Unable to send a verification code right now.';
+      const error = new HttpError(
+        typeof status === 'number' ? status : fallbackStatus(err, 500),
+        message,
+      );
+      throw attachOtpMetadata(error, details);
+    }
+
+    throw toHttpError(err, {
+      status: 500,
+      message: 'Unable to send a verification code right now.',
+    });
+  }
+}
+
+export async function confirmCandidateVerificationCode(
+  inviteToken: string,
+  email: string,
+  code: string,
+): Promise<CandidateVerificationConfirmResponse> {
+  const safeInviteToken = inviteToken.trim();
+  if (!safeInviteToken) {
+    throw new HttpError(400, 'Missing invite token.');
+  }
+  const path = `/candidate/session/${encodeURIComponent(
+    safeInviteToken,
+  )}/verification/code/confirm`;
+
+  try {
+    const data = await apiClient.post<CandidateVerificationConfirmResponse>(
+      path,
+      {
+        email,
+        code,
+      },
+      { cache: 'no-store' },
+      { ...baseClientOptions, skipAuth: true },
+    );
+
+    return {
+      verified: Boolean(data.verified),
+      candidateAccessToken:
+        typeof data.candidateAccessToken === 'string'
+          ? data.candidateAccessToken
+          : '',
+      expiresAt: typeof data.expiresAt === 'string' ? data.expiresAt : '',
+    };
+  } catch (err: unknown) {
+    if (err && typeof err === 'object') {
+      const status = (err as { status?: unknown }).status;
+      const details = (err as { details?: unknown }).details;
+      if (status === 404)
+        throw new HttpError(404, 'That invite link is invalid.');
+      if (status === 410) {
+        const error = new HttpError(410, 'That code has expired.');
+        throw attachOtpMetadata(error, details);
+      }
+      if (status === 400 || status === 429) {
+        const error = new HttpError(
+          typeof status === 'number' ? status : 400,
+          'Unable to verify that code.',
+        );
+        throw attachOtpMetadata(error, details);
+      }
+
+      const backendMsg = extractBackendMessage(details, false);
+      const message = backendMsg ?? 'Unable to verify that code right now.';
+      const error = new HttpError(
+        typeof status === 'number' ? status : fallbackStatus(err, 500),
+        message,
+      );
+      throw attachOtpMetadata(error, details);
+    }
+
+    throw toHttpError(err, {
+      status: 500,
+      message: 'Unable to verify that code right now.',
     });
   }
 }

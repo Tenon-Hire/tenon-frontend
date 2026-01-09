@@ -2,16 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  getAccessToken as fetchAccessToken,
-  useUser,
-} from '@auth0/nextjs-auth0/client';
 import Button from '@/components/ui/Button';
 import {
   type CandidateInvite,
   listCandidateInvites,
 } from '@/lib/api/candidate';
-import { getUserEmail } from '@/lib/auth0-claims';
 import { toUserMessage } from '@/lib/utils/errors';
 import { useCandidateSession } from '../session/CandidateSessionProvider';
 
@@ -133,19 +128,16 @@ function InviteCard({ invite, onContinue, fallbackToken }: InviteCardProps) {
 
 export default function CandidateDashboardPage() {
   const router = useRouter();
-  const { user } = useUser();
   const { state } = useCandidateSession();
 
   const [invites, setInvites] = useState<CandidateInvite[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsVerification, setNeedsVerification] = useState<boolean>(false);
 
   const displayEmail = useMemo(
-    () =>
-      state.verifiedEmail ??
-      getUserEmail(user as Record<string, unknown>) ??
-      '',
-    [state.verifiedEmail, user],
+    () => state.verifiedEmail ?? '',
+    [state.verifiedEmail],
   );
 
   const sortedInvites = useMemo(() => {
@@ -161,11 +153,14 @@ export default function CandidateDashboardPage() {
     const run = async () => {
       setLoading(true);
       setError(null);
+      setNeedsVerification(false);
 
       try {
-        const accessToken = await fetchAccessToken();
+        const accessToken = state.token;
         if (!accessToken) {
-          throw new Error('Not authenticated. Please sign in again.');
+          setNeedsVerification(true);
+          setInvites([]);
+          return;
         }
         const data = await listCandidateInvites(accessToken);
         if (cancelled) return;
@@ -186,7 +181,7 @@ export default function CandidateDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [state.token]);
 
   useEffect(() => {
     const cancel = loadInvites();
@@ -223,8 +218,8 @@ export default function CandidateDashboardPage() {
         </h1>
         <p className="text-sm text-gray-600">
           {displayEmail
-            ? `Signed in as ${displayEmail}`
-            : 'Signed in with Auth0'}
+            ? `Verified as ${displayEmail}`
+            : 'Verify an invite to see your simulations.'}
         </p>
       </div>
 
@@ -261,6 +256,11 @@ export default function CandidateDashboardPage() {
                 <div className="mt-4 h-2 w-full rounded bg-gray-200" />
               </div>
             ))}
+          </div>
+        ) : needsVerification ? (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Verify an invite to see your simulations here. Open the invite link
+            from your email to enter the verification code.
           </div>
         ) : error ? (
           <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">

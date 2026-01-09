@@ -2,20 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  getAccessToken as fetchAccessToken,
-  useUser,
-} from '@auth0/nextjs-auth0/client';
 import Button from '@/components/ui/Button';
-import { buildLogoutHref } from '@/features/auth/authPaths';
 import CandidateTaskView from '@/features/candidate/session/task/CandidateTaskView';
 import CandidateTaskProgress from '@/features/candidate/session/task/CandidateTaskProgress';
 import {
-  claimCandidateInvite,
   type CandidateSessionBootstrapResponse,
   getCandidateCurrentTask,
+  resolveCandidateInviteToken,
 } from '@/lib/api/candidate';
-import { getUserEmail } from '@/lib/auth0-claims';
 import { useCandidateSession } from './CandidateSessionProvider';
 import { useTaskSubmission } from './hooks/useTaskSubmission';
 import {
@@ -24,9 +18,13 @@ import {
   toTask,
 } from './utils/taskTransforms';
 import { StateMessage } from './components/StateMessage';
-import { friendlyClaimError, friendlyTaskError } from './utils/errorMessages';
+import {
+  friendlyBootstrapError,
+  friendlyTaskError,
+} from './utils/errorMessages';
+import { CandidateVerificationPanel } from './components/CandidateVerificationPanel';
 
-type ViewState = 'loading' | 'starting' | 'error' | 'wrong_account' | 'running';
+type ViewState = 'loading' | 'verify' | 'starting' | 'error' | 'running';
 
 const isDev = process.env.NODE_ENV === 'development';
 function devDebug(message: string, ...args: unknown[]) {
@@ -52,7 +50,6 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     reset,
   } = useCandidateSession();
   const router = useRouter();
-  const { user } = useUser();
 
   const bootstrap = state.bootstrap as CandidateSessionBootstrapResponse | null;
   const title = useMemo(() => bootstrap?.simulation?.title ?? '', [bootstrap]);
@@ -60,15 +57,9 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   const candidateSessionId =
     state.candidateSessionId ?? bootstrap?.candidateSessionId ?? null;
 
-  const profileEmail = useMemo(
-    () => getUserEmail(user as Record<string, unknown> | null),
-    [user],
-  );
-  const signedInEmail = profileEmail ?? state.verifiedEmail ?? null;
-
   const [view, setView] = useState<ViewState>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [claimMismatchEmail, setClaimMismatchEmail] = useState<string | null>(
+  const [verificationError, setVerificationError] = useState<string | null>(
     null,
   );
   const lastTokenRef = useRef<string | null>(null);
@@ -141,8 +132,8 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       reset();
     }
     initRef.current = { token: null, inFlight: false, done: false };
-    setClaimMismatchEmail(null);
     setErrorMessage(null);
+    setVerificationError(null);
     setView('loading');
     clearTaskError();
     if (state.inviteToken !== token) {
@@ -151,10 +142,20 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   }, [clearTaskError, reset, setInviteToken, state.inviteToken, token]);
 
   const runInit = useCallback(
-    async (initToken: string, allowRetry = false) => {
+    async (
+      initToken: string,
+      allowRetry = false,
+      authTokenOverride?: string | null,
+    ) => {
       if (!initToken) {
         setErrorMessage('Missing invite token.');
         setView('error');
+        return;
+      }
+
+      const authToken = authTokenOverride ?? state.token;
+      if (!authToken) {
+        setView('verify');
         return;
       }
 
@@ -177,29 +178,12 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       initRef.current = { token: initToken, inFlight: true, done: false };
       setView('loading');
       setErrorMessage(null);
-      setClaimMismatchEmail(null);
+      setVerificationError(null);
       devDebug('init start', { token: initToken });
 
-      let authToken: string;
       try {
-        authToken = await fetchAccessToken();
-        setToken(authToken);
-      } catch {
-        setErrorMessage(
-          'Unable to load your login session. Please sign in again.',
-        );
-        setView('error');
-        initRef.current.inFlight = false;
-        initRef.current.done = true;
-        return;
-      }
-
-      try {
-        const resp = await claimCandidateInvite(initToken, authToken);
-        devDebug('claim success', { sessionId: resp.candidateSessionId });
-        const verified =
-          profileEmail ?? resp.signedInEmail ?? state.verifiedEmail;
-        if (verified) setVerifiedEmail(verified);
+        const resp = await resolveCandidateInviteToken(initToken, authToken);
+        devDebug('bootstrap success', { sessionId: resp.candidateSessionId });
         setCandidateSessionId(resp.candidateSessionId);
         setBootstrap({
           candidateSessionId: resp.candidateSessionId,
@@ -212,34 +196,28 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       } catch (err) {
         const status = (err as { status?: unknown }).status;
         if (status === 401 || status === 403) {
-          devDebug('claim mismatch', err);
-          const invitedEmail = (err as { invitedEmail?: unknown }).invitedEmail;
-          setClaimMismatchEmail(
-            typeof invitedEmail === 'string' && invitedEmail.trim()
-              ? invitedEmail
-              : null,
+          devDebug('token invalid', err);
+          setToken(null);
+          setVerificationError(
+            'Your verification session expired. Please verify again.',
           );
-          setErrorMessage(friendlyClaimError(err));
-          setView('wrong_account');
+          setView('verify');
         } else {
-          setErrorMessage(friendlyClaimError(err));
+          setErrorMessage(friendlyBootstrapError(err));
           setView('error');
         }
         initRef.current.done = true;
+      } finally {
         initRef.current.inFlight = false;
-        return;
       }
-
-      initRef.current.inFlight = false;
     },
     [
       clearTaskError,
-      profileEmail,
       setBootstrap,
       setCandidateSessionId,
       setToken,
-      setVerifiedEmail,
-      state.verifiedEmail,
+      setVerificationError,
+      state.token,
     ],
   );
 
@@ -248,7 +226,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   }, [runInit, token]);
 
   useEffect(() => {
-    if (view === 'wrong_account' || view === 'error') return;
+    if (view === 'verify' || view === 'error') return;
     if (!state.token || !candidateSessionId) return;
     if (state.taskState.loading) return;
     if (state.taskState.isComplete) return;
@@ -302,6 +280,18 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     void runInit(token, true);
   }, [runInit, token]);
 
+  const handleVerified = useCallback(
+    (accessToken: string, email: string) => {
+      setToken(accessToken);
+      if (email) setVerifiedEmail(email);
+      setVerificationError(null);
+      initRef.current = { token: null, inFlight: false, done: false };
+      setView('loading');
+      void runInit(token, true, accessToken);
+    },
+    [runInit, setToken, setVerifiedEmail, token],
+  );
+
   const errorCopy =
     errorMessage ?? 'Something went wrong loading your simulation.';
 
@@ -328,44 +318,15 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     );
   }
 
-  if (view === 'wrong_account') {
-    const invited = claimMismatchEmail;
-    const returnTo = `/candidate/session/${encodeURIComponent(token)}`;
+  if (view === 'verify') {
     return (
-      <div className="p-6 max-w-xl mx-auto space-y-4">
-        <div>
-          <div className="text-2xl font-semibold">Use the invited email</div>
-          <div className="text-sm text-gray-600">
-            {title ? `${title} — ${role}` : 'Simulation invite'}
-          </div>
-        </div>
-        <p className="text-sm text-gray-700">
-          {invited
-            ? `This invite was sent to ${invited}. You’re signed in as ${
-                signedInEmail ?? 'a different account'
-              }.`
-            : `This invite was sent to a different email than the one you’re signed in with. You’re signed in as ${
-                signedInEmail ?? 'another account'
-              }.`}
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={() => router.push(buildLogoutHref(returnTo))}>
-            Log out
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => router.push('/candidate/dashboard')}
-          >
-            Go to Candidate Dashboard
-          </Button>
-        </div>
-        <button
-          className="text-sm text-blue-700 underline"
-          onClick={() => router.push(buildLogoutHref(returnTo))}
-        >
-          Try a different account
-        </button>
-      </div>
+      <CandidateVerificationPanel
+        token={token}
+        initialEmail={state.verifiedEmail}
+        errorMessage={verificationError}
+        onVerified={handleVerified}
+        onBack={() => router.push('/candidate/dashboard')}
+      />
     );
   }
 
@@ -373,7 +334,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     return (
       <StateMessage
         title={title || 'Preparing your simulation…'}
-        description="Claiming your invite and loading tasks."
+        description="Finalizing verification and loading tasks."
       />
     );
   }
@@ -395,8 +356,8 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           <div className="text-sm text-gray-600">Role: {role}</div>
         </div>
         <div className="text-sm text-gray-700">
-          Claiming your invite was successful. When you’re ready, start your
-          simulation to begin Day 1. You can come back anytime to resume.
+          Verification is complete. When you’re ready, start your simulation to
+          begin Day 1. You can come back anytime to resume.
         </div>
         <div className="flex gap-3">
           <Button onClick={handleStart}>Start simulation</Button>

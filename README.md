@@ -6,6 +6,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 
 - App Router under `src/app`; shared shell in `src/features/shared/layout/AppShell`.
 - Auth0 for recruiter portal; `src/middleware.ts` redirects unauthenticated recruiters to `/auth/login?returnTo=…`.
+- Candidate portal uses invite email OTP verification to mint a candidate access token for API calls.
 - Candidate portal uses a same-origin proxy under `/api/backend/*` by default (can point to an absolute backend URL); requests carry bearer tokens. Recruiter portal uses Next API routes as a BFF that forward to the backend with Auth0 access tokens.
 - Styling via Tailwind utility classes and shared UI primitives in `src/components/ui`.
 
@@ -21,7 +22,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 ## Key Components & Features
 
 - Candidate session state: `src/features/candidate/session/CandidateSessionProvider` persists token/bootstrap in `sessionStorage`.
-- Candidate flow: open invite → auto-claim via Auth0 → bootstrap session → intro → current task fetch → text/code editor with local drafts → submit → progress tracker; friendly error messages and retry hooks.
+- Candidate flow: open invite → send OTP email → verify code → receive candidate access token → bootstrap session → intro → current task fetch → text/code editor with local drafts → submit → progress tracker; friendly error messages and retry hooks.
 - Recruiter dashboard: `DashboardView` + `SimulationList` with invite modal/toast, profile card, and navigation to creation/detail/submission views.
 - Submissions viewer: renders per-day artifacts (prompt, text, code with copy/download, testResults JSON if present).
 - API responses include correlation/debug headers: `x-tenon-request-id`, `x-tenon-bff`, `x-tenon-upstream-status` (+ per-upstream status on `/api/dashboard`) and `Server-Timing` (`bff;dur=…`, `retry;desc="count=N"`).
@@ -29,9 +30,10 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 ## API Integration
 
 - Base config: `NEXT_PUBLIC_TENON_API_BASE_URL` (defaults to `/api/backend` proxy); BFF targets `TENON_BACKEND_BASE_URL` (default `http://localhost:8000`; `/api` suffix trimmed).
-- Candidate calls (direct with Auth0 bearer + `candidate:access`):
-  - `GET /candidate/session/{token}` bootstrap/resolve invite.
-  - `POST /candidate/session/{token}/claim` (no body) to claim invite with signed-in email.
+- Candidate calls (direct with candidate access bearer token):
+  - `POST /candidate/session/{token}/verification/code/send` to send OTP.
+  - `POST /candidate/session/{token}/verification/code/confirm` with `{email, code}` to exchange for `candidateAccessToken`.
+  - `GET /candidate/session/{token}` bootstrap/resolve invite (uses `candidateAccessToken`).
   - `GET /candidate/session/{id}/current_task` with header `x-candidate-session-id`.
   - `POST /tasks/{taskId}/submit` with header `x-candidate-session-id`; body `{contentText?, codeBlob?}`.
 - Recruiter calls (via BFF with Auth0 bearer token):
@@ -64,7 +66,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 
 ## Typical Flows
 
-- Candidate: open invite link → bootstrap session → intro → load current task → auto-save drafts → submit with token/session headers → refresh current task → finish when `isComplete` true.
+- Candidate: open invite link → verify OTP → bootstrap session → intro → load current task → auto-save drafts → submit with token/session headers → finish when `isComplete` true.
 - Recruiter: Auth0 login → dashboard loads profile + simulations → create simulation → invite candidate (modal + copy invite URL) → view simulation candidates (status/time) → view per-task submissions (text/code/testResults).
 
 ## Planned Roadmap (not yet in code)
@@ -76,8 +78,8 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 
 ## Manual QA checklist
 
-- Incognito candidate invite link (/candidate/session/<token>) → Auth0 login → auto-claim → intro screen → Start simulation → Day 1 loads (no manual email entry).
-- Wrong account on claim (403) shows friendly invited-email message, logout, and dashboard options.
+- Incognito candidate invite link (/candidate/session/<token>) → enter invite email + OTP → intro screen → Start simulation → Day 1 loads.
+- Invalid/expired invite shows friendly error on verification screen.
 - Returning to invite link resumes tasks with stored `candidateSessionId` (no manual verify).
 - Candidate dashboard lists invites with Continue/Start CTA; empty state renders when none.
 - Recruiter signup/login lands on `/dashboard` from the home CTA.
