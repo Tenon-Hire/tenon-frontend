@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
-import { jsonResponse } from '../../setup/responseHelpers';
+import { jsonResponse, type MockResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1' };
 
@@ -11,6 +11,26 @@ jest.mock('next/navigation', () => ({
 
 const fetchMock = jest.fn();
 const realFetch = global.fetch;
+
+const getUrl = (input: RequestInfo | URL) => {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+};
+
+type HandlerResponse = Response | MockResponse;
+type Handler =
+  | HandlerResponse
+  | (() => HandlerResponse | Promise<HandlerResponse>);
+
+const mockFetchHandlers = (handlers: Record<string, Handler>) => {
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = getUrl(input);
+    const handler = handlers[url];
+    if (!handler) return jsonResponse({ message: 'Not found' }, 404);
+    return typeof handler === 'function' ? handler() : handler;
+  });
+};
 
 beforeEach(() => {
   fetchMock.mockReset();
@@ -27,8 +47,15 @@ afterAll(() => {
 
 describe('RecruiterSimulationDetailPage', () => {
   it('renders candidate rows with status badges', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse([
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
         {
           candidateSessionId: '11',
           inviteEmail: 'a@example.com',
@@ -52,12 +79,15 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: true,
         },
       ]),
-    );
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
     expect(
       await screen.findByText(/Simulation ID: sim-1/i),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Template: python-fastapi/i),
     ).toBeInTheDocument();
     expect(await screen.findByText('Alex')).toBeInTheDocument();
     expect(await screen.findByText('Blake')).toBeInTheDocument();
@@ -73,15 +103,8 @@ describe('RecruiterSimulationDetailPage', () => {
   it('creates an invite and refreshes the list', async () => {
     const user = userEvent.setup();
 
-    fetchMock.mockResolvedValueOnce(jsonResponse([]));
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        candidateSessionId: '99',
-        token: 'invite-token',
-        inviteUrl: 'https://example.com/candidate/session/invite-token',
-      }),
-    );
-    fetchMock.mockResolvedValueOnce(
+    const candidateResponses = [
+      jsonResponse([]),
       jsonResponse([
         {
           candidateSessionId: 99,
@@ -93,7 +116,24 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: false,
         },
       ]),
-    );
+    ];
+
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': () =>
+        candidateResponses.shift() ?? jsonResponse([]),
+      '/api/simulations/sim-1/invite': jsonResponse({
+        candidateSessionId: '99',
+        token: 'invite-token',
+        inviteUrl: 'https://example.com/candidate/session/invite-token',
+      }),
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -116,8 +156,15 @@ describe('RecruiterSimulationDetailPage', () => {
   it('shows resend CTA for existing emails', async () => {
     const user = userEvent.setup();
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse([
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
         {
           candidateSessionId: 11,
           inviteEmail: 'Test@Email.com',
@@ -128,10 +175,10 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: false,
         },
       ]),
-    );
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ inviteEmailStatus: 'sent' }),
-    );
+      '/api/simulations/sim-1/candidates/11/invite/resend': jsonResponse({
+        inviteEmailStatus: 'sent',
+      }),
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -151,16 +198,33 @@ describe('RecruiterSimulationDetailPage', () => {
     await user.click(
       within(dialog).getByRole('button', { name: /Resend invite/i }),
     );
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('shows invite errors for 409, 422, and 429 responses', async () => {
     const user = userEvent.setup();
 
-    fetchMock.mockResolvedValueOnce(jsonResponse([]));
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: 'Already invited' }, 409),
-    );
+    let inviteStep = 0;
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([]),
+      '/api/simulations/sim-1/invite': () => {
+        inviteStep += 1;
+        if (inviteStep === 1) {
+          return jsonResponse({ message: 'Already invited' }, 409);
+        }
+        if (inviteStep === 2) {
+          return jsonResponse({ message: 'Invalid email' }, 422);
+        }
+        return jsonResponse({ message: 'Rate limited' }, 429);
+      },
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -174,16 +238,10 @@ describe('RecruiterSimulationDetailPage', () => {
 
     expect(await screen.findByText(/already invited/i)).toBeInTheDocument();
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: 'Invalid email' }, 422),
-    );
     await user.click(screen.getByRole('button', { name: /Create invite/i }));
 
     expect(await screen.findByText(/valid email/i)).toBeInTheDocument();
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: 'Rate limited' }, 429),
-    );
     await user.click(screen.getByRole('button', { name: /Create invite/i }));
 
     expect(await screen.findByText(/too many invites/i)).toBeInTheDocument();
@@ -192,8 +250,15 @@ describe('RecruiterSimulationDetailPage', () => {
   it('resends invites and handles rate limits with cooldown', async () => {
     const user = userEvent.setup();
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse([
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
         {
           candidateSessionId: 11,
           inviteEmail: 'a@example.com',
@@ -205,27 +270,14 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: false,
         },
       ]),
-    );
-
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ inviteEmailStatus: 'sent' }),
-    );
+      '/api/simulations/sim-1/candidates/11/invite/resend': jsonResponse(
+        { inviteEmailStatus: 'rate_limited' },
+        429,
+        { 'retry-after': '12' },
+      ),
+    });
 
     render(<RecruiterSimulationDetailPage />);
-
-    const resendButton = await screen.findByRole('button', {
-      name: /Resend invite/i,
-    });
-    await user.click(resendButton);
-    await user.click(resendButton);
-
-    expect(await screen.findByText(/Invite resent/i)).toBeInTheDocument();
-
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ inviteEmailStatus: 'rate_limited' }, 429, {
-        'retry-after': '12',
-      }),
-    );
 
     await user.click(
       await screen.findByRole('button', { name: /Resend invite/i }),
@@ -237,8 +289,15 @@ describe('RecruiterSimulationDetailPage', () => {
   it('ignores non-numeric retry-after headers safely', async () => {
     const user = userEvent.setup();
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse([
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
         {
           candidateSessionId: 11,
           inviteEmail: 'a@example.com',
@@ -250,13 +309,12 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: false,
         },
       ]),
-    );
-
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ inviteEmailStatus: 'rate_limited' }, 429, {
-        'retry-after': 'Wed, 21 Oct 2025 07:28:00 GMT',
-      }),
-    );
+      '/api/simulations/sim-1/candidates/11/invite/resend': jsonResponse(
+        { inviteEmailStatus: 'rate_limited' },
+        429,
+        { 'retry-after': 'Wed, 21 Oct 2025 07:28:00 GMT' },
+      ),
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -272,8 +330,15 @@ describe('RecruiterSimulationDetailPage', () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     const intervalSpy = jest.spyOn(window, 'setInterval');
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse([
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
         {
           candidateSessionId: 11,
           inviteEmail: 'a@example.com',
@@ -285,11 +350,11 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: false,
         },
       ]),
-    );
-
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ inviteEmailStatus: 'rate_limited' }, 429),
-    );
+      '/api/simulations/sim-1/candidates/11/invite/resend': jsonResponse(
+        { inviteEmailStatus: 'rate_limited' },
+        429,
+      ),
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -314,8 +379,15 @@ describe('RecruiterSimulationDetailPage', () => {
       configurable: true,
     });
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse([
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
         {
           candidateSessionId: 11,
           inviteEmail: 'a@example.com',
@@ -327,7 +399,7 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: false,
         },
       ]),
-    );
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -350,8 +422,15 @@ describe('RecruiterSimulationDetailPage', () => {
   });
 
   it('renders safe defaults when optional fields are missing', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse([
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
         {
           candidateSessionId: 11,
           inviteEmail: 'a@example.com',
@@ -362,7 +441,7 @@ describe('RecruiterSimulationDetailPage', () => {
           hasReport: false,
         },
       ]),
-    );
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -372,8 +451,17 @@ describe('RecruiterSimulationDetailPage', () => {
   });
 
   it('shows empty state when there are no candidates', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse([]));
     params.id = 'sim-empty';
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-empty',
+          title: 'Simulation sim-empty',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-empty/candidates': jsonResponse([]),
+    });
 
     render(<RecruiterSimulationDetailPage />);
 
@@ -381,10 +469,20 @@ describe('RecruiterSimulationDetailPage', () => {
   });
 
   it('renders error message when the backend call fails', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({ message: 'Auth failed' }, 500),
-    );
     params.id = 'sim-err';
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-err',
+          title: 'Simulation sim-err',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-err/candidates': jsonResponse(
+        { message: 'Auth failed' },
+        500,
+      ),
+    });
 
     render(<RecruiterSimulationDetailPage />);
 

@@ -14,6 +14,11 @@ import {
   errorToMessage,
 } from '@/features/recruiter/utils/formatters';
 import { normalizeCandidateSession } from '@/lib/api/recruiter';
+import {
+  buildLoginUrl,
+  buildNotAuthorizedUrl,
+  buildReturnTo,
+} from '@/lib/auth/routing';
 import { toUserMessage } from '@/lib/utils/errors';
 import type { CandidateSession } from '@/types/recruiter';
 
@@ -110,6 +115,10 @@ export default function RecruiterSimulationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<CandidateSession[]>([]);
+  const [simulationTemplateKey, setSimulationTemplateKey] = useState<
+    string | null
+  >(null);
+  const [simulationTitle, setSimulationTitle] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<number, RowState>>({});
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [toast, setToast] = useState<
@@ -162,6 +171,8 @@ export default function RecruiterSimulationDetailPage() {
     setCandidates([]);
     setRowStates({});
     setError(null);
+    setSimulationTemplateKey(null);
+    setSimulationTitle(null);
   }, [simulationId]);
 
   useEffect(() => {
@@ -216,6 +227,73 @@ export default function RecruiterSimulationDetailPage() {
   useEffect(() => {
     void loadCandidates();
   }, [loadCandidates]);
+
+  const loadSimulationMeta = useCallback(async () => {
+    try {
+      const res = await fetch('/api/simulations', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      const parsed = await safeParseResponse(res);
+
+      if (!res.ok) {
+        const status = res.status;
+        const returnTo = buildReturnTo();
+
+        if (status === 401) {
+          window.location.assign(buildLoginUrl('recruiter', returnTo));
+          return;
+        }
+
+        if (status === 403) {
+          window.location.assign(buildNotAuthorizedUrl('recruiter', returnTo));
+          return;
+        }
+
+        throw new Error(
+          toUserMessage(parsed, 'Failed to load simulation details.', {
+            includeDetail: true,
+          }),
+        );
+      }
+
+      const items = Array.isArray(parsed) ? parsed : [];
+      const match = items.find((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const record = item as Record<string, unknown>;
+        const id =
+          record.id ?? record.simulationId ?? record.simulation_id ?? '';
+        return String(id) === String(simulationId);
+      }) as Record<string, unknown> | undefined;
+
+      const templateKey =
+        typeof match?.templateKey === 'string'
+          ? match.templateKey
+          : typeof match?.template_key === 'string'
+            ? match.template_key
+            : null;
+      const title =
+        typeof match?.title === 'string'
+          ? match.title
+          : typeof match?.simulation_title === 'string'
+            ? match.simulation_title
+            : null;
+
+      if (mountedRef.current) {
+        setSimulationTemplateKey(templateKey);
+        setSimulationTitle(title);
+      }
+    } catch {
+      if (mountedRef.current) {
+        setSimulationTemplateKey(null);
+        setSimulationTitle(null);
+      }
+    }
+  }, [simulationId]);
+
+  useEffect(() => {
+    void loadSimulationMeta();
+  }, [loadSimulationMeta]);
 
   const rows = useMemo(() => candidates ?? [], [candidates]);
   const existingInviteMap = useMemo(() => {
@@ -468,6 +546,12 @@ export default function RecruiterSimulationDetailPage() {
     () => `Simulation ${simulationId}`,
     [simulationId],
   );
+  const templateKeyLabel = simulationTemplateKey?.trim()
+    ? simulationTemplateKey
+    : 'N/A';
+  const titleLabel = simulationTitle?.trim()
+    ? simulationTitle
+    : `Simulation ${simulationId}`;
 
   const submitInvite = useCallback(
     async (candidateName: string, inviteEmail: string) => {
@@ -502,8 +586,8 @@ export default function RecruiterSimulationDetailPage() {
     <div className="flex flex-col gap-4 py-8">
       <div className="flex items-center justify-between gap-4">
         <PageHeader
-          title="Simulation"
-          subtitle={`Simulation ID: ${simulationId}`}
+          title={titleLabel}
+          subtitle={`Simulation ID: ${simulationId} · Template: ${templateKeyLabel}`}
         />
         <div className="flex items-center gap-2">
           <Button

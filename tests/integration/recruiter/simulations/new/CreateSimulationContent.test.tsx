@@ -62,6 +62,10 @@ describe('SimulationCreatePage', () => {
     await user.type(screen.getByLabelText(/Role/i), ' Backend Engineer ');
     await user.clear(screen.getByLabelText(/Tech stack/i));
     await user.type(screen.getByLabelText(/Tech stack/i), ' Node + Postgres ');
+    await user.selectOptions(
+      screen.getByLabelText(/Template/i),
+      'node-express-ts',
+    );
     await user.type(screen.getByLabelText(/Focus /i), 'Messaging focus');
 
     await user.click(
@@ -74,6 +78,7 @@ describe('SimulationCreatePage', () => {
         role: 'Backend Engineer',
         techStack: 'Node + Postgres',
         seniority: 'Mid',
+        templateKey: 'node-express-ts',
         focus: 'Messaging focus',
       });
     });

@@ -67,7 +67,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 ## Typical Flows
 
 - Candidate: open invite link → verify OTP → bootstrap session → intro → load current task → auto-save drafts → submit with token/session headers → finish when `isComplete` true.
-- Recruiter: Auth0 login → dashboard loads profile + simulations → create simulation → invite candidate (modal + copy invite URL) → view simulation candidates (status/time) → view per-task submissions (text/code/testResults).
+- Recruiter: Auth0 login → dashboard loads profile + simulations → create simulation (select template stack) → invite candidate (modal + copy invite URL) → view simulation candidates (status/time) → view per-task submissions (text/code/testResults).
 
 ## Planned Roadmap (not yet in code)
 

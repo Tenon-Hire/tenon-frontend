@@ -26,12 +26,22 @@ jest.mock('next/link', () => ({
   ),
 }));
 
+const simulationListResponse = () =>
+  jsonResponse([
+    { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
+  ]);
+
 describe('RecruiterSimulationDetailPage', () => {
   beforeEach(() => {
     setMockParams({ id: '1' });
 
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') {
+        return jsonResponse([
+          { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
+        ]);
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {
@@ -94,6 +104,11 @@ describe('RecruiterSimulationDetailPage', () => {
   it('renders empty state when there are no candidates', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') {
+        return jsonResponse([
+          { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
+        ]);
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([]);
       }
@@ -111,6 +126,11 @@ describe('RecruiterSimulationDetailPage', () => {
   it('renders error state when candidates request fails', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') {
+        return jsonResponse([
+          { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
+        ]);
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse({ message: 'Boom' }, 500);
       }
@@ -128,6 +148,11 @@ describe('RecruiterSimulationDetailPage', () => {
   it('uses text fallback when candidates request fails with text/plain', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') {
+        return jsonResponse([
+          { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
+        ]);
+      }
       if (url === '/api/simulations/1/candidates') {
         return textResponse('Plain failure', 500);
       }
@@ -145,6 +170,11 @@ describe('RecruiterSimulationDetailPage', () => {
   it('shows not started status, unnamed fallback, and text error fallback', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') {
+        return jsonResponse([
+          { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
+        ]);
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {
@@ -196,6 +226,11 @@ describe('RecruiterSimulationDetailPage', () => {
   it('shows detail error message when provided by backend', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') {
+        return jsonResponse([
+          { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
+        ]);
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse({ detail: 'No access' }, 403);
       }
@@ -212,6 +247,7 @@ describe('RecruiterSimulationDetailPage', () => {
     const user = userEvent.setup();
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {
@@ -255,6 +291,7 @@ describe('RecruiterSimulationDetailPage', () => {
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
+        if (url === '/api/simulations') return simulationListResponse();
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -303,6 +340,7 @@ describe('RecruiterSimulationDetailPage', () => {
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
+        if (url === '/api/simulations') return simulationListResponse();
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -355,6 +393,7 @@ describe('RecruiterSimulationDetailPage', () => {
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
+        if (url === '/api/simulations') return simulationListResponse();
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -416,6 +455,7 @@ describe('RecruiterSimulationDetailPage', () => {
     const fetchMock = jest.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
+        if (url === '/api/simulations') return simulationListResponse();
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -466,6 +506,7 @@ describe('RecruiterSimulationDetailPage', () => {
   it('does not get stuck loading under StrictMode navigation', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {
@@ -497,6 +538,7 @@ describe('RecruiterSimulationDetailPage', () => {
   it('shows copy invite button even when invite URL is missing and surfaces error', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {
