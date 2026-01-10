@@ -45,6 +45,9 @@ export function SimulationList({ simulations, onInvite }: SimulationListProps) {
                   {sim.candidateCount} candidate(s)
                 </p>
               ) : null}
+              <p className="text-xs text-gray-500">
+                Template: {sim.templateKey?.trim() ? sim.templateKey : 'N/A'}
+              </p>
             </div>
 
             <div className="col-span-3">

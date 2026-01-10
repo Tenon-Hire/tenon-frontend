@@ -27,6 +27,7 @@ describe('Recruiter simulations list (integration)', () => {
           role: 'Backend Engineer',
           createdAt: '2025-12-10T10:00:00Z',
           candidateCount: 3,
+          templateKey: 'python-fastapi',
         },
       ],
       simError: null,
@@ -40,6 +41,7 @@ describe('Recruiter simulations list (integration)', () => {
     expect(screen.getByText('Backend Simulation')).toBeInTheDocument();
     expect(screen.getByText('Backend Engineer')).toBeInTheDocument();
     expect(screen.getByText('3 candidate(s)')).toBeInTheDocument();
+    expect(screen.getByText(/Template: python-fastapi/i)).toBeInTheDocument();
   });
 
   it('shows empty state when no simulations exist', async () => {

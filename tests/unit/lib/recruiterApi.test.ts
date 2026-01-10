@@ -71,6 +71,7 @@ describe('recruiterApi', () => {
           role: 'Backend Engineer',
           createdAt: '2025-12-10T10:00:00Z',
           candidateCount: 3,
+          templateKey: 'python-fastapi',
         },
       ]);
 
@@ -83,6 +84,7 @@ describe('recruiterApi', () => {
           role: 'Backend Engineer',
           createdAt: '2025-12-10T10:00:00Z',
           candidateCount: 3,
+          templateKey: 'python-fastapi',
         },
       ]);
     });
@@ -95,6 +97,7 @@ describe('recruiterApi', () => {
           role: 'Backend Engineer',
           created_at: '2025-12-11T10:00:00Z',
           candidate_count: 1,
+          template_key: 'node-express-ts',
         },
       ]);
 
@@ -105,6 +108,7 @@ describe('recruiterApi', () => {
       expect(result[0]?.role).toBe('Backend Engineer');
       expect(result[0]?.createdAt).toBe('2025-12-11T10:00:00Z');
       expect(result[0]?.candidateCount).toBe(1);
+      expect(result[0]?.templateKey).toBe('node-express-ts');
     });
 
     it('falls back safely when item is not an object', async () => {
@@ -307,6 +311,7 @@ describe('recruiterApi', () => {
         role: ' ',
         techStack: '',
         seniority: 'Mid',
+        templateKey: 'python-fastapi',
       });
 
       expect(result).toEqual({
@@ -326,6 +331,7 @@ describe('recruiterApi', () => {
         role: ' Backend ',
         techStack: ' Node ',
         seniority: 'Senior',
+        templateKey: 'node-express-ts',
         focus: '  Focus ',
       });
 
@@ -336,6 +342,7 @@ describe('recruiterApi', () => {
           role: 'Backend',
           techStack: 'Node',
           seniority: 'Senior',
+          templateKey: 'node-express-ts',
           focus: 'Focus',
         },
         {
@@ -361,6 +368,7 @@ describe('recruiterApi', () => {
         role: 'Backend',
         techStack: 'Node',
         seniority: 'Junior',
+        templateKey: 'python-fastapi',
       });
 
       expect(result).toEqual({
@@ -379,6 +387,7 @@ describe('recruiterApi', () => {
         role: 'Backend',
         techStack: 'Node',
         seniority: 'Junior',
+        templateKey: 'python-fastapi',
         focus: '   ',
       });
 
@@ -400,6 +409,7 @@ describe('recruiterApi', () => {
         role: 'Backend',
         techStack: 'Node',
         seniority: 'Junior',
+        templateKey: 'python-fastapi',
       });
 
       expect(mockedBffPost).toHaveBeenCalledWith(
@@ -421,6 +431,7 @@ describe('recruiterApi', () => {
         role: 'Backend',
         techStack: 'Node',
         seniority: 'Junior',
+        templateKey: 'python-fastapi',
       });
 
       expect(result).toMatchObject({

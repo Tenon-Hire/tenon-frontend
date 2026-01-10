@@ -10,6 +10,7 @@ import {
   createSimulation,
   type CreateSimulationInput,
 } from '@/lib/api/recruiter';
+import { DEFAULT_TEMPLATE_KEY, TEMPLATE_OPTIONS } from '@/lib/templateCatalog';
 import {
   buildLoginUrl,
   buildNotAuthorizedUrl,
@@ -35,6 +36,8 @@ export default function SimulationCreatePage() {
   const [techStack, setTechStack] = useState<string>('Node.js + Postgres');
   const [seniority, setSeniority] =
     useState<CreateSimulationInput['seniority']>('Mid');
+  const [templateKey, setTemplateKey] =
+    useState<CreateSimulationInput['templateKey']>(DEFAULT_TEMPLATE_KEY);
   const [focus, setFocus] = useState<string>('');
 
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -46,9 +49,10 @@ export default function SimulationCreatePage() {
       role: role.trim(),
       techStack: techStack.trim(),
       seniority,
+      templateKey,
       focus: focus.trim() ? focus.trim() : undefined,
     }),
-    [title, role, techStack, seniority, focus],
+    [title, role, techStack, seniority, templateKey, focus],
   );
 
   function validate(input: CreateSimulationInput): FieldErrors {
@@ -57,6 +61,7 @@ export default function SimulationCreatePage() {
     if (!input.role) next.role = 'Role is required.';
     if (!input.techStack) next.techStack = 'Tech stack is required.';
     if (!input.seniority) next.seniority = 'Seniority is required.';
+    if (!input.templateKey) next.templateKey = 'Template is required.';
     return next;
   }
 
@@ -258,6 +263,45 @@ export default function SimulationCreatePage() {
               role="alert"
             >
               {errors.seniority}
+            </p>
+          ) : null}
+        </div>
+
+        <div>
+          <label
+            htmlFor="templateKey"
+            className="text-xs font-medium uppercase tracking-wide text-gray-500"
+          >
+            Template
+          </label>
+          <select
+            id="templateKey"
+            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+            value={templateKey}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setTemplateKey(
+                e.target.value as CreateSimulationInput['templateKey'],
+              )
+            }
+            disabled={isSubmitting}
+            aria-invalid={Boolean(errors.templateKey)}
+            aria-describedby={
+              errors.templateKey ? 'templateKey-error' : undefined
+            }
+          >
+            {TEMPLATE_OPTIONS.map((opt) => (
+              <option key={opt.key} value={opt.key}>
+                {opt.label} ({opt.key})
+              </option>
+            ))}
+          </select>
+          {errors.templateKey ? (
+            <p
+              id="templateKey-error"
+              className="mt-1 text-sm text-red-700"
+              role="alert"
+            >
+              {errors.templateKey}
             </p>
           ) : null}
         </div>

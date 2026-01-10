@@ -1,6 +1,7 @@
 import { recruiterBffClient, safeRequest } from './httpClient';
 import { extractBackendMessage, fallbackStatus } from './utils/errors';
 import { getId, getNumber, getString, isRecord } from './utils/normalize';
+import type { TemplateKey } from '@/lib/templateCatalog';
 import type { CandidateSession } from '@/types/recruiter';
 
 export type SimulationListItem = {
@@ -9,6 +10,7 @@ export type SimulationListItem = {
   role: string;
   createdAt: string;
   candidateCount?: number;
+  templateKey?: string | null;
 };
 
 export type InviteCandidateResponse = {
@@ -22,6 +24,7 @@ export type CreateSimulationInput = {
   role: string;
   techStack: string;
   seniority: 'Junior' | 'Mid' | 'Senior';
+  templateKey: TemplateKey;
   focus?: string;
 };
 
@@ -78,7 +81,14 @@ function normalizeSimulation(raw: unknown): SimulationListItem {
     getNumber(raw.num_candidates) ??
     undefined;
 
-  return { id, title, role, createdAt, candidateCount };
+  const templateKey =
+    typeof raw.templateKey === 'string'
+      ? raw.templateKey
+      : typeof raw.template_key === 'string'
+        ? raw.template_key
+        : null;
+
+  return { id, title, role, createdAt, candidateCount, templateKey };
 }
 
 export async function listSimulations(
@@ -372,8 +382,9 @@ export async function createSimulation(
   const safeTitle = input.title.trim();
   const safeRole = input.role.trim();
   const safeTechStack = input.techStack.trim();
+  const safeTemplateKey = input.templateKey.trim();
 
-  if (!safeTitle || !safeRole || !safeTechStack) {
+  if (!safeTitle || !safeRole || !safeTechStack || !safeTemplateKey) {
     return {
       id: '',
       ok: false,
@@ -388,6 +399,7 @@ export async function createSimulation(
       role: safeRole,
       techStack: safeTechStack,
       seniority: input.seniority,
+      templateKey: safeTemplateKey,
       focus: input.focus?.trim() ? input.focus.trim() : undefined,
     };
 
