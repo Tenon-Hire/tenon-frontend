@@ -59,6 +59,8 @@ type SimulationPlan = {
 
 type DerivedStatus = 'completed' | 'in_progress' | 'not_started';
 
+const candidateKey = (id: CandidateSession['candidateSessionId']) => String(id);
+
 function formatDateTime(value: string | null): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -438,7 +440,7 @@ export default function RecruiterSimulationDetailPage() {
   );
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [rowStates, setRowStates] = useState<Record<number, RowState>>({});
+  const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [toast, setToast] = useState<
     | { open: false }
@@ -455,7 +457,7 @@ export default function RecruiterSimulationDetailPage() {
   const mountedRef = useRef(true);
   const toastTimerRef = useRef<number | null>(null);
   const toastCopyTimerRef = useRef<number | null>(null);
-  const cooldownTimersRef = useRef<Record<number, number>>({});
+  const cooldownTimersRef = useRef<Record<string, number>>({});
   const cooldownIntervalRef = useRef<number | null>(null);
 
   const inviteFlow = useInviteCandidateFlow(
@@ -731,7 +733,7 @@ export default function RecruiterSimulationDetailPage() {
 
   const updateRowState = useCallback(
     (
-      candidateSessionId: number,
+      candidateSessionId: string,
       updater: RowState | ((prev: RowState) => RowState),
     ) => {
       setRowStates((prev) => {
@@ -754,7 +756,7 @@ export default function RecruiterSimulationDetailPage() {
   const handleCopy = useCallback(
     async (candidate: CandidateSession) => {
       const link = candidate.inviteUrl?.trim() || null;
-      const id = candidate.candidateSessionId;
+      const id = candidateKey(candidate.candidateSessionId);
       if (!link) {
         updateRowState(id, (prev) => ({
           ...prev,
@@ -806,7 +808,7 @@ export default function RecruiterSimulationDetailPage() {
 
   const handleResend = useCallback(
     async (candidate: CandidateSession): Promise<boolean> => {
-      const id = candidate.candidateSessionId;
+      const id = candidateKey(candidate.candidateSessionId);
       const startCooldown = (seconds?: number | null) => {
         const cooldownSeconds =
           typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0
@@ -908,7 +910,9 @@ export default function RecruiterSimulationDetailPage() {
           const normalized = normalizeCandidateSession(parsed);
           setCandidates((prev) =>
             prev.map((c) =>
-              c.candidateSessionId === id ? { ...c, ...normalized } : c,
+              candidateKey(c.candidateSessionId) === id
+                ? { ...c, ...normalized }
+                : c,
             ),
           );
         } else {
@@ -954,9 +958,11 @@ export default function RecruiterSimulationDetailPage() {
   );
 
   const handleResendFromModal = useCallback(
-    async (candidateSessionId: number) => {
+    async (candidateSessionId: CandidateSession['candidateSessionId']) => {
       const candidate = candidates.find(
-        (item) => item.candidateSessionId === candidateSessionId,
+        (item) =>
+          candidateKey(item.candidateSessionId) ===
+          candidateKey(candidateSessionId),
       );
       if (!candidate) return;
       const ok = await handleResend(candidate);
@@ -1335,7 +1341,8 @@ export default function RecruiterSimulationDetailPage() {
               <tbody className="divide-y divide-gray-200">
                 {visibleCandidates.map((c) => {
                   const display = c.candidateName || c.inviteEmail || 'Unnamed';
-                  const rowState = rowStates[c.candidateSessionId] ?? {};
+                  const rowState =
+                    rowStates[candidateKey(c.candidateSessionId)] ?? {};
                   const sentAt = formatDateTime(c.inviteEmailSentAt ?? null);
                   const inviteLink = c.inviteUrl?.trim() || null;
                   const startedAt = formatDateTime(c.startedAt);
@@ -1447,7 +1454,7 @@ export default function RecruiterSimulationDetailPage() {
                                   size="sm"
                                   onClick={() =>
                                     updateRowState(
-                                      c.candidateSessionId,
+                                      candidateKey(c.candidateSessionId),
                                       (prev) => ({
                                         ...prev,
                                         manualCopyOpen: false,

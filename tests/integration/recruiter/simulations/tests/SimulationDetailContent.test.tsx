@@ -741,7 +741,8 @@ describe('RecruiterSimulationDetailPage', () => {
 
     render(<RecruiterSimulationDetailPage />);
 
-    const resendBtn = await screen.findByRole('button', {
+    const row = await screen.findByTestId('candidate-row-99');
+    const resendBtn = within(row).getByRole('button', {
       name: /resend invite/i,
     });
     await user.click(resendBtn);
@@ -749,6 +750,59 @@ describe('RecruiterSimulationDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Sent at/i)).toBeInTheDocument();
       expect(screen.queryByText(/Email bounced/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('handles string candidateSessionId when resending invites', async () => {
+    const user = userEvent.setup();
+    const fetchMock = jest.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = getRequestUrl(input);
+        if (url === '/api/simulations') return simulationListResponse();
+        if (url === '/api/simulations/1') {
+          return simulationDetailResponse();
+        }
+        if (url === '/api/simulations/1/candidates') {
+          return jsonResponse([
+            {
+              candidateSessionId: '42',
+              inviteEmail: 'string@example.com',
+              candidateName: 'String Id',
+              status: 'not_started',
+              startedAt: null,
+              completedAt: null,
+              hasReport: false,
+              inviteEmailStatus: 'failed',
+              inviteEmailSentAt: null,
+            },
+          ]);
+        }
+        if (url === '/api/simulations/1/candidates/42/invite/resend') {
+          expect(init?.method).toBe('POST');
+          return jsonResponse({
+            candidateSessionId: '42',
+            inviteEmailStatus: 'sent',
+            inviteEmailSentAt: '2025-12-24T00:00:00.000000Z',
+            inviteEmailError: null,
+          });
+        }
+        return textResponse('Not found', 404);
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    const row = await screen.findByTestId('candidate-row-42');
+    expect(row).toBeInTheDocument();
+
+    const resendBtn = await screen.findByRole('button', {
+      name: /resend invite/i,
+    });
+    await user.click(resendBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Sent at/i)).toBeInTheDocument();
     });
   });
 
