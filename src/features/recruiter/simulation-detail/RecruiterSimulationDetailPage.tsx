@@ -32,6 +32,29 @@ type RowState = {
   manualCopyOpen?: boolean;
 };
 
+type SimulationPlanDay = {
+  dayIndex: number;
+  title: string;
+  type: string | null;
+  prompt: string | null;
+  rubricItems: string[];
+  rubricText: string | null;
+  repoUrl: string | null;
+  repoName: string | null;
+  codespaceUrl: string | null;
+  provisioned: boolean | null;
+};
+
+type SimulationPlan = {
+  title: string | null;
+  templateKey: string | null;
+  role: string | null;
+  techStack: string | null;
+  focus: string | null;
+  scenario: string | null;
+  days: SimulationPlanDay[];
+};
+
 function formatDateTime(value: string | null): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -79,6 +102,280 @@ function formatCooldown(remainingMs: number): string {
   return `Retry in ${seconds}s`;
 }
 
+function toStringOrNull(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function toStringOrCsv(value: unknown): string | null {
+  if (typeof value === 'string') return toStringOrNull(value);
+  if (Array.isArray(value)) {
+    const items = value
+      .map((item) => (typeof item === 'string' ? item.trim() : ''))
+      .filter(Boolean);
+    return items.length ? items.join(', ') : null;
+  }
+  return null;
+}
+
+function toNumberOrNull(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function toBooleanOrNull(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    if (value.toLowerCase() === 'true') return true;
+    if (value.toLowerCase() === 'false') return false;
+  }
+  return null;
+}
+
+function parseDayIndex(value: unknown, fallback?: number | null): number {
+  const fromValue = toNumberOrNull(value);
+  if (fromValue !== null) return Math.max(0, Math.round(fromValue));
+  if (typeof value === 'string') {
+    const match = value.match(/(\d+)/);
+    if (match) {
+      const parsed = Number(match[1]);
+      if (Number.isFinite(parsed)) return Math.max(0, Math.round(parsed));
+    }
+  }
+  if (typeof fallback === 'number' && Number.isFinite(fallback)) {
+    return Math.max(0, Math.round(fallback));
+  }
+  return 0;
+}
+
+function normalizeRubric(raw: unknown): {
+  rubricItems: string[];
+  rubricText: string | null;
+} {
+  if (!raw) return { rubricItems: [], rubricText: null };
+  if (Array.isArray(raw)) {
+    const rubricItems = raw
+      .map((item) => {
+        if (typeof item === 'string') return item.trim();
+        if (!item || typeof item !== 'object') return null;
+        const rec = item as Record<string, unknown>;
+        return (
+          toStringOrNull(
+            rec.text ??
+              rec.title ??
+              rec.criteria ??
+              rec.description ??
+              rec.summary,
+          ) ?? null
+        );
+      })
+      .filter((item): item is string => Boolean(item));
+    return { rubricItems, rubricText: null };
+  }
+  if (typeof raw === 'string') {
+    return { rubricItems: [], rubricText: raw.trim() || null };
+  }
+  if (raw && typeof raw === 'object') {
+    const rec = raw as Record<string, unknown>;
+    const text =
+      toStringOrNull(
+        rec.text ??
+          rec.summary ??
+          rec.description ??
+          rec.criteria ??
+          rec.details,
+      ) ?? null;
+    return { rubricItems: [], rubricText: text };
+  }
+  return { rubricItems: [], rubricText: null };
+}
+
+function normalizeSimulationPlanDay(
+  raw: unknown,
+  fallbackDayIndex?: number | null,
+): SimulationPlanDay | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const rec = raw as Record<string, unknown>;
+  const dayIndex = parseDayIndex(
+    rec.dayIndex ??
+      rec.day_index ??
+      rec.dayNumber ??
+      rec.day_number ??
+      rec.day ??
+      rec.order ??
+      rec.sequence,
+    fallbackDayIndex ?? null,
+  );
+
+  const title =
+    toStringOrNull(rec.title ?? rec.name ?? rec.taskTitle ?? rec.summary) ??
+    (dayIndex ? `Day ${dayIndex}` : 'Task');
+
+  const prompt = toStringOrNull(
+    rec.prompt ??
+      rec.description ??
+      rec.instructions ??
+      rec.task ??
+      rec.taskPrompt ??
+      rec.problem,
+  );
+
+  const { rubricItems, rubricText } = normalizeRubric(
+    rec.rubric ??
+      rec.rubrics ??
+      rec.criteria ??
+      rec.evaluation ??
+      rec.grading ??
+      rec.assessment,
+  );
+
+  const repoUrl = toStringOrNull(
+    rec.repoUrl ??
+      rec.repo_url ??
+      rec.repoHtmlUrl ??
+      rec.repo_html_url ??
+      rec.repositoryUrl ??
+      rec.repository_url ??
+      rec.repoLink ??
+      rec.repo_link,
+  );
+  const repoName = toStringOrNull(
+    rec.repoFullName ??
+      rec.repo_full_name ??
+      rec.repositoryFullName ??
+      rec.repository_full_name ??
+      rec.repoName ??
+      rec.repo_name,
+  );
+  const codespaceUrl = toStringOrNull(
+    rec.codespaceUrl ??
+      rec.codespace_url ??
+      rec.workspaceUrl ??
+      rec.workspace_url,
+  );
+
+  const provisioned = toBooleanOrNull(
+    rec.repoProvisioned ??
+      rec.repo_provisioned ??
+      rec.isProvisioned ??
+      rec.is_provisioned ??
+      rec.preProvisioned ??
+      rec.pre_provisioned ??
+      rec.workspaceReady ??
+      rec.workspace_ready,
+  );
+
+  return {
+    dayIndex,
+    title,
+    type: toStringOrNull(rec.type ?? rec.taskType ?? rec.task_type ?? rec.kind),
+    prompt,
+    rubricItems,
+    rubricText,
+    repoUrl,
+    repoName,
+    codespaceUrl,
+    provisioned,
+  };
+}
+
+function extractDayTasks(raw: Record<string, unknown>): SimulationPlanDay[] {
+  const taskSources: unknown[] = [
+    raw.tasks,
+    raw.taskPlan,
+    raw.task_plan,
+    raw.dayPlan,
+    raw.day_plan,
+    raw.days,
+    raw.plan,
+    raw.simulationPlan,
+    raw.simulation_plan,
+    raw.generatedPlan,
+    raw.generated_plan,
+    raw.generatedScenario,
+    raw.generated_scenario,
+    raw.scenario,
+  ];
+
+  let taskContainer: unknown = null;
+  for (const source of taskSources) {
+    if (Array.isArray(source)) {
+      taskContainer = source;
+      break;
+    }
+    if (source && typeof source === 'object') {
+      const record = source as Record<string, unknown>;
+      const nested = record.tasks ?? record.days ?? record.plan;
+      if (Array.isArray(nested) || (nested && typeof nested === 'object')) {
+        taskContainer = nested;
+        break;
+      }
+      taskContainer = source;
+      break;
+    }
+  }
+
+  if (!taskContainer) return [];
+
+  if (Array.isArray(taskContainer)) {
+    return taskContainer
+      .map((entry, index) => normalizeSimulationPlanDay(entry, index + 1))
+      .filter((entry): entry is SimulationPlanDay => Boolean(entry));
+  }
+
+  if (taskContainer && typeof taskContainer === 'object') {
+    const entries = Object.entries(taskContainer as Record<string, unknown>);
+    return entries
+      .map(([key, value], index) => {
+        const dayIndex = parseDayIndex(key, index + 1);
+        return normalizeSimulationPlanDay(value, dayIndex);
+      })
+      .filter((entry): entry is SimulationPlanDay => Boolean(entry));
+  }
+
+  return [];
+}
+
+function normalizeSimulationPlan(raw: unknown): SimulationPlan | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const rec = raw as Record<string, unknown>;
+  const scenarioRaw =
+    rec.scenario ??
+    rec.scenarioSummary ??
+    rec.scenario_summary ??
+    rec.overview ??
+    rec.summary ??
+    rec.simulationScenario ??
+    rec.simulation_scenario;
+
+  const scenario =
+    toStringOrNull(scenarioRaw) ??
+    (scenarioRaw && typeof scenarioRaw === 'object'
+      ? toStringOrNull(
+          (scenarioRaw as Record<string, unknown>).summary ??
+            (scenarioRaw as Record<string, unknown>).overview ??
+            (scenarioRaw as Record<string, unknown>).description,
+        )
+      : null);
+
+  return {
+    title: toStringOrNull(rec.title ?? rec.simulation_title ?? rec.name),
+    templateKey: toStringOrNull(rec.templateKey ?? rec.template_key),
+    role: toStringOrCsv(rec.role ?? rec.role_name ?? rec.roleName),
+    techStack: toStringOrCsv(
+      rec.techStack ?? rec.tech_stack ?? rec.stack ?? rec.stack_name,
+    ),
+    focus: toStringOrCsv(rec.focus ?? rec.focus_area ?? rec.focusArea),
+    scenario,
+    days: extractDayTasks(rec).sort((a, b) => a.dayIndex - b.dayIndex),
+  };
+}
+
 async function safeParseResponse(res: Response): Promise<unknown> {
   const contentType = res.headers.get('content-type') ?? '';
   const clone = typeof res.clone === 'function' ? res.clone() : null;
@@ -119,6 +416,11 @@ export default function RecruiterSimulationDetailPage() {
     string | null
   >(null);
   const [simulationTitle, setSimulationTitle] = useState<string | null>(null);
+  const [simulationPlan, setSimulationPlan] = useState<SimulationPlan | null>(
+    null,
+  );
+  const [planLoading, setPlanLoading] = useState(true);
+  const [planError, setPlanError] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<number, RowState>>({});
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [toast, setToast] = useState<
@@ -173,6 +475,9 @@ export default function RecruiterSimulationDetailPage() {
     setError(null);
     setSimulationTemplateKey(null);
     setSimulationTitle(null);
+    setSimulationPlan(null);
+    setPlanLoading(true);
+    setPlanError(null);
   }, [simulationId]);
 
   useEffect(() => {
@@ -227,6 +532,57 @@ export default function RecruiterSimulationDetailPage() {
   useEffect(() => {
     void loadCandidates();
   }, [loadCandidates]);
+
+  const loadSimulationDetail = useCallback(async () => {
+    setPlanLoading(true);
+    setPlanError(null);
+    try {
+      const res = await fetch(`/api/simulations/${simulationId}`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      const parsed = await safeParseResponse(res);
+
+      if (!res.ok) {
+        const status = res.status;
+        const returnTo = buildReturnTo();
+
+        if (status === 401) {
+          window.location.assign(buildLoginUrl('recruiter', returnTo));
+          return;
+        }
+
+        if (status === 403) {
+          window.location.assign(buildNotAuthorizedUrl('recruiter', returnTo));
+          return;
+        }
+
+        throw new Error(
+          toUserMessage(parsed, 'Failed to load simulation details.', {
+            includeDetail: true,
+          }),
+        );
+      }
+
+      const detail = normalizeSimulationPlan(parsed);
+      if (mountedRef.current) {
+        setSimulationPlan(detail);
+        if (detail?.templateKey) setSimulationTemplateKey(detail.templateKey);
+        if (detail?.title) setSimulationTitle(detail.title);
+      }
+    } catch (caught: unknown) {
+      if (mountedRef.current) {
+        setPlanError(
+          toUserMessage(caught, 'Failed to load simulation details.', {
+            includeDetail: true,
+          }),
+        );
+        setSimulationPlan(null);
+      }
+    } finally {
+      if (mountedRef.current) setPlanLoading(false);
+    }
+  }, [simulationId]);
 
   const loadSimulationMeta = useCallback(async () => {
     try {
@@ -294,6 +650,10 @@ export default function RecruiterSimulationDetailPage() {
   useEffect(() => {
     void loadSimulationMeta();
   }, [loadSimulationMeta]);
+
+  useEffect(() => {
+    void loadSimulationDetail();
+  }, [loadSimulationDetail]);
 
   const rows = useMemo(() => candidates ?? [], [candidates]);
   const existingInviteMap = useMemo(() => {
@@ -552,6 +912,26 @@ export default function RecruiterSimulationDetailPage() {
   const titleLabel = simulationTitle?.trim()
     ? simulationTitle
     : `Simulation ${simulationId}`;
+  const roleLabel = simulationPlan?.role?.trim() ? simulationPlan.role : 'N/A';
+  const stackLabel = simulationPlan?.techStack?.trim()
+    ? simulationPlan.techStack
+    : 'N/A';
+  const focusLabel = simulationPlan?.focus?.trim()
+    ? simulationPlan.focus
+    : 'N/A';
+  const scenarioLabel = simulationPlan?.scenario?.trim()
+    ? simulationPlan.scenario
+    : null;
+  const planDays = useMemo(() => {
+    if (!simulationPlan) return [];
+    const byIndex = new Map(
+      simulationPlan.days.map((day) => [day.dayIndex, day]),
+    );
+    return [1, 2, 3, 4, 5].map((dayIndex) => ({
+      dayIndex,
+      task: byIndex.get(dayIndex) ?? null,
+    }));
+  }, [simulationPlan]);
 
   const submitInvite = useCallback(
     async (candidateName: string, inviteEmail: string) => {
@@ -624,6 +1004,216 @@ export default function RecruiterSimulationDetailPage() {
           }
         }}
       />
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              5-day simulation plan
+            </h2>
+            <p className="text-sm text-gray-600">
+              Review the generated prompts and rubrics before inviting
+              candidates.
+            </p>
+          </div>
+          <div className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            Read-only
+          </div>
+        </div>
+
+        {planLoading ? (
+          <div className="mt-4 text-sm text-gray-600">
+            Loading plan details…
+          </div>
+        ) : planError ? (
+          <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            {planError}
+          </div>
+        ) : simulationPlan ? (
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Template
+                </div>
+                <div className="mt-1 text-sm font-semibold text-gray-900">
+                  {templateKeyLabel}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Role
+                </div>
+                <div className="mt-1 text-sm font-semibold text-gray-900">
+                  {roleLabel}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Tech stack
+                </div>
+                <div className="mt-1 text-sm font-semibold text-gray-900">
+                  {stackLabel}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Focus
+                </div>
+                <div className="mt-1 text-sm font-semibold text-gray-900">
+                  {focusLabel}
+                </div>
+              </div>
+            </div>
+
+            {scenarioLabel ? (
+              <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Scenario
+                </div>
+                <p className="mt-1 whitespace-pre-wrap">{scenarioLabel}</p>
+              </div>
+            ) : null}
+
+            <div className="grid gap-4">
+              {planDays.map((slot) => {
+                const day = slot.task;
+                const dayLabel = `Day ${slot.dayIndex}`;
+                const showRepoStatus =
+                  slot.dayIndex === 2 || slot.dayIndex === 3;
+
+                if (!day) {
+                  return (
+                    <div
+                      key={`day-${slot.dayIndex}`}
+                      className="rounded border border-gray-200 bg-gray-50 p-4"
+                    >
+                      <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                        {dayLabel}
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-gray-900">
+                        Not generated yet
+                      </div>
+                      <p className="mt-2 text-sm text-gray-600">
+                        No task available yet.
+                      </p>
+                    </div>
+                  );
+                }
+
+                const repoStatusLabel =
+                  day.provisioned === true
+                    ? 'Repo provisioned'
+                    : day.provisioned === false
+                      ? 'Repo not provisioned yet'
+                      : 'Provisioning happens per-candidate after invite.';
+                const repoLinkLabel =
+                  day.provisioned === true || day.provisioned === false
+                    ? 'Repository'
+                    : 'Repository link';
+
+                return (
+                  <div
+                    key={`${day.dayIndex}-${day.title}`}
+                    className="rounded border border-gray-200 bg-white p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                          {dayLabel}
+                        </div>
+                        <div className="mt-1 text-base font-semibold text-gray-900">
+                          {day.title}
+                        </div>
+                      </div>
+                      {day.type ? (
+                        <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
+                          {day.type}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {day.prompt ? (
+                      <div className="mt-3 text-sm text-gray-700">
+                        <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                          Prompt
+                        </div>
+                        <p className="mt-1 whitespace-pre-wrap">{day.prompt}</p>
+                      </div>
+                    ) : null}
+
+                    {day.rubricItems.length || day.rubricText ? (
+                      <div className="mt-3 text-sm text-gray-700">
+                        <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                          Rubric
+                        </div>
+                        {day.rubricItems.length ? (
+                          <ul className="mt-1 list-disc pl-5">
+                            {day.rubricItems.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        ) : day.rubricText ? (
+                          <p className="mt-1 whitespace-pre-wrap">
+                            {day.rubricText}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {showRepoStatus ? (
+                      <div className="mt-3 text-sm text-gray-700">
+                        <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                          Day {slot.dayIndex} workspace
+                        </div>
+                        <div className="mt-1 flex flex-col gap-1">
+                          <div>{repoStatusLabel}</div>
+                          {day.repoUrl ? (
+                            <div>
+                              <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                {repoLinkLabel}
+                              </div>
+                              <a
+                                className="text-blue-600 hover:underline"
+                                href={day.repoUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {day.repoName ?? 'View repository'}
+                              </a>
+                            </div>
+                          ) : day.repoName ? (
+                            <div>
+                              <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                {repoLinkLabel}
+                              </div>
+                              <div>{day.repoName}</div>
+                            </div>
+                          ) : null}
+                          {day.codespaceUrl ? (
+                            <a
+                              className="text-blue-600 hover:underline"
+                              href={day.codespaceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Open codespace
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+            No simulation plan details available.
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className="text-sm text-gray-600">Loading candidates…</div>

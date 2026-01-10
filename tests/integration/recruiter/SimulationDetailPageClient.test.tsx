@@ -12,6 +12,41 @@ jest.mock('next/navigation', () => ({
 const fetchMock = jest.fn();
 const realFetch = global.fetch;
 
+const simulationDetailResponse = () =>
+  jsonResponse({
+    id: params.id,
+    title: `Simulation ${params.id}`,
+    templateKey: 'python-fastapi',
+    role: 'Backend Engineer',
+    techStack: 'Node.js + Postgres',
+    focus: 'Payments',
+    scenario: 'Design a billing service for a SaaS platform.',
+    tasks: [
+      {
+        dayIndex: 1,
+        title: 'Discovery',
+        description: 'Define requirements.',
+        rubric: ['Clarity'],
+      },
+      {
+        dayIndex: 2,
+        title: 'Implementation',
+        description: 'Implement API routes.',
+        rubric: 'Correctness',
+        repoUrl: 'https://github.com/acme/day2',
+        preProvisioned: true,
+      },
+      {
+        dayIndex: 3,
+        title: 'Debugging',
+        description: 'Fix failing tests.',
+        rubric: ['Root cause'],
+        repoFullName: 'acme/day3',
+        preProvisioned: false,
+      },
+    ],
+  });
+
 const getUrl = (input: RequestInfo | URL) => {
   if (typeof input === 'string') return input;
   if (input instanceof URL) return input.toString();
@@ -24,9 +59,14 @@ type Handler =
   | (() => HandlerResponse | Promise<HandlerResponse>);
 
 const mockFetchHandlers = (handlers: Record<string, Handler>) => {
+  const resolvedHandlers = {
+    [`/api/simulations/${params.id}`]: simulationDetailResponse,
+    ...handlers,
+  };
+
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
     const url = getUrl(input);
-    const handler = handlers[url];
+    const handler = resolvedHandlers[url];
     if (!handler) return jsonResponse({ message: 'Not found' }, 404);
     return typeof handler === 'function' ? handler() : handler;
   });
@@ -198,7 +238,7 @@ describe('RecruiterSimulationDetailPage', () => {
     await user.click(
       within(dialog).getByRole('button', { name: /Resend invite/i }),
     );
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it('shows invite errors for 409, 422, and 429 responses', async () => {
