@@ -30,6 +30,40 @@ const simulationListResponse = () =>
   jsonResponse([
     { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
   ]);
+const simulationDetailResponse = () =>
+  jsonResponse({
+    id: '1',
+    title: 'Simulation 1',
+    templateKey: 'python-fastapi',
+    role: 'Backend Engineer',
+    techStack: 'Python + FastAPI',
+    focus: 'API design',
+    scenario: 'Build a billing service for a growing marketplace.',
+    tasks: [
+      {
+        dayIndex: 1,
+        title: 'Kickoff',
+        description: 'Review requirements and outline the approach.',
+        rubric: ['Clarity', 'Scope'],
+      },
+      {
+        dayIndex: 2,
+        title: 'Implementation',
+        description: 'Build the payments endpoint.',
+        rubric: 'Matches spec with clean error handling.',
+        repoUrl: 'https://github.com/acme/day2',
+        preProvisioned: true,
+      },
+      {
+        dayIndex: 3,
+        title: 'Debugging',
+        description: 'Fix failing tests in the repo.',
+        rubric: ['Root cause analysis'],
+        repoFullName: 'acme/day3',
+        preProvisioned: false,
+      },
+    ],
+  });
 
 describe('RecruiterSimulationDetailPage', () => {
   beforeEach(() => {
@@ -41,6 +75,9 @@ describe('RecruiterSimulationDetailPage', () => {
         return jsonResponse([
           { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
         ]);
+      }
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
       }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
@@ -101,6 +138,135 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(hrefs).toContain('/dashboard/simulations/1/candidates/3');
   });
 
+  it('renders the generated simulation plan with tasks and repo status', async () => {
+    render(<RecruiterSimulationDetailPage />);
+
+    expect(
+      await screen.findByText(/5-day simulation plan/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Backend Engineer')).toBeInTheDocument();
+    expect(await screen.findByText('Python + FastAPI')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Build a billing service/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Kickoff')).toBeInTheDocument();
+    expect(await screen.findByText('Clarity')).toBeInTheDocument();
+    expect(await screen.findByText(/Day 2 workspace/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Repo provisioned/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Repo not provisioned yet/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(/Day 4/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Day 5/i)).toBeInTheDocument();
+    const placeholders = await screen.findAllByText(/Not generated yet/i);
+    expect(placeholders.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('normalizes plan data from nested task objects', async () => {
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return jsonResponse({
+          id: '1',
+          title: 'Simulation 1',
+          template_key: 'python-fastapi',
+          role_name: 'Backend Engineer',
+          tech_stack: ['Python', 'FastAPI'],
+          focus_area: ['Performance', 'Reliability'],
+          scenario: { summary: 'Scenario summary from object.' },
+          tasks: {
+            day_1: {
+              title: 'Discovery',
+              description: 'Review the requirements.',
+              rubric: { summary: 'Clear and concise notes.' },
+            },
+            day_2: {
+              day: '2',
+              title: 'Build',
+              description: 'Ship the API.',
+              pre_provisioned: 'true',
+              repo_url: 'https://github.com/acme/day2',
+            },
+            day_3: {
+              day_index: '3',
+              title: 'Debug',
+              description: 'Fix regressions.',
+              pre_provisioned: 'false',
+            },
+          },
+        });
+      }
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([]);
+      }
+      return textResponse('Not found', 404);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    expect(
+      await screen.findByText(/Scenario summary from object/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Python, FastAPI')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Performance, Reliability'),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Discovery')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Clear and concise notes/i),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(/Day 2 workspace/i)).toBeInTheDocument();
+    const provisioned = await screen.findAllByText(/Repo provisioned/i);
+    expect(provisioned.length).toBeGreaterThan(0);
+    expect(
+      await screen.findByText(/Repo not provisioned yet/i),
+    ).toBeInTheDocument();
+  });
+
+  it('uses neutral copy when provisioning status is unknown', async () => {
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return jsonResponse({
+          id: '1',
+          title: 'Simulation 1',
+          templateKey: 'python-fastapi',
+          role: 'Backend Engineer',
+          techStack: 'Python + FastAPI',
+          tasks: [
+            {
+              dayIndex: 2,
+              title: 'Implementation',
+              description: 'Build the payments endpoint.',
+              repoUrl: 'https://github.com/acme/template',
+            },
+          ],
+        });
+      }
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([]);
+      }
+      return textResponse('Not found', 404);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    expect(
+      await screen.findByText(
+        /Provisioning happens per-candidate after invite/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Repo provisioned/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Repo not provisioned yet/i),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByText(/Repository link/i)).toBeInTheDocument();
+  });
+
   it('renders empty state when there are no candidates', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
@@ -108,6 +274,9 @@ describe('RecruiterSimulationDetailPage', () => {
         return jsonResponse([
           { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
         ]);
+      }
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
       }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([]);
@@ -131,6 +300,9 @@ describe('RecruiterSimulationDetailPage', () => {
           { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
         ]);
       }
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse({ message: 'Boom' }, 500);
       }
@@ -153,6 +325,9 @@ describe('RecruiterSimulationDetailPage', () => {
           { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
         ]);
       }
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
       if (url === '/api/simulations/1/candidates') {
         return textResponse('Plain failure', 500);
       }
@@ -174,6 +349,9 @@ describe('RecruiterSimulationDetailPage', () => {
         return jsonResponse([
           { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
         ]);
+      }
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
       }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
@@ -209,7 +387,8 @@ describe('RecruiterSimulationDetailPage', () => {
 
     render(<RecruiterSimulationDetailPage />);
 
-    expect(await screen.findByText(/network fail/i)).toBeInTheDocument();
+    const errors = await screen.findAllByText(/network fail/i);
+    expect(errors.length).toBeGreaterThan(0);
   });
 
   it('uses default error when fetch throws non-error value', async () => {
@@ -231,6 +410,9 @@ describe('RecruiterSimulationDetailPage', () => {
           { id: '1', title: 'Simulation 1', templateKey: 'python-fastapi' },
         ]);
       }
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse({ detail: 'No access' }, 403);
       }
@@ -248,6 +430,9 @@ describe('RecruiterSimulationDetailPage', () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
       if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {
@@ -292,6 +477,9 @@ describe('RecruiterSimulationDetailPage', () => {
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
         if (url === '/api/simulations') return simulationListResponse();
+        if (url === '/api/simulations/1') {
+          return simulationDetailResponse();
+        }
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -341,6 +529,9 @@ describe('RecruiterSimulationDetailPage', () => {
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
         if (url === '/api/simulations') return simulationListResponse();
+        if (url === '/api/simulations/1') {
+          return simulationDetailResponse();
+        }
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -394,6 +585,9 @@ describe('RecruiterSimulationDetailPage', () => {
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
         if (url === '/api/simulations') return simulationListResponse();
+        if (url === '/api/simulations/1') {
+          return simulationDetailResponse();
+        }
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -456,6 +650,9 @@ describe('RecruiterSimulationDetailPage', () => {
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = getRequestUrl(input);
         if (url === '/api/simulations') return simulationListResponse();
+        if (url === '/api/simulations/1') {
+          return simulationDetailResponse();
+        }
         if (url === '/api/simulations/1/candidates') {
           return jsonResponse([
             {
@@ -507,6 +704,9 @@ describe('RecruiterSimulationDetailPage', () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
       if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {
@@ -539,6 +739,9 @@ describe('RecruiterSimulationDetailPage', () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
       if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
       if (url === '/api/simulations/1/candidates') {
         return jsonResponse([
           {

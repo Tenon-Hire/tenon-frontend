@@ -17,7 +17,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - Candidate portal: `/candidate/session/[token]` (wrapped by `CandidateSessionProvider` layout; `/candidate-sessions/[token]` redirects here).
 - Candidate dashboard: `/candidate/dashboard`.
 - Recruiter portal: `/dashboard`, `/dashboard/simulations/new`, `/dashboard/simulations/[id]`, `/dashboard/simulations/[id]/candidates/[candidateSessionId]`.
-- API BFF: `/api/simulations` (+ `/[id]/invite`, `/[id]/candidates`), `/api/submissions`, `/api/submissions/[submissionId]`, `/api/dev/access-token`, `/api/auth/me`, `/api/backend/[...path]` proxy to the upstream backend, `/api/health` passthrough.
+- API BFF: `/api/simulations` (+ `/[id]`, `/[id]/invite`, `/[id]/candidates`), `/api/submissions`, `/api/submissions/[submissionId]`, `/api/dev/access-token`, `/api/auth/me`, `/api/backend/[...path]` proxy to the upstream backend, `/api/health` passthrough.
 
 ## Key Components & Features
 
@@ -35,10 +35,10 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
   - `POST /candidate/session/{token}/verification/code/confirm` with `{email, code}` to exchange for `candidateAccessToken`.
   - `GET /candidate/session/{token}` bootstrap/resolve invite (uses `candidateAccessToken`).
   - `GET /candidate/session/{id}/current_task` with header `x-candidate-session-id`.
-  - `POST /tasks/{taskId}/submit` with header `x-candidate-session-id`; body `{contentText?, codeBlob?}`.
+  - `POST /tasks/{taskId}/submit` with header `x-candidate-session-id`; body `{contentText?}` for text tasks. Day2/Day3 run/submit operate on the GitHub repo + workflow artifacts (no code payloads).
 - Recruiter calls (via BFF with Auth0 bearer token):
   - `GET /api/auth/me` (profile).
-  - `GET/POST /api/simulations`.
+  - `GET/POST /api/simulations`, `GET /api/simulations/{id}`.
   - `POST /api/simulations/{id}/invite`.
   - `GET /api/simulations/{id}/candidates`.
   - `GET /api/submissions?candidateSessionId=…`, `GET /api/submissions/{submissionId}`.
