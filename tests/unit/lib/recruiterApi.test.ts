@@ -292,11 +292,15 @@ describe('recruiterApi', () => {
         invite_url: '',
         invite_email_status: 'sent',
         invite_email_sent_at: '2025-01-01T00:00:00Z',
+        report_ready: true,
+        report_id: 'r-12',
       });
 
       expect(result.candidateSessionId).toBe(12);
       expect(result.inviteUrl).toBe('/candidate/session/tok_12');
       expect(result.inviteEmailStatus).toBe('sent');
+      expect(result.reportReady).toBe(true);
+      expect(result.reportId).toBe('r-12');
 
       if (originalWindow) {
         globalAny.window = originalWindow;

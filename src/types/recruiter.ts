@@ -28,6 +28,8 @@ export type CandidateSession = {
   startedAt: string | null;
   completedAt: string | null;
   hasReport: boolean;
+  reportReady?: boolean | null;
+  reportId?: string | null;
   inviteToken?: string | null;
   inviteUrl?: string | null;
   inviteEmailStatus?: 'sent' | 'failed' | 'rate_limited' | string | null;

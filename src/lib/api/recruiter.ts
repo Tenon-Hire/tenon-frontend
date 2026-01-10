@@ -216,6 +216,8 @@ export function normalizeCandidateSession(raw: unknown): CandidateSession {
     startedAt: toStringOrNull(rec.startedAt ?? rec.started_at),
     completedAt: toStringOrNull(rec.completedAt ?? rec.completed_at),
     hasReport: rec.hasReport === true || rec.has_report === true,
+    reportReady: rec.reportReady === true || rec.report_ready === true,
+    reportId: toStringOrNull(rec.reportId ?? rec.report_id),
     inviteToken,
     inviteUrl: inviteUrl || null,
     inviteEmailStatus: toStringOrNull(

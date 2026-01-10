@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import PageHeader from '@/components/ui/PageHeader';
+import { StatusPill } from '@/components/ui/StatusPill';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { useInviteCandidateFlow } from '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow';
 import { InviteCandidateModal } from '@/features/recruiter/invitations/InviteCandidateModal';
@@ -55,6 +57,10 @@ type SimulationPlan = {
   days: SimulationPlanDay[];
 };
 
+type DerivedStatus = 'completed' | 'in_progress' | 'not_started';
+
+const candidateKey = (id: CandidateSession['candidateSessionId']) => String(id);
+
 function formatDateTime(value: string | null): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -100,6 +106,18 @@ function formatDayProgress(
 function formatCooldown(remainingMs: number): string {
   const seconds = Math.max(1, Math.ceil(remainingMs / 1000));
   return `Retry in ${seconds}s`;
+}
+
+function deriveStatus(candidate: CandidateSession): DerivedStatus {
+  if (candidate.completedAt) return 'completed';
+  if (candidate.startedAt) return 'in_progress';
+  return 'not_started';
+}
+
+function toTimestamp(value: string | null): number {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function toStringOrNull(value: unknown): string | null {
@@ -412,6 +430,7 @@ export default function RecruiterSimulationDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<CandidateSession[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [simulationTemplateKey, setSimulationTemplateKey] = useState<
     string | null
   >(null);
@@ -421,7 +440,7 @@ export default function RecruiterSimulationDetailPage() {
   );
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [rowStates, setRowStates] = useState<Record<number, RowState>>({});
+  const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [toast, setToast] = useState<
     | { open: false }
@@ -438,7 +457,7 @@ export default function RecruiterSimulationDetailPage() {
   const mountedRef = useRef(true);
   const toastTimerRef = useRef<number | null>(null);
   const toastCopyTimerRef = useRef<number | null>(null);
-  const cooldownTimersRef = useRef<Record<number, number>>({});
+  const cooldownTimersRef = useRef<Record<string, number>>({});
   const cooldownIntervalRef = useRef<number | null>(null);
 
   const inviteFlow = useInviteCandidateFlow(
@@ -511,6 +530,12 @@ export default function RecruiterSimulationDetailPage() {
       const parsed = await safeParseResponse(res);
 
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Session expired. Please sign in again.');
+        }
+        if (res.status === 403) {
+          throw new Error('You are not authorized to view candidates.');
+        }
         const msg = toUserMessage(parsed, 'Request failed', {
           includeDetail: true,
         });
@@ -655,7 +680,47 @@ export default function RecruiterSimulationDetailPage() {
     void loadSimulationDetail();
   }, [loadSimulationDetail]);
 
-  const rows = useMemo(() => candidates ?? [], [candidates]);
+  const visibleCandidates = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const filtered = normalizedQuery
+      ? candidates.filter((candidate) => {
+          const name = candidate.candidateName?.toLowerCase() ?? '';
+          const email = candidate.inviteEmail?.toLowerCase() ?? '';
+          return (
+            name.includes(normalizedQuery) || email.includes(normalizedQuery)
+          );
+        })
+      : candidates;
+
+    const statusRank = (status: DerivedStatus) => {
+      if (status === 'completed') return 0;
+      if (status === 'in_progress') return 1;
+      return 2;
+    };
+
+    return [...filtered].sort((a, b) => {
+      const aStatus = deriveStatus(a);
+      const bStatus = deriveStatus(b);
+      const rankDelta = statusRank(aStatus) - statusRank(bStatus);
+      if (rankDelta !== 0) return rankDelta;
+      if (aStatus === 'completed') {
+        const delta = toTimestamp(b.completedAt) - toTimestamp(a.completedAt);
+        if (delta !== 0) return delta;
+      }
+      if (aStatus === 'in_progress') {
+        const delta = toTimestamp(b.startedAt) - toTimestamp(a.startedAt);
+        if (delta !== 0) return delta;
+      }
+      if (aStatus === 'not_started') {
+        const aEmail = (a.inviteEmail ?? '').toLowerCase();
+        const bEmail = (b.inviteEmail ?? '').toLowerCase();
+        if (aEmail !== bEmail) return aEmail.localeCompare(bEmail);
+      }
+      return String(a.candidateSessionId).localeCompare(
+        String(b.candidateSessionId),
+      );
+    });
+  }, [candidates, searchQuery]);
   const existingInviteMap = useMemo(() => {
     const entries = new Map<string, CandidateSession>();
     candidates.forEach((candidate) => {
@@ -668,7 +733,7 @@ export default function RecruiterSimulationDetailPage() {
 
   const updateRowState = useCallback(
     (
-      candidateSessionId: number,
+      candidateSessionId: string,
       updater: RowState | ((prev: RowState) => RowState),
     ) => {
       setRowStates((prev) => {
@@ -691,7 +756,7 @@ export default function RecruiterSimulationDetailPage() {
   const handleCopy = useCallback(
     async (candidate: CandidateSession) => {
       const link = candidate.inviteUrl?.trim() || null;
-      const id = candidate.candidateSessionId;
+      const id = candidateKey(candidate.candidateSessionId);
       if (!link) {
         updateRowState(id, (prev) => ({
           ...prev,
@@ -743,7 +808,7 @@ export default function RecruiterSimulationDetailPage() {
 
   const handleResend = useCallback(
     async (candidate: CandidateSession): Promise<boolean> => {
-      const id = candidate.candidateSessionId;
+      const id = candidateKey(candidate.candidateSessionId);
       const startCooldown = (seconds?: number | null) => {
         const cooldownSeconds =
           typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0
@@ -845,7 +910,9 @@ export default function RecruiterSimulationDetailPage() {
           const normalized = normalizeCandidateSession(parsed);
           setCandidates((prev) =>
             prev.map((c) =>
-              c.candidateSessionId === id ? { ...c, ...normalized } : c,
+              candidateKey(c.candidateSessionId) === id
+                ? { ...c, ...normalized }
+                : c,
             ),
           );
         } else {
@@ -891,9 +958,11 @@ export default function RecruiterSimulationDetailPage() {
   );
 
   const handleResendFromModal = useCallback(
-    async (candidateSessionId: number) => {
+    async (candidateSessionId: CandidateSession['candidateSessionId']) => {
       const candidate = candidates.find(
-        (item) => item.candidateSessionId === candidateSessionId,
+        (item) =>
+          candidateKey(item.candidateSessionId) ===
+          candidateKey(candidateSessionId),
       );
       if (!candidate) return;
       const ok = await handleResend(candidate);
@@ -1221,192 +1290,241 @@ export default function RecruiterSimulationDetailPage() {
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {error}
         </div>
-      ) : rows.length === 0 ? (
+      ) : candidates.length === 0 ? (
         <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700">
           No candidates yet.
         </div>
       ) : (
         <div className="overflow-hidden rounded border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-gray-600">
-              <tr>
-                <th className="px-4 py-3">Candidate</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Invite email</th>
-                <th className="px-4 py-3">Verification</th>
-                <th className="px-4 py-3">Day progress</th>
-                <th className="px-4 py-3">Started</th>
-                <th className="px-4 py-3">Completed</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {rows.map((c) => {
-                const display = c.candidateName || c.inviteEmail || 'Unnamed';
-                const rowState = rowStates[c.candidateSessionId] ?? {};
-                const sentAt = formatDateTime(c.inviteEmailSentAt ?? null);
-                const inviteLink = c.inviteUrl?.trim() || null;
-                const startedAt = formatDateTime(c.startedAt);
-                const completedAt = formatDateTime(c.completedAt);
-                const verifiedAt = formatDateTime(c.verifiedAt ?? null);
-                const dayProgress = formatDayProgress(c.dayProgress ?? null);
-                const now = cooldownTick || Date.now();
-                const cooldownActive =
-                  typeof rowState.cooldownUntilMs === 'number' &&
-                  rowState.cooldownUntilMs > now;
-                const resendDisabled = rowState.resending || cooldownActive;
-                const cooldownRemainingMs =
-                  cooldownActive && typeof rowState.cooldownUntilMs === 'number'
-                    ? Math.max(0, rowState.cooldownUntilMs - now)
-                    : null;
+          <div className="border-b border-gray-200 bg-white px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="w-full max-w-xs">
+                <label
+                  className="text-xs font-medium uppercase tracking-wide text-gray-500"
+                  htmlFor="candidate-search"
+                >
+                  Search candidates
+                </label>
+                <Input
+                  id="candidate-search"
+                  name="candidate-search"
+                  placeholder="Search by name or email"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="text-xs text-gray-500">
+                Showing {visibleCandidates.length} of {candidates.length}
+              </div>
+            </div>
+          </div>
+          {visibleCandidates.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-gray-700">
+              No candidates match your search.
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-left text-gray-600">
+                <tr>
+                  <th className="px-4 py-3">Candidate</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Report</th>
+                  <th className="px-4 py-3">Invite email</th>
+                  <th className="px-4 py-3">Verification</th>
+                  <th className="px-4 py-3">Day progress</th>
+                  <th className="px-4 py-3">Started</th>
+                  <th className="px-4 py-3">Completed</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {visibleCandidates.map((c) => {
+                  const display = c.candidateName || c.inviteEmail || 'Unnamed';
+                  const rowState =
+                    rowStates[candidateKey(c.candidateSessionId)] ?? {};
+                  const sentAt = formatDateTime(c.inviteEmailSentAt ?? null);
+                  const inviteLink = c.inviteUrl?.trim() || null;
+                  const startedAt = formatDateTime(c.startedAt);
+                  const completedAt = formatDateTime(c.completedAt);
+                  const verifiedAt = formatDateTime(c.verifiedAt ?? null);
+                  const dayProgress = formatDayProgress(c.dayProgress ?? null);
+                  const reportReady =
+                    c.hasReport || c.reportReady || Boolean(c.reportId);
+                  const derivedStatus = deriveStatus(c);
+                  const now = cooldownTick || Date.now();
+                  const cooldownActive =
+                    typeof rowState.cooldownUntilMs === 'number' &&
+                    rowState.cooldownUntilMs > now;
+                  const resendDisabled = rowState.resending || cooldownActive;
+                  const cooldownRemainingMs =
+                    cooldownActive &&
+                    typeof rowState.cooldownUntilMs === 'number'
+                      ? Math.max(0, rowState.cooldownUntilMs - now)
+                      : null;
 
-                return (
-                  <tr key={c.candidateSessionId}>
-                    <td className="px-4 py-3 align-top">
-                      <div className="font-medium text-gray-900">{display}</div>
-                      {c.inviteEmail ? (
-                        <div className="text-xs text-gray-500">
-                          {c.inviteEmail}
+                  return (
+                    <tr
+                      key={c.candidateSessionId}
+                      data-testid={`candidate-row-${c.candidateSessionId}`}
+                    >
+                      <td className="px-4 py-3 align-top">
+                        <div className="font-medium text-gray-900">
+                          {display}
                         </div>
-                      ) : null}
-                      <div className="text-xs text-gray-400">
-                        {c.candidateSessionId}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3 align-top">
-                      <CandidateStatusPill status={c.status} />
-                    </td>
-
-                    <td className="px-4 py-3 align-top text-gray-700">
-                      <div className="flex flex-col gap-1">
-                        <div className="text-sm font-medium text-gray-800">
-                          {inviteStatusLabel(c.inviteEmailStatus ?? null)}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {sentAt ? `Sent at ${sentAt}` : 'Not sent yet'}
-                        </div>
-                        {c.inviteEmailError ? (
-                          <div className="text-xs text-red-600">
-                            {c.inviteEmailError}
+                        {c.inviteEmail ? (
+                          <div className="text-xs text-gray-500">
+                            {c.inviteEmail}
                           </div>
                         ) : null}
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleCopy(c)}
-                            disabled={rowState.resending || !inviteLink}
-                          >
-                            {rowState.copied ? 'Copied' : 'Copy invite link'}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleResend(c)}
-                            disabled={resendDisabled}
-                          >
-                            {rowState.resending
-                              ? 'Resending…'
-                              : 'Resend invite'}
-                          </Button>
+                        <div className="text-xs text-gray-400">
+                          {c.candidateSessionId}
                         </div>
-                        {!inviteLink ? (
-                          <div className="text-xs text-gray-600">
-                            Invite link unavailable — resend invite or refresh.
+                      </td>
+
+                      <td className="px-4 py-3 align-top">
+                        <CandidateStatusPill status={derivedStatus} />
+                      </td>
+
+                      <td className="px-4 py-3 align-top">
+                        {reportReady ? (
+                          <StatusPill label="Report ready" tone="success" />
+                        ) : (
+                          <span className="text-xs text-gray-500">—</span>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3 align-top text-gray-700">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm font-medium text-gray-800">
+                            {inviteStatusLabel(c.inviteEmailStatus ?? null)}
                           </div>
-                        ) : null}
-                        {rowState.manualCopyOpen && rowState.manualCopyUrl ? (
-                          <div className="mt-2 rounded border border-gray-200 bg-gray-50 p-2">
+                          <div className="text-xs text-gray-500">
+                            {sentAt ? `Sent at ${sentAt}` : 'Not sent yet'}
+                          </div>
+                          {c.inviteEmailError ? (
+                            <div className="text-xs text-red-600">
+                              {c.inviteEmailError}
+                            </div>
+                          ) : null}
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleCopy(c)}
+                              disabled={rowState.resending || !inviteLink}
+                            >
+                              {rowState.copied ? 'Copied' : 'Copy invite link'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleResend(c)}
+                              disabled={resendDisabled}
+                            >
+                              {rowState.resending
+                                ? 'Resending…'
+                                : 'Resend invite'}
+                            </Button>
+                          </div>
+                          {!inviteLink ? (
                             <div className="text-xs text-gray-600">
-                              Copy the link manually:
+                              Invite link unavailable — resend invite or
+                              refresh.
                             </div>
-                            <div className="mt-1 flex items-center gap-2">
-                              <input
-                                className="w-full rounded border border-gray-200 bg-white px-2 py-1 font-mono text-xs"
-                                readOnly
-                                value={rowState.manualCopyUrl}
-                                onFocus={(e) => e.currentTarget.select()}
-                                aria-label="Manual invite link"
-                              />
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={() =>
-                                  updateRowState(
-                                    c.candidateSessionId,
-                                    (prev) => ({
-                                      ...prev,
-                                      manualCopyOpen: false,
-                                      manualCopyUrl: null,
-                                    }),
-                                  )
-                                }
-                              >
-                                Close
-                              </Button>
+                          ) : null}
+                          {rowState.manualCopyOpen && rowState.manualCopyUrl ? (
+                            <div className="mt-2 rounded border border-gray-200 bg-gray-50 p-2">
+                              <div className="text-xs text-gray-600">
+                                Copy the link manually:
+                              </div>
+                              <div className="mt-1 flex items-center gap-2">
+                                <input
+                                  className="w-full rounded border border-gray-200 bg-white px-2 py-1 font-mono text-xs"
+                                  readOnly
+                                  value={rowState.manualCopyUrl}
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  aria-label="Manual invite link"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() =>
+                                    updateRowState(
+                                      candidateKey(c.candidateSessionId),
+                                      (prev) => ({
+                                        ...prev,
+                                        manualCopyOpen: false,
+                                        manualCopyUrl: null,
+                                      }),
+                                    )
+                                  }
+                                >
+                                  Close
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                        ) : null}
-                        {cooldownActive ? (
-                          <div className="text-xs text-gray-600">
-                            {cooldownRemainingMs
-                              ? formatCooldown(cooldownRemainingMs)
-                              : 'Rate limited — try again soon'}
-                          </div>
-                        ) : null}
-                        {rowState.error ? (
-                          <div className="text-xs text-red-600">
-                            {rowState.error}
-                          </div>
-                        ) : null}
-                        {rowState.message ? (
-                          <div className="text-xs text-green-700">
-                            {rowState.message}
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3 align-top text-gray-700">
-                      <div className="flex flex-col gap-1">
-                        <div className="text-sm font-medium text-gray-800">
-                          {verificationStatusLabel(c)}
+                          ) : null}
+                          {cooldownActive ? (
+                            <div className="text-xs text-gray-600">
+                              {cooldownRemainingMs
+                                ? formatCooldown(cooldownRemainingMs)
+                                : 'Rate limited — try again soon'}
+                            </div>
+                          ) : null}
+                          {rowState.error ? (
+                            <div className="text-xs text-red-600">
+                              {rowState.error}
+                            </div>
+                          ) : null}
+                          {rowState.message ? (
+                            <div className="text-xs text-green-700">
+                              {rowState.message}
+                            </div>
+                          ) : null}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {verifiedAt ? `Verified at ${verifiedAt}` : '—'}
+                      </td>
+
+                      <td className="px-4 py-3 align-top text-gray-700">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm font-medium text-gray-800">
+                            {verificationStatusLabel(c)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {verifiedAt ? `Verified at ${verifiedAt}` : '—'}
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="px-4 py-3 align-top text-gray-700">
-                      {dayProgress ?? '—'}
-                    </td>
+                      <td className="px-4 py-3 align-top text-gray-700">
+                        {dayProgress ?? '—'}
+                      </td>
 
-                    <td className="px-4 py-3 align-top text-gray-700">
-                      {startedAt ?? '—'}
-                    </td>
+                      <td className="px-4 py-3 align-top text-gray-700">
+                        {startedAt ?? '—'}
+                      </td>
 
-                    <td className="px-4 py-3 align-top text-gray-700">
-                      {completedAt ?? '—'}
-                    </td>
+                      <td className="px-4 py-3 align-top text-gray-700">
+                        {completedAt ?? '—'}
+                      </td>
 
-                    <td className="px-4 py-3 text-right align-top">
-                      <Link
-                        className="text-blue-600 hover:underline"
-                        href={`/dashboard/simulations/${simulationId}/candidates/${c.candidateSessionId}`}
-                      >
-                        View submissions →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="px-4 py-3 text-right align-top">
+                        <Link
+                          className="text-blue-600 hover:underline"
+                          href={`/dashboard/simulations/${simulationId}/candidates/${c.candidateSessionId}`}
+                        >
+                          View submissions →
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 

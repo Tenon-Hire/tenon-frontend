@@ -1,7 +1,7 @@
 import '../../../setup/paramsMock';
 import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
 import {
@@ -138,6 +138,83 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(hrefs).toContain('/dashboard/simulations/1/candidates/3');
   });
 
+  it('sorts candidates by status and supports search filtering', async () => {
+    const user = userEvent.setup();
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 2,
+            inviteEmail: 'jane@example.com',
+            candidateName: 'Jane Doe',
+            status: 'not_started',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+          {
+            candidateSessionId: 3,
+            inviteEmail: 'bob@example.com',
+            candidateName: null,
+            status: 'completed',
+            startedAt: '2025-12-23T10:00:00.000000Z',
+            completedAt: '2025-12-23T12:00:00.000000Z',
+            hasReport: false,
+          },
+          {
+            candidateSessionId: 4,
+            inviteEmail: 'ina@example.com',
+            candidateName: 'In Progress',
+            status: 'in_progress',
+            startedAt: '2025-12-23T11:00:00.000000Z',
+            completedAt: null,
+            hasReport: false,
+          },
+        ]);
+      }
+      return textResponse('Not found', 404);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    });
+
+    const bobRow = screen.getByTestId('candidate-row-3');
+    const janeRow = screen.getByTestId('candidate-row-2');
+    expect(
+      bobRow.compareDocumentPosition(janeRow) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('candidate-row-4').compareDocumentPosition(janeRow) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    const searchInput = screen.getByLabelText(/search candidates/i);
+    await user.type(searchInput, 'jane');
+    expect(screen.getByTestId('candidate-row-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('candidate-row-3')).not.toBeInTheDocument();
+
+    await user.clear(searchInput);
+    await user.type(searchInput, 'bob@example.com');
+    expect(screen.getByTestId('candidate-row-3')).toBeInTheDocument();
+    expect(screen.queryByTestId('candidate-row-2')).not.toBeInTheDocument();
+
+    await user.clear(searchInput);
+    await user.type(searchInput, 'nomatch');
+    expect(
+      screen.getByText('No candidates match your search.'),
+    ).toBeInTheDocument();
+  });
+
   it('renders the generated simulation plan with tasks and repo status', async () => {
     render(<RecruiterSimulationDetailPage />);
 
@@ -160,6 +237,124 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(await screen.findByText(/Day 5/i)).toBeInTheDocument();
     const placeholders = await screen.findAllByText(/Not generated yet/i);
     expect(placeholders.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('sorts within status buckets by timestamps and email', async () => {
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 10,
+            inviteEmail: 'zeta@example.com',
+            candidateName: 'Zeta',
+            status: 'not_started',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+          {
+            candidateSessionId: 11,
+            inviteEmail: 'alpha@example.com',
+            candidateName: 'Alpha',
+            status: 'not_started',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+          {
+            candidateSessionId: 12,
+            inviteEmail: 'oldcomplete@example.com',
+            candidateName: 'Old Complete',
+            status: 'completed',
+            startedAt: '2025-12-23T08:00:00.000000Z',
+            completedAt: '2025-12-23T09:00:00.000000Z',
+            hasReport: false,
+          },
+          {
+            candidateSessionId: 13,
+            inviteEmail: 'newcomplete@example.com',
+            candidateName: 'New Complete',
+            status: 'completed',
+            startedAt: '2025-12-23T10:00:00.000000Z',
+            completedAt: '2025-12-23T11:00:00.000000Z',
+            hasReport: false,
+          },
+          {
+            candidateSessionId: 14,
+            inviteEmail: 'oldprogress@example.com',
+            candidateName: 'Old Progress',
+            status: 'in_progress',
+            startedAt: '2025-12-23T07:00:00.000000Z',
+            completedAt: null,
+            hasReport: false,
+          },
+          {
+            candidateSessionId: 15,
+            inviteEmail: 'newprogress@example.com',
+            candidateName: 'New Progress',
+            status: 'in_progress',
+            startedAt: '2025-12-23T12:00:00.000000Z',
+            completedAt: null,
+            hasReport: false,
+          },
+        ]);
+      }
+      return textResponse('Not found', 404);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('candidate-row-13')).toBeInTheDocument();
+    });
+
+    const orderedIds = ['13', '12', '15', '14', '11', '10'];
+    orderedIds.forEach((id, index) => {
+      const current = screen.getByTestId(`candidate-row-${id}`);
+      const nextId = orderedIds[index + 1];
+      if (!nextId) return;
+      const next = screen.getByTestId(`candidate-row-${nextId}`);
+      expect(
+        current.compareDocumentPosition(next) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+  });
+
+  it('renders derived status when timestamps conflict with backend status', async () => {
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 20,
+            inviteEmail: 'mismatch@example.com',
+            candidateName: 'Mismatch Status',
+            status: 'not_started',
+            startedAt: '2025-12-23T11:00:00.000000Z',
+            completedAt: null,
+            hasReport: false,
+          },
+        ]);
+      }
+      return textResponse('Not found', 404);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    const row = await screen.findByTestId('candidate-row-20');
+    expect(within(row).getByText('In progress')).toBeInTheDocument();
   });
 
   it('normalizes plan data from nested task objects', async () => {
@@ -223,6 +418,35 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(
       await screen.findByText(/Repo not provisioned yet/i),
     ).toBeInTheDocument();
+  });
+
+  it('shows report ready indicator when a report exists', async () => {
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+      if (url === '/api/simulations') return simulationListResponse();
+      if (url === '/api/simulations/1') {
+        return simulationDetailResponse();
+      }
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 24,
+            inviteEmail: 'ready@example.com',
+            candidateName: 'Ready Report',
+            status: 'completed',
+            startedAt: '2025-12-23T10:00:00.000000Z',
+            completedAt: '2025-12-23T12:00:00.000000Z',
+            reportId: 'r1',
+          },
+        ]);
+      }
+      return textResponse('Not found', 404);
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    expect(await screen.findByText('Report ready')).toBeInTheDocument();
   });
 
   it('uses neutral copy when provisioning status is unknown', async () => {
@@ -402,7 +626,7 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(await screen.findByText('Request failed')).toBeInTheDocument();
   });
 
-  it('shows detail error message when provided by backend', async () => {
+  it('shows friendly error when recruiter is unauthorized', async () => {
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
       const url = getRequestUrl(input);
       if (url === '/api/simulations') {
@@ -422,7 +646,12 @@ describe('RecruiterSimulationDetailPage', () => {
 
     render(<RecruiterSimulationDetailPage />);
 
-    expect(await screen.findByText('No access')).toBeInTheDocument();
+    expect(
+      await screen.findByText('You are not authorized to view candidates.'),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/5-day simulation plan/i),
+    ).toBeInTheDocument();
   });
 
   it('lets recruiters copy invite links from the table', async () => {
@@ -512,7 +741,8 @@ describe('RecruiterSimulationDetailPage', () => {
 
     render(<RecruiterSimulationDetailPage />);
 
-    const resendBtn = await screen.findByRole('button', {
+    const row = await screen.findByTestId('candidate-row-99');
+    const resendBtn = within(row).getByRole('button', {
       name: /resend invite/i,
     });
     await user.click(resendBtn);
@@ -520,6 +750,59 @@ describe('RecruiterSimulationDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Sent at/i)).toBeInTheDocument();
       expect(screen.queryByText(/Email bounced/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('handles string candidateSessionId when resending invites', async () => {
+    const user = userEvent.setup();
+    const fetchMock = jest.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = getRequestUrl(input);
+        if (url === '/api/simulations') return simulationListResponse();
+        if (url === '/api/simulations/1') {
+          return simulationDetailResponse();
+        }
+        if (url === '/api/simulations/1/candidates') {
+          return jsonResponse([
+            {
+              candidateSessionId: '42',
+              inviteEmail: 'string@example.com',
+              candidateName: 'String Id',
+              status: 'not_started',
+              startedAt: null,
+              completedAt: null,
+              hasReport: false,
+              inviteEmailStatus: 'failed',
+              inviteEmailSentAt: null,
+            },
+          ]);
+        }
+        if (url === '/api/simulations/1/candidates/42/invite/resend') {
+          expect(init?.method).toBe('POST');
+          return jsonResponse({
+            candidateSessionId: '42',
+            inviteEmailStatus: 'sent',
+            inviteEmailSentAt: '2025-12-24T00:00:00.000000Z',
+            inviteEmailError: null,
+          });
+        }
+        return textResponse('Not found', 404);
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<RecruiterSimulationDetailPage />);
+
+    const row = await screen.findByTestId('candidate-row-42');
+    expect(row).toBeInTheDocument();
+
+    const resendBtn = await screen.findByRole('button', {
+      name: /resend invite/i,
+    });
+    await user.click(resendBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Sent at/i)).toBeInTheDocument();
     });
   });
 
