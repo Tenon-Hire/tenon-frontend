@@ -560,6 +560,14 @@ describe('candidate api helpers', () => {
       candidateSessionId: 99,
     });
     expect(start).toEqual({ runId: 'run-xyz' });
+    expect(mockPost).toHaveBeenCalledWith(
+      '/tasks/13/run',
+      {},
+      expect.objectContaining({
+        headers: { 'x-candidate-session-id': '99' },
+      }),
+      expect.objectContaining({ authToken: 'auth' }),
+    );
 
     const polled = await pollCandidateTestRun({
       taskId: 13,

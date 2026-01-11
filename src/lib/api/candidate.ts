@@ -779,7 +779,7 @@ export async function initCandidateWorkspace(params: {
   try {
     const data = await apiClient.post<unknown>(
       path,
-      undefined,
+      {},
       {
         headers: {
           'x-candidate-session-id': String(candidateSessionId),

@@ -61,12 +61,31 @@ export function WorkspacePanel({
           setRefreshing(true);
         }
         setError(null);
-
-        const status = await getCandidateWorkspaceStatus({
-          taskId,
-          token,
-          candidateSessionId,
-        });
+        let status: CandidateWorkspaceStatus;
+        try {
+          status = await getCandidateWorkspaceStatus({
+            taskId,
+            token,
+            candidateSessionId,
+          });
+        } catch (err) {
+          const statusCode = toStatus(err);
+          if (
+            mode === 'init' &&
+            statusCode === 404 &&
+            !initAttemptedRef.current
+          ) {
+            initAttemptedRef.current = true;
+            const initialized = await initCandidateWorkspace({
+              taskId,
+              token,
+              candidateSessionId,
+            });
+            setWorkspace(initialized);
+            return;
+          }
+          throw err;
+        }
         const needsInit =
           !status.repoUrl && !status.repoName && !status.codespaceUrl;
 

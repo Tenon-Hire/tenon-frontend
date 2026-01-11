@@ -119,4 +119,26 @@ describe('WorkspacePanel', () => {
     expect(statusMock).toHaveBeenCalledTimes(1);
     expect(initMock).toHaveBeenCalledTimes(1);
   });
+
+  it('initializes when status returns 404', async () => {
+    statusMock.mockRejectedValueOnce({ status: 404 });
+    initMock.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
+      codespaceUrl: null,
+    });
+
+    render(
+      <WorkspacePanel
+        taskId={5}
+        candidateSessionId={6}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    await screen.findByText(/Repository is ready/i);
+    expect(statusMock).toHaveBeenCalledTimes(1);
+    expect(initMock).toHaveBeenCalledTimes(1);
+  });
 });
