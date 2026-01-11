@@ -131,7 +131,8 @@ describe('CandidateSessionPage (verification flow)', () => {
     });
     await user.click(startBtn);
 
-    expect(await screen.findByText('Task One')).toBeInTheDocument();
+    const taskTitles = await screen.findAllByText('Task One');
+    expect(taskTitles.length).toBeGreaterThan(0);
   });
 
   it('shows lockout state on otp_locked', async () => {
