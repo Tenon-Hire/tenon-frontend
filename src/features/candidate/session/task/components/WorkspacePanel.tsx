@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
 import {
   getCandidateWorkspaceStatus,
@@ -44,6 +44,7 @@ export function WorkspacePanel({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const initAttemptedRef = useRef(false);
 
   const loadWorkspace = useCallback(
     async (mode: 'init' | 'refresh') => {
@@ -61,20 +62,25 @@ export function WorkspacePanel({
         }
         setError(null);
 
-        const data =
-          mode === 'init'
-            ? await initCandidateWorkspace({
-                taskId,
-                token,
-                candidateSessionId,
-              })
-            : await getCandidateWorkspaceStatus({
-                taskId,
-                token,
-                candidateSessionId,
-              });
+        const status = await getCandidateWorkspaceStatus({
+          taskId,
+          token,
+          candidateSessionId,
+        });
+        const needsInit =
+          !status.repoUrl && !status.repoName && !status.codespaceUrl;
 
-        setWorkspace(data);
+        if (mode === 'init' && needsInit && !initAttemptedRef.current) {
+          initAttemptedRef.current = true;
+          const initialized = await initCandidateWorkspace({
+            taskId,
+            token,
+            candidateSessionId,
+          });
+          setWorkspace(initialized);
+        } else {
+          setWorkspace(status);
+        }
       } catch (err) {
         const status = toStatus(err);
         if (status === 401 || status === 403) {

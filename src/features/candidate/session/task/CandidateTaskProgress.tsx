@@ -65,6 +65,9 @@ export default function CandidateTaskProgress({
           <div className="text-xs text-gray-600">
             Complete each day in order to unlock the next step.
           </div>
+          <div className="text-xs text-gray-500">
+            Locked days are informational until they unlock.
+          </div>
         </div>
         <div className="text-xs font-semibold text-gray-500">
           {completedCount}/{totalDays} complete

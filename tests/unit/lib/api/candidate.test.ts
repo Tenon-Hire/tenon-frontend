@@ -489,9 +489,9 @@ describe('candidate api helpers', () => {
 
   it('initializes workspace and normalizes response fields', async () => {
     mockPost.mockResolvedValueOnce({
-      repo_url: 'https://github.com/acme/repo',
-      repo_full_name: 'acme/repo',
-      codespace_url: 'https://codespaces.new/acme/repo',
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
+      codespaceUrl: 'https://codespaces.new/acme/repo',
     });
 
     const { initCandidateWorkspace } = await import('@/lib/api/candidate');
@@ -518,7 +518,7 @@ describe('candidate api helpers', () => {
 
   it('fetches workspace status via codespace/status', async () => {
     mockGet.mockResolvedValueOnce({
-      repoHtmlUrl: 'https://github.com/acme/repo2',
+      repoUrl: 'https://github.com/acme/repo2',
       repoName: 'acme/repo2',
     });
 
@@ -544,7 +544,7 @@ describe('candidate api helpers', () => {
   });
 
   it('starts and polls candidate test runs', async () => {
-    mockPost.mockResolvedValueOnce({ run_id: 'run-xyz' });
+    mockPost.mockResolvedValueOnce({ runId: 'run-xyz' });
     mockGet.mockResolvedValueOnce({
       status: 'completed',
       conclusion: 'success',

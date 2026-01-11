@@ -133,28 +133,9 @@ function normalizeWorkspaceStatus(data: unknown): CandidateWorkspaceStatus {
     return { repoUrl: null, repoName: null, codespaceUrl: null };
   }
   const rec = data as Record<string, unknown>;
-  const repoUrl =
-    toStringOrNull(
-      rec.repoUrl ??
-        rec.repo_url ??
-        rec.repoHtmlUrl ??
-        rec.repo_html_url ??
-        rec.repositoryUrl ??
-        rec.repository_url,
-    ) ?? null;
-
-  const repoName =
-    toStringOrNull(
-      rec.repoName ??
-        rec.repo_name ??
-        rec.repoFullName ??
-        rec.repo_full_name ??
-        rec.repositoryFullName ??
-        rec.repository_full_name,
-    ) ?? null;
-
-  const codespaceUrl =
-    toStringOrNull(rec.codespaceUrl ?? rec.codespace_url) ?? null;
+  const repoUrl = toStringOrNull(rec.repoUrl) ?? null;
+  const repoName = toStringOrNull(rec.repoName) ?? null;
+  const codespaceUrl = toStringOrNull(rec.codespaceUrl) ?? null;
 
   return { repoUrl, repoName, codespaceUrl };
 }
@@ -164,10 +145,8 @@ function normalizeRunStatus(data: unknown): CandidateTestRunStatusResponse {
     return { status: 'error' };
   }
   const rec = data as Record<string, unknown>;
-  const rawStatus =
-    rec.status ?? rec.state ?? rec.runStatus ?? rec.workflowStatus ?? '';
-  const rawConclusion =
-    rec.conclusion ?? rec.result ?? rec.workflowConclusion ?? '';
+  const rawStatus = rec.status ?? '';
+  const rawConclusion = rec.conclusion ?? '';
   const status = String(rawStatus).toLowerCase();
   const conclusion = String(rawConclusion).toLowerCase();
   const timeout =
@@ -883,7 +862,7 @@ export async function startCandidateTestRun(params: {
 
     if (data && typeof data === 'object') {
       const rec = data as Record<string, unknown>;
-      const runId = toStringOrNull(rec.runId ?? rec.run_id ?? rec.id);
+      const runId = toStringOrNull(rec.runId);
       if (runId) return { runId };
     }
     throw new HttpError(500, 'Missing run id from test run.');

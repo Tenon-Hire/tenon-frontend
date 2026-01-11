@@ -21,7 +21,7 @@ describe('WorkspacePanel', () => {
   });
 
   it('loads workspace details and renders repo + codespace links', async () => {
-    initMock.mockResolvedValueOnce({
+    statusMock.mockResolvedValueOnce({
       repoUrl: 'https://github.com/acme/repo',
       repoName: 'acme/repo',
       codespaceUrl: 'https://codespaces.new/acme/repo',
@@ -37,6 +37,12 @@ describe('WorkspacePanel', () => {
     );
 
     expect(await screen.findByText(/Workspace is ready/i)).toBeInTheDocument();
+    expect(statusMock).toHaveBeenCalledWith({
+      taskId: 12,
+      token: 'tok',
+      candidateSessionId: 34,
+    });
+    expect(initMock).not.toHaveBeenCalled();
     expect(screen.getByRole('link', { name: /acme\/repo/i })).toHaveAttribute(
       'href',
       'https://github.com/acme/repo',
@@ -48,9 +54,14 @@ describe('WorkspacePanel', () => {
 
   it('refreshes workspace status on demand', async () => {
     const user = userEvent.setup();
-    initMock.mockResolvedValueOnce({
+    statusMock.mockResolvedValueOnce({
       repoUrl: null,
       repoName: null,
+      codespaceUrl: null,
+    });
+    initMock.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
       codespaceUrl: null,
     });
     statusMock.mockResolvedValueOnce({
@@ -68,7 +79,9 @@ describe('WorkspacePanel', () => {
       />,
     );
 
-    await screen.findByText(/Workspace provisioning/i);
+    await screen.findByText(/Repository is ready/i);
+    expect(statusMock).toHaveBeenCalledTimes(1);
+    expect(initMock).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('button', { name: /refresh/i }));
 
     await waitFor(() => {
@@ -78,5 +91,32 @@ describe('WorkspacePanel', () => {
         candidateSessionId: 10,
       });
     });
+    expect(initMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('initializes when status is empty', async () => {
+    statusMock.mockResolvedValueOnce({
+      repoUrl: null,
+      repoName: null,
+      codespaceUrl: null,
+    });
+    initMock.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
+      codespaceUrl: null,
+    });
+
+    render(
+      <WorkspacePanel
+        taskId={7}
+        candidateSessionId={8}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    await screen.findByText(/Repository is ready/i);
+    expect(statusMock).toHaveBeenCalledTimes(1);
+    expect(initMock).toHaveBeenCalledTimes(1);
   });
 });

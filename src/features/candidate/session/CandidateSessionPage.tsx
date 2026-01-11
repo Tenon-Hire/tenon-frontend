@@ -27,6 +27,7 @@ import {
   friendlyBootstrapError,
   friendlyTaskError,
 } from './utils/errorMessages';
+import { extractFirstUrl } from './utils/extractUrl';
 import { CandidateVerificationPanel } from './components/CandidateVerificationPanel';
 
 type ViewState = 'loading' | 'verify' | 'starting' | 'error' | 'running';
@@ -37,15 +38,6 @@ function devDebug(message: string, ...args: unknown[]) {
     // eslint-disable-next-line no-console
     console.debug(`[candidate-session] ${message}`, ...args);
   }
-}
-
-const URL_REGEX = /https?:\/\/[^\s)]+/i;
-
-function extractFirstUrl(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const match = value.match(URL_REGEX);
-  if (!match?.[0]) return null;
-  return match[0].replace(/[),.]+$/, '');
 }
 
 export default function CandidateSessionPage({ token }: { token: string }) {
@@ -262,14 +254,10 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   const currentTask = state.taskState.currentTask;
   const completedCount = state.taskState.completedTaskIds.length;
+  const isComplete = state.taskState.isComplete;
   const currentDayIndex = useMemo(
-    () =>
-      deriveCurrentDayIndex(
-        completedCount,
-        currentTask,
-        state.taskState.isComplete,
-      ),
-    [completedCount, currentTask, state.taskState.isComplete],
+    () => deriveCurrentDayIndex(completedCount, currentTask, isComplete),
+    [completedCount, currentTask, isComplete],
   );
 
   const showWorkspacePanel = Boolean(
