@@ -372,7 +372,7 @@ describe('CandidateSubmissionsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('handles missing candidate info, renders prompt/test results, and fallback artifact message', async () => {
+  it('blocks submissions when candidate lookup fails', async () => {
     setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
@@ -380,6 +380,97 @@ describe('CandidateSubmissionsPage', () => {
 
       if (url === '/api/simulations/1/candidates') {
         return textResponse('no candidate', 500);
+      }
+
+      return textResponse('Not found', 404);
+    });
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsPage />);
+
+    expect(
+      await screen.findByText(/Unable to verify candidate access/i),
+    ).toBeInTheDocument();
+
+    const calledUrls = fetchMock.mock.calls.map((call) =>
+      getRequestUrl(call[0]),
+    );
+    expect(calledUrls).toEqual(['/api/simulations/1/candidates']);
+  });
+
+  it('blocks submissions when candidate is not in the simulation', async () => {
+    setMockParams({ id: '1', candidateSessionId: '2' });
+
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 9,
+            inviteEmail: 'other@example.com',
+            candidateName: 'Other',
+            status: 'not_started',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+        ]);
+      }
+
+      return textResponse('Not found', 404);
+    });
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsPage />);
+
+    expect(
+      await screen.findByText(/Candidate not found for this simulation/i),
+    ).toBeInTheDocument();
+
+    const calledUrls = fetchMock.mock.calls.map((call) =>
+      getRequestUrl(call[0]),
+    );
+    expect(calledUrls).toEqual(['/api/simulations/1/candidates']);
+  });
+
+  it('blocks submissions when candidate id is invalid', async () => {
+    setMockParams({ id: '1', candidateSessionId: 'abc' });
+
+    const fetchMock = jest.fn(async () => {
+      return textResponse('Not found', 404);
+    });
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsPage />);
+
+    expect(
+      await screen.findByText(/Invalid candidate id/i),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('renders prompt/test results and fallback artifact message when submissions load', async () => {
+    setMockParams({ id: '1', candidateSessionId: '2' });
+
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 2,
+            inviteEmail: 'jane@example.com',
+            candidateName: 'Jane Doe',
+            status: 'completed',
+            startedAt: '2025-12-23T18:00:00.000000Z',
+            completedAt: '2025-12-23T19:00:00.000000Z',
+            hasReport: false,
+          },
+        ]);
       }
 
       if (url.startsWith('/api/submissions?candidateSessionId=2')) {
@@ -434,10 +525,7 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
-    expect(
-      await screen.findByText(/Candidate 2 — Submissions/),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/CandidateSession: 2/)).toBeInTheDocument();
+    expect(await screen.findByText(/CandidateSession: 2/)).toBeInTheDocument();
     expect(
       await screen.findByText((content) => content.includes('Prompted Task')),
     ).toBeInTheDocument();

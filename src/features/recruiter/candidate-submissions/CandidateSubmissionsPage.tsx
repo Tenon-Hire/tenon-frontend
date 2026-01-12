@@ -94,7 +94,9 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
 export default function CandidateSubmissionsPage() {
   const params = useParams<{ id: string; candidateSessionId: string }>();
   const simulationId = params.id;
-  const candidateSessionId = Number(params.candidateSessionId);
+  const candidateSessionIdParam = params.candidateSessionId ?? '';
+  const candidateSessionKey = String(candidateSessionIdParam).trim();
+  const includeDetail = process.env.NODE_ENV !== 'production';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,24 +116,37 @@ export default function CandidateSubmissionsPage() {
         setLoading(true);
         setError(null);
 
+        if (!candidateSessionKey || !/^\d+$/.test(candidateSessionKey)) {
+          throw new Error('Invalid candidate id.');
+        }
+
         const candRes = await fetch(
           `/api/simulations/${simulationId}/candidates`,
           { method: 'GET', cache: 'no-store' },
         );
 
-        if (candRes.ok) {
-          const candArr = (await candRes.json()) as CandidateSession[];
-          const found =
-            candArr.find((c) => c.candidateSessionId === candidateSessionId) ??
-            null;
-          if (!cancelled) setCandidate(found);
-        } else {
-          if (!cancelled) setCandidate(null);
+        if (!candRes.ok) {
+          const candParsed: unknown = await candRes.json().catch(() => null);
+          throw new Error(
+            toUserMessage(candParsed, 'Unable to verify candidate access.', {
+              includeDetail,
+            }),
+          );
         }
+
+        const candArr = (await candRes.json()) as CandidateSession[];
+        const found =
+          candArr.find(
+            (c) => String(c.candidateSessionId) === candidateSessionKey,
+          ) ?? null;
+        if (!found) {
+          throw new Error('Candidate not found for this simulation.');
+        }
+        if (!cancelled) setCandidate(found);
 
         const listRes = await fetch(
           `/api/submissions?candidateSessionId=${encodeURIComponent(
-            String(candidateSessionId),
+            candidateSessionKey,
           )}`,
           { method: 'GET', cache: 'no-store' },
         );
@@ -142,7 +157,7 @@ export default function CandidateSubmissionsPage() {
           const msg =
             maybeJson !== null
               ? toUserMessage(maybeJson, 'Request failed', {
-                  includeDetail: true,
+                  includeDetail,
                 })
               : fallbackText;
           throw new Error(
@@ -180,8 +195,16 @@ export default function CandidateSubmissionsPage() {
         }
         if (!cancelled) setArtifacts(map);
       } catch (e: unknown) {
-        if (!cancelled)
-          setError(toUserMessage(e, 'Request failed', { includeDetail: true }));
+        if (!cancelled) {
+          setCandidate(null);
+          setItems([]);
+          setArtifacts({});
+          setError(
+            toUserMessage(e, 'Request failed', {
+              includeDetail: includeDetail,
+            }),
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -191,19 +214,19 @@ export default function CandidateSubmissionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [simulationId, candidateSessionId]);
+  }, [simulationId, candidateSessionKey, includeDetail]);
 
   const headerTitle = useMemo(() => {
     const label =
       candidate?.candidateName ||
       candidate?.inviteEmail ||
-      `Candidate ${candidateSessionId}`;
+      `Candidate ${candidateSessionKey}`;
     return `${label} — Submissions`;
-  }, [candidate, candidateSessionId]);
+  }, [candidate, candidateSessionKey]);
 
   const subtitle = useMemo(() => {
     const bits: string[] = [];
-    bits.push(`CandidateSession: ${candidateSessionId}`);
+    bits.push(`CandidateSession: ${candidateSessionKey}`);
     if (statusDisplay) bits.push(`Status: ${statusDisplay}`);
     if (candidate?.startedAt)
       bits.push(`Started: ${new Date(candidate.startedAt).toLocaleString()}`);
@@ -212,7 +235,7 @@ export default function CandidateSubmissionsPage() {
         `Completed: ${new Date(candidate.completedAt).toLocaleString()}`,
       );
     return bits.join(' • ');
-  }, [candidate, candidateSessionId, statusDisplay]);
+  }, [candidate, candidateSessionKey, statusDisplay]);
 
   return (
     <div className="flex flex-col gap-4 py-8">
