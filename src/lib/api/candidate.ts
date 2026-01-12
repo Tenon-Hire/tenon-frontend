@@ -133,9 +133,10 @@ function normalizeWorkspaceStatus(data: unknown): CandidateWorkspaceStatus {
     return { repoUrl: null, repoName: null, codespaceUrl: null };
   }
   const rec = data as Record<string, unknown>;
-  const repoUrl = toStringOrNull(rec.repoUrl) ?? null;
-  const repoName = toStringOrNull(rec.repoName) ?? null;
-  const codespaceUrl = toStringOrNull(rec.codespaceUrl) ?? null;
+  const repoUrl = toStringOrNull(rec.repoUrl ?? rec.repo_url) ?? null;
+  const repoName = toStringOrNull(rec.repoName ?? rec.repo_name) ?? null;
+  const codespaceUrl =
+    toStringOrNull(rec.codespaceUrl ?? rec.codespace_url) ?? null;
 
   return { repoUrl, repoName, codespaceUrl };
 }

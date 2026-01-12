@@ -30,6 +30,7 @@ const MAX_PROXY_BODY_BYTES = Number(
   process.env.TENON_PROXY_MAX_BODY_BYTES ?? 2 * 1024 * 1024,
 );
 const PROXY_TIMEOUT_MS = 20000;
+const LONG_PROXY_TIMEOUT_MS = 90000;
 const MAX_PROXY_RESPONSE_BYTES = Number(
   process.env.TENON_PROXY_MAX_RESPONSE_BYTES ?? 2 * 1024 * 1024,
 );
@@ -109,6 +110,28 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
   const search = req.nextUrl.search ?? '';
   const backendPath = `/api/${encodedPath}${search}`;
   const targetUrl = `${getBackendBaseUrl()}${backendPath}`;
+  const method = req.method.toUpperCase();
+  const isRunEndpoint =
+    method === 'POST' &&
+    pathSegments.length === 3 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'run';
+  const isCodespaceInit =
+    method === 'POST' &&
+    pathSegments.length === 4 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'codespace' &&
+    pathSegments[3] === 'init';
+  const isCodespaceStatus =
+    method === 'GET' &&
+    pathSegments.length === 4 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'codespace' &&
+    pathSegments[3] === 'status';
+  const timeoutMs =
+    isRunEndpoint || isCodespaceInit || isCodespaceStatus
+      ? LONG_PROXY_TIMEOUT_MS
+      : PROXY_TIMEOUT_MS;
 
   const headers: Record<string, string> = {};
   req.headers.forEach((value, key) => {
@@ -159,14 +182,14 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
 
     const upstream = await upstreamRequest({
       url: targetUrl,
-      method: req.method,
+      method,
       headers,
       body,
       cache: 'no-store',
-      timeoutMs: PROXY_TIMEOUT_MS,
+      timeoutMs,
       requestId,
       signal: req.signal,
-      maxTotalTimeMs: PROXY_TIMEOUT_MS,
+      maxTotalTimeMs: timeoutMs,
     });
     const upstreamStatus = upstream.status;
     const blockedRedirect = upstreamStatus >= 300 && upstreamStatus < 400;

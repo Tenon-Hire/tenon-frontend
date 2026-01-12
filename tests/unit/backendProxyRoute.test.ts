@@ -552,6 +552,28 @@ describe('/api/backend proxy', () => {
     expect(res.status).toBe(200);
   });
 
+  it('uses a longer timeout for task run endpoints', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(JSON.stringify({ runId: 'run-2' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    await POST(
+      new NextRequest('http://localhost/api/backend/tasks/987/run', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }) as never,
+      { params: Promise.resolve({ path: ['tasks', '987', 'run'] }) },
+    );
+
+    expect(upstreamRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutMs: 90000, maxTotalTimeMs: 90000 }),
+    );
+  });
+
   it('times out and returns an error response', async () => {
     upstreamRequestMock.mockImplementationOnce(async () => {
       throw new Error('Request timed out after 20000ms');

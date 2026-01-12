@@ -543,6 +543,27 @@ describe('candidate api helpers', () => {
     });
   });
 
+  it('normalizes snake_case workspace fields', async () => {
+    mockGet.mockResolvedValueOnce({
+      repo_url: 'https://github.com/acme/repo3',
+      repo_name: 'acme/repo3',
+      codespace_url: 'https://codespaces.new/acme/repo3',
+    });
+
+    const { getCandidateWorkspaceStatus } = await import('@/lib/api/candidate');
+    const result = await getCandidateWorkspaceStatus({
+      taskId: 14,
+      token: 'auth',
+      candidateSessionId: 55,
+    });
+
+    expect(result).toEqual({
+      repoUrl: 'https://github.com/acme/repo3',
+      repoName: 'acme/repo3',
+      codespaceUrl: 'https://codespaces.new/acme/repo3',
+    });
+  });
+
   it('starts and polls candidate test runs', async () => {
     mockPost.mockResolvedValueOnce({ runId: 'run-xyz' });
     mockGet.mockResolvedValueOnce({
