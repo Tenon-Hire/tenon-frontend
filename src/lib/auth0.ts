@@ -3,6 +3,7 @@ import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextResponse, type NextRequest } from 'next/server';
 import { cache } from 'react';
 import { normalizeUserClaims } from '@/lib/auth0-claims';
+import { modeForPath } from '@/lib/auth/routing';
 import {
   CUSTOM_CLAIM_PERMISSIONS,
   CUSTOM_CLAIM_PERMISSIONS_STR,
@@ -73,6 +74,35 @@ function createClient() {
     }
   };
 
+  const resolveReturnTo = (returnTo?: string | null): string => {
+    if (!returnTo || typeof returnTo !== 'string') return '/dashboard';
+    const trimmed = returnTo.trim();
+    if (!trimmed.startsWith('/')) return '/dashboard';
+    if (trimmed.startsWith('/auth/')) return '/dashboard';
+    return trimmed;
+  };
+
+  const resolveModeForReturnTo = (returnTo: string): 'candidate' | 'recruiter' =>
+    modeForPath(returnTo.split('?')[0] || returnTo);
+
+  const toSafeErrorCode = (error: { code?: unknown; name?: unknown }) => {
+    const raw =
+      (typeof error.code === 'string' && error.code) ||
+      (typeof error.name === 'string' && error.name) ||
+      'auth_callback_error';
+    return raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+  };
+
+  const createAuthErrorId = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      const maybe = (crypto as { randomUUID?: () => string }).randomUUID;
+      if (typeof maybe === 'function') return maybe();
+    }
+    return `auth-${Date.now().toString(36)}-${Math.random()
+      .toString(16)
+      .slice(2, 10)}`;
+  };
+
   return new Auth0Client({
     appBaseUrl: process.env.TENON_APP_BASE_URL,
     domain: process.env.TENON_AUTH0_DOMAIN,
@@ -84,6 +114,34 @@ function createClient() {
       scope: process.env.TENON_AUTH0_SCOPE,
     },
     signInReturnToPath: '/dashboard',
+    onCallback: async (error, ctx) => {
+      if (error) {
+        const errorId = createAuthErrorId();
+        const safeReturnTo = resolveReturnTo(ctx.returnTo);
+        const mode = resolveModeForReturnTo(safeReturnTo);
+        const errorCode = toSafeErrorCode(error);
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[auth0] callback error id=${errorId} code=${errorCode}`,
+          error,
+        );
+
+        const redirectUrl = new URL(
+          '/auth/error',
+          process.env.TENON_APP_BASE_URL,
+        );
+        redirectUrl.searchParams.set('mode', mode);
+        redirectUrl.searchParams.set('returnTo', safeReturnTo);
+        redirectUrl.searchParams.set('error', 'callback_failed');
+        redirectUrl.searchParams.set('errorCode', errorCode);
+        redirectUrl.searchParams.set('errorId', errorId);
+        return NextResponse.redirect(redirectUrl);
+      }
+      const returnTo = resolveReturnTo(ctx.returnTo);
+      return NextResponse.redirect(
+        new URL(returnTo, process.env.TENON_APP_BASE_URL),
+      );
+    },
     beforeSessionSaved: async (session, idToken) => {
       const user = normalizeUserClaims(
         (session.user ?? {}) as Record<string, unknown>,
