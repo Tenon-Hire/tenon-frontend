@@ -34,10 +34,10 @@ const MAX_PROXY_RESPONSE_BYTES = Number(
   process.env.TENON_PROXY_MAX_RESPONSE_BYTES ?? 2 * 1024 * 1024,
 );
 
-async function readBodyWithLimit(
+async function readBodyTextWithLimit(
   req: NextRequest,
   limit: number,
-): Promise<{ body?: ArrayBuffer; tooLarge?: boolean; invalid?: boolean }> {
+): Promise<{ body?: string; tooLarge?: boolean; invalid?: boolean }> {
   const declaredLength = req.headers.get('content-length');
   if (declaredLength) {
     const numeric = Number(declaredLength);
@@ -45,8 +45,10 @@ async function readBodyWithLimit(
   }
 
   try {
-    const body = await req.arrayBuffer();
-    if (body.byteLength > limit) return { tooLarge: true };
+    const body = await req.text();
+    const byteLength =
+      typeof Buffer !== 'undefined' ? Buffer.byteLength(body) : body.length;
+    if (byteLength > limit) return { tooLarge: true };
     return { body };
   } catch {
     return { invalid: true };
@@ -122,9 +124,9 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
         `[debug:backend-proxy] [req ${requestId}] ${req.method} ${req.nextUrl.pathname}${search} -> ${targetUrl}`,
       );
     }
-    let body: ArrayBuffer | undefined;
+    let body: string | undefined;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      const limited = await readBodyWithLimit(req, MAX_PROXY_BODY_BYTES);
+      const limited = await readBodyTextWithLimit(req, MAX_PROXY_BODY_BYTES);
       if (limited.invalid) {
         const resp = NextResponse.json(
           { message: 'Invalid request body' },
@@ -151,7 +153,8 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
         );
         return resp;
       }
-      body = limited.body;
+      const bodyText = limited.body ?? '';
+      body = bodyText.length > 0 ? bodyText : undefined;
     }
 
     const upstream = await upstreamRequest({

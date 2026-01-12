@@ -503,7 +503,7 @@ describe('candidate api helpers', () => {
 
     expect(mockPost).toHaveBeenCalledWith(
       '/tasks/11/codespace/init',
-      undefined,
+      {},
       expect.objectContaining({
         headers: { 'x-candidate-session-id': '77' },
       }),
