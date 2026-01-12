@@ -75,7 +75,7 @@ function createClient() {
   };
 
   const resolveModeForReturnTo = (returnTo: string): 'candidate' | 'recruiter' =>
-    modeForPath(returnTo.split('?')[0] || returnTo);
+    modeForPath(returnTo.split(/[?#]/)[0] || returnTo);
 
   const toSafeErrorCode = (error: { code?: unknown; name?: unknown }) => {
     const raw =
@@ -114,18 +114,28 @@ function createClient() {
   };
 
   const resolveBaseUrl = () => {
-    const raw = process.env.TENON_APP_BASE_URL;
-    if (!raw) return null;
-    try {
-      return new URL(raw);
-    } catch {
-      return null;
+    const candidates = [
+      process.env.TENON_APP_BASE_URL,
+      process.env.NEXT_PUBLIC_TENON_APP_BASE_URL,
+      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+      process.env.NEXT_PUBLIC_VERCEL_URL
+        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+        : null,
+    ];
+    for (const raw of candidates) {
+      if (!raw) continue;
+      try {
+        return new URL(raw);
+      } catch {
+        continue;
+      }
     }
+    return null;
   };
 
   const buildRedirect = (path: string) => {
-    const base = resolveBaseUrl();
-    return base ? new URL(path, base) : path;
+    const base = resolveBaseUrl() ?? new URL('http://localhost:3000');
+    return new URL(path, base);
   };
 
   return new Auth0Client({

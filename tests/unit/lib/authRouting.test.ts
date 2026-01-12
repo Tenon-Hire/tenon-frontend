@@ -28,4 +28,10 @@ describe('sanitizeReturnTo', () => {
   it('trims whitespace and newlines', () => {
     expect(sanitizeReturnTo('  /dashboard\n')).toBe('/dashboard');
   });
+
+  it('rejects control characters', () => {
+    expect(sanitizeReturnTo('/dashboard\r\nSet-Cookie: x=y')).toBe(
+      '/dashboard',
+    );
+  });
 });

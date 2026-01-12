@@ -10,6 +10,7 @@ export function sanitizeReturnTo(value: string | null | undefined): string {
   if (!value || typeof value !== 'string') return DEFAULT_RETURN_TO;
   const trimmed = value.trim();
   if (!trimmed) return DEFAULT_RETURN_TO;
+  if (/[\u0000-\u001F\u007F]/.test(trimmed)) return DEFAULT_RETURN_TO;
   if (trimmed.includes('\\')) return DEFAULT_RETURN_TO;
   if (!trimmed.startsWith('/')) return DEFAULT_RETURN_TO;
   if (trimmed.startsWith('//')) return DEFAULT_RETURN_TO;

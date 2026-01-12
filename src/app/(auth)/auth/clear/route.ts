@@ -1,21 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAuthCookie } from '@/lib/auth/authCookies';
 import { modeForPath, sanitizeReturnTo } from '@/lib/auth/routing';
 
-const COOKIE_EXACT = new Set(['__session', 'appSession']);
-const COOKIE_PREFIXES = [
-  '__session__',
-  'appSession__',
-  'appSession.',
-  '__txn_',
-  '__FC',
-];
-
-function isAuthCookie(name: string) {
-  if (COOKIE_EXACT.has(name)) return true;
-  return COOKIE_PREFIXES.some((prefix) => name.startsWith(prefix));
-}
-
 function resolveCookieDomain(request: NextRequest) {
+  // Set TENON_AUTH0_COOKIE_DOMAIN in prod if cookies are scoped to a parent domain.
   const envDomain = process.env.TENON_AUTH0_COOKIE_DOMAIN;
   if (envDomain && envDomain.trim()) return envDomain.trim();
   const hostname = request.nextUrl.hostname;
