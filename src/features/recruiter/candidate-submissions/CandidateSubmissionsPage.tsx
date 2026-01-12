@@ -119,15 +119,35 @@ export default function CandidateSubmissionsPage() {
           { method: 'GET', cache: 'no-store' },
         );
 
-        if (candRes.ok) {
-          const candArr = (await candRes.json()) as CandidateSession[];
-          const found =
-            candArr.find((c) => c.candidateSessionId === candidateSessionId) ??
-            null;
-          if (!cancelled) setCandidate(found);
-        } else {
-          if (!cancelled) setCandidate(null);
+        if (!candRes.ok) {
+          const candParsed: unknown = await candRes.json().catch(() => null);
+          if (!cancelled) {
+            setCandidate(null);
+            setItems([]);
+            setArtifacts({});
+            setError(
+              toUserMessage(candParsed, 'Unable to verify candidate access.', {
+                includeDetail: true,
+              }),
+            );
+          }
+          return;
         }
+
+        const candArr = (await candRes.json()) as CandidateSession[];
+        const found =
+          candArr.find((c) => c.candidateSessionId === candidateSessionId) ??
+          null;
+        if (!found) {
+          if (!cancelled) {
+            setCandidate(null);
+            setItems([]);
+            setArtifacts({});
+            setError('Candidate not found for this simulation.');
+          }
+          return;
+        }
+        if (!cancelled) setCandidate(found);
 
         const listRes = await fetch(
           `/api/submissions?candidateSessionId=${encodeURIComponent(

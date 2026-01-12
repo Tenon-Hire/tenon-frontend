@@ -372,7 +372,7 @@ describe('CandidateSubmissionsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('handles missing candidate info, renders prompt/test results, and fallback artifact message', async () => {
+  it('blocks submissions when candidate lookup fails', async () => {
     setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
@@ -380,51 +380,6 @@ describe('CandidateSubmissionsPage', () => {
 
       if (url === '/api/simulations/1/candidates') {
         return textResponse('no candidate', 500);
-      }
-
-      if (url.startsWith('/api/submissions?candidateSessionId=2')) {
-        return jsonResponse({
-          items: [
-            {
-              submissionId: 10,
-              candidateSessionId: 2,
-              taskId: 10,
-              dayIndex: 1,
-              type: 'design',
-              submittedAt: '2025-12-23T18:57:10.981202Z',
-            },
-            {
-              submissionId: 11,
-              candidateSessionId: 2,
-              taskId: 11,
-              dayIndex: 2,
-              type: 'debug',
-              submittedAt: '2025-12-23T19:57:10.981202Z',
-            },
-          ],
-        });
-      }
-
-      if (url === '/api/submissions/10') {
-        return jsonResponse({
-          submissionId: 10,
-          candidateSessionId: 2,
-          task: {
-            taskId: 10,
-            dayIndex: 1,
-            type: 'design',
-            title: 'Prompted Task',
-            prompt: 'Prompt text',
-          },
-          contentText: 'Answer',
-          code: null,
-          testResults: { passed: true },
-          submittedAt: '2025-12-23T18:57:10.981202Z',
-        });
-      }
-
-      if (url === '/api/submissions/11') {
-        return textResponse('missing artifact', 404);
       }
 
       return textResponse('Not found', 404);
@@ -435,15 +390,40 @@ describe('CandidateSubmissionsPage', () => {
     render(<CandidateSubmissionsPage />);
 
     expect(
-      await screen.findByText(/Candidate 2 — Submissions/),
+      await screen.findByText(/Unable to verify candidate access/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/CandidateSession: 2/)).toBeInTheDocument();
+  });
+
+  it('blocks submissions when candidate is not in the simulation', async () => {
+    setMockParams({ id: '1', candidateSessionId: '2' });
+
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 9,
+            inviteEmail: 'other@example.com',
+            candidateName: 'Other',
+            status: 'not_started',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+        ]);
+      }
+
+      return textResponse('Not found', 404);
+    });
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsPage />);
+
     expect(
-      await screen.findByText((content) => content.includes('Prompted Task')),
+      await screen.findByText(/Candidate not found for this simulation/i),
     ).toBeInTheDocument();
-    expect(screen.getByText('Prompt text')).toBeInTheDocument();
-    expect(screen.getByText(/\"passed\": true/)).toBeInTheDocument();
-    expect(screen.getByText(/content not available/i)).toBeInTheDocument();
   });
 
   it('surfaces thrown errors from fetch calls', async () => {

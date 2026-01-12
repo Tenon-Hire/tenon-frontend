@@ -103,7 +103,19 @@ describe('CandidateSubmissionsPage', () => {
 
   it('renders friendly error when submissions list fails', async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse([], 200))
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            candidateSessionId: 900,
+            inviteEmail: 'dee@example.com',
+            candidateName: 'Dee',
+            status: 'completed',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+        ]),
+      )
       .mockResolvedValueOnce(jsonResponse({ message: 'Upstream down' }, 500));
     params.id = 'sim-err';
 
@@ -114,7 +126,19 @@ describe('CandidateSubmissionsPage', () => {
 
   it('surfaces network errors when submissions request rejects', async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse([], 200))
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            candidateSessionId: 900,
+            inviteEmail: 'dee@example.com',
+            candidateName: 'Dee',
+            status: 'completed',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+        ]),
+      )
       .mockRejectedValueOnce(new Error('network fail'));
 
     render(<CandidateSubmissionsPage />);
