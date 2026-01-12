@@ -28,5 +28,16 @@ export function buildLogoutHref(returnTo?: string): string {
   return `${base}?returnTo=${encodeURIComponent(buildReturnTo(returnTo))}`;
 }
 
+export function buildClearAuthHref(
+  returnTo?: string,
+  mode?: LoginMode,
+): string {
+  const params = new URLSearchParams();
+  params.set('returnTo', buildReturnTo(returnTo));
+  if (mode) params.set('mode', mode);
+  const query = params.toString();
+  return `/auth/clear${query ? `?${query}` : ''}`;
+}
+
 export type { LoginMode };
 export { modeForPath };

@@ -1,4 +1,4 @@
-import { buildLoginHref } from '@/features/auth/authPaths';
+import { buildClearAuthHref, buildLoginHref } from '@/features/auth/authPaths';
 
 const originalCandidate =
   process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION;
@@ -28,5 +28,17 @@ describe('authPaths buildLoginHref', () => {
     expect(href).toContain('mode=recruiter');
     expect(href).toContain('connection=rec-db');
     expect(href).toContain('returnTo=%2Fdashboard');
+  });
+});
+
+describe('authPaths buildClearAuthHref', () => {
+  it('builds a clear-auth link with returnTo and mode', () => {
+    const href = buildClearAuthHref('/dashboard', 'recruiter');
+    expect(href).toBe('/auth/clear?returnTo=%2Fdashboard&mode=recruiter');
+  });
+
+  it('defaults to returnTo when mode is missing', () => {
+    const href = buildClearAuthHref('/candidate/dashboard');
+    expect(href).toBe('/auth/clear?returnTo=%2Fcandidate%2Fdashboard');
   });
 });

@@ -3,6 +3,7 @@ import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextResponse, type NextRequest } from 'next/server';
 import { cache } from 'react';
 import { normalizeUserClaims } from '@/lib/auth0-claims';
+import { modeForPath, sanitizeReturnTo } from '@/lib/auth/routing';
 import {
   CUSTOM_CLAIM_PERMISSIONS,
   CUSTOM_CLAIM_PERMISSIONS_STR,
@@ -73,6 +74,81 @@ function createClient() {
     }
   };
 
+  const resolveModeForReturnTo = (
+    returnTo: string,
+  ): 'candidate' | 'recruiter' =>
+    modeForPath(returnTo.split(/[?#]/)[0] || returnTo);
+
+  const toSafeErrorCode = (error: { code?: unknown; name?: unknown }) => {
+    const raw =
+      (typeof error.code === 'string' && error.code) ||
+      (typeof error.name === 'string' && error.name) ||
+      'auth_callback_error';
+    return raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+  };
+
+  const toSafeErrorMessage = (error: unknown) => {
+    const raw =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : null;
+    if (!raw) return null;
+    const trimmed = raw
+      .replace(/https?:\/\/\S+/gi, '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/[?&#].*/g, '')
+      .replace(/[^a-zA-Z0-9 .,:;_()-]/g, '')
+      .trim();
+    if (!trimmed) return null;
+    return trimmed.slice(0, 160);
+  };
+
+  const createAuthErrorId = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      const maybe = (crypto as { randomUUID?: () => string }).randomUUID;
+      if (typeof maybe === 'function') return maybe();
+    }
+    return `auth-${Date.now().toString(36)}-${Math.random()
+      .toString(16)
+      .slice(2, 10)}`;
+  };
+
+  const resolveBaseUrl = () => {
+    const candidates = [
+      process.env.TENON_APP_BASE_URL,
+      process.env.NEXT_PUBLIC_TENON_APP_BASE_URL,
+      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+      process.env.NEXT_PUBLIC_VERCEL_URL
+        ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+        : null,
+    ];
+    for (const raw of candidates) {
+      if (!raw) continue;
+      try {
+        return new URL(raw);
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  };
+
+  const buildRedirect = (path: string) => {
+    const base =
+      resolveBaseUrl() ??
+      (process.env.NODE_ENV !== 'production'
+        ? new URL('http://localhost:3000')
+        : null);
+    if (!base) {
+      throw new Error(
+        'TENON_APP_BASE_URL (or VERCEL_URL) must be set in production',
+      );
+    }
+    return new URL(path, base);
+  };
+
   return new Auth0Client({
     appBaseUrl: process.env.TENON_APP_BASE_URL,
     domain: process.env.TENON_AUTH0_DOMAIN,
@@ -84,6 +160,31 @@ function createClient() {
       scope: process.env.TENON_AUTH0_SCOPE,
     },
     signInReturnToPath: '/dashboard',
+    onCallback: async (error, ctx) => {
+      if (error) {
+        const errorId = createAuthErrorId();
+        const safeReturnTo = sanitizeReturnTo(ctx.returnTo);
+        const mode = resolveModeForReturnTo(safeReturnTo);
+        const errorCode = toSafeErrorCode(error);
+        const errorMessage = toSafeErrorMessage(error);
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[auth0] callback error id=${errorId} code=${errorCode}${errorMessage ? ` msg=${errorMessage}` : ''}`,
+        );
+
+        const params = new URLSearchParams();
+        params.set('mode', mode);
+        params.set('returnTo', safeReturnTo);
+        params.set('error', 'callback_failed');
+        params.set('errorCode', errorCode);
+        params.set('errorId', errorId);
+        return NextResponse.redirect(
+          buildRedirect(`/auth/error?${params.toString()}`),
+        );
+      }
+      const returnTo = sanitizeReturnTo(ctx.returnTo);
+      return NextResponse.redirect(buildRedirect(returnTo));
+    },
     beforeSessionSaved: async (session, idToken) => {
       const user = normalizeUserClaims(
         (session.user ?? {}) as Record<string, unknown>,
