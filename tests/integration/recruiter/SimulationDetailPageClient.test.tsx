@@ -172,9 +172,9 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(screen.queryByText(/Text answer/i)).not.toBeInTheDocument();
 
     const calledUrls = fetchMock.mock.calls.map((call) => getUrl(call[0]));
-    expect(
-      calledUrls.some((url) => url.startsWith('/api/submissions')),
-    ).toBe(false);
+    expect(calledUrls.some((url) => url.startsWith('/api/submissions'))).toBe(
+      false,
+    );
   });
 
   it('creates an invite and refreshes the list', async () => {

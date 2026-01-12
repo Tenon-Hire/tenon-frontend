@@ -447,7 +447,9 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
-    expect(await screen.findByText(/Invalid candidate id/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Invalid candidate id/i),
+    ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -523,9 +525,7 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
-    expect(
-      await screen.findByText(/CandidateSession: 2/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/CandidateSession: 2/)).toBeInTheDocument();
     expect(
       await screen.findByText((content) => content.includes('Prompted Task')),
     ).toBeInTheDocument();

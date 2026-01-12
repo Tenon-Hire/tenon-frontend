@@ -144,8 +144,6 @@ export default function CandidateSubmissionsPage() {
         }
         if (!cancelled) setCandidate(found);
 
-        // Client guard reduces accidental exposure; server must verify access too.
-        // TODO: Submissions endpoint should require simulationId and confirm membership.
         const listRes = await fetch(
           `/api/submissions?candidateSessionId=${encodeURIComponent(
             candidateSessionKey,
@@ -202,7 +200,9 @@ export default function CandidateSubmissionsPage() {
           setItems([]);
           setArtifacts({});
           setError(
-            toUserMessage(e, 'Request failed', { includeDetail: includeDetail }),
+            toUserMessage(e, 'Request failed', {
+              includeDetail: includeDetail,
+            }),
           );
         }
       } finally {
@@ -214,7 +214,7 @@ export default function CandidateSubmissionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [simulationId, candidateSessionId]);
+  }, [simulationId, candidateSessionKey, includeDetail]);
 
   const headerTitle = useMemo(() => {
     const label =
@@ -235,7 +235,7 @@ export default function CandidateSubmissionsPage() {
         `Completed: ${new Date(candidate.completedAt).toLocaleString()}`,
       );
     return bits.join(' • ');
-  }, [candidate, candidateSessionId, statusDisplay]);
+  }, [candidate, candidateSessionKey, statusDisplay]);
 
   return (
     <div className="flex flex-col gap-4 py-8">
