@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { modeForPath } from '@/lib/auth/routing';
+import { modeForPath, sanitizeReturnTo } from '@/lib/auth/routing';
 
 const COOKIE_EXACT = new Set(['__session', 'appSession']);
 const COOKIE_PREFIXES = [
@@ -15,22 +15,16 @@ function isAuthCookie(name: string) {
   return COOKIE_PREFIXES.some((prefix) => name.startsWith(prefix));
 }
 
-function resolveSafeReturnTo(raw: string | null, request: NextRequest) {
-  if (!raw) return '/dashboard';
-  try {
-    const base = new URL(request.url);
-    const url = new URL(raw, base);
-    if (url.origin !== base.origin) return '/dashboard';
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return '/dashboard';
-  }
+function resolveCookieDomain(request: NextRequest) {
+  const envDomain = process.env.TENON_AUTH0_COOKIE_DOMAIN;
+  if (envDomain && envDomain.trim()) return envDomain.trim();
+  const hostname = request.nextUrl.hostname;
+  return hostname && hostname.includes('.') ? hostname : undefined;
 }
 
 export async function GET(req: NextRequest) {
-  const returnTo = resolveSafeReturnTo(
+  const returnTo = sanitizeReturnTo(
     req.nextUrl.searchParams.get('returnTo'),
-    req,
   );
   const rawMode = req.nextUrl.searchParams.get('mode');
   const mode =
@@ -44,9 +38,13 @@ export async function GET(req: NextRequest) {
   redirectUrl.searchParams.set('cleared', '1');
 
   const res = NextResponse.redirect(redirectUrl);
+  const domain = resolveCookieDomain(req);
+  const deleteOptions = { path: '/' as const };
   req.cookies.getAll().forEach((cookie) => {
-    if (isAuthCookie(cookie.name)) {
-      res.cookies.delete(cookie.name);
+    if (!isAuthCookie(cookie.name)) return;
+    res.cookies.delete(cookie.name, deleteOptions);
+    if (domain) {
+      res.cookies.delete(cookie.name, { ...deleteOptions, domain });
     }
   });
   return res;

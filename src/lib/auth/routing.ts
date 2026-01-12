@@ -3,11 +3,30 @@ import type { NextRequest } from 'next/server';
 export type LoginMode = 'candidate' | 'recruiter';
 
 const CANDIDATE_PREFIXES = ['/candidate-sessions', '/candidate'];
+const AUTH_PREFIXES = ['/auth', '/api/auth'];
+const DEFAULT_RETURN_TO = '/dashboard';
 
-function normalizeReturnTo(value: string | null | undefined): string {
-  if (!value || typeof value !== 'string') return '/';
+export function sanitizeReturnTo(value: string | null | undefined): string {
+  if (!value || typeof value !== 'string') return DEFAULT_RETURN_TO;
   const trimmed = value.trim();
-  return trimmed ? trimmed : '/';
+  if (!trimmed) return DEFAULT_RETURN_TO;
+  if (trimmed.includes('\\')) return DEFAULT_RETURN_TO;
+  if (!trimmed.startsWith('/')) return DEFAULT_RETURN_TO;
+  if (trimmed.startsWith('//')) return DEFAULT_RETURN_TO;
+  if (trimmed.includes('://')) return DEFAULT_RETURN_TO;
+  const lower = trimmed.toLowerCase();
+  if (
+    AUTH_PREFIXES.some(
+      (prefix) =>
+        lower === prefix ||
+        lower.startsWith(`${prefix}/`) ||
+        lower.startsWith(`${prefix}?`) ||
+        lower.startsWith(`${prefix}#`),
+    )
+  ) {
+    return DEFAULT_RETURN_TO;
+  }
+  return trimmed;
 }
 
 export function modeForPath(pathname: string): LoginMode {
@@ -19,29 +38,29 @@ export function modeForPath(pathname: string): LoginMode {
 type ReturnToInput = NextRequest | Location | URL | string | null | undefined;
 
 export function buildReturnTo(input?: ReturnToInput): string {
-  if (typeof input === 'string') return normalizeReturnTo(input);
+  if (typeof input === 'string') return sanitizeReturnTo(input);
 
   if (input && typeof (input as NextRequest).nextUrl === 'object') {
     const url = (input as NextRequest).nextUrl;
-    return normalizeReturnTo(`${url.pathname}${url.search}`);
+    return sanitizeReturnTo(`${url.pathname}${url.search}`);
   }
 
   if (input instanceof URL) {
-    return normalizeReturnTo(`${input.pathname}${input.search}`);
+    return sanitizeReturnTo(`${input.pathname}${input.search}`);
   }
 
   if (input && typeof (input as Location).pathname === 'string') {
     const loc = input as Location;
-    return normalizeReturnTo(`${loc.pathname}${loc.search ?? ''}`);
+    return sanitizeReturnTo(`${loc.pathname}${loc.search ?? ''}`);
   }
 
   if (typeof window !== 'undefined') {
-    return normalizeReturnTo(
+    return sanitizeReturnTo(
       `${window.location.pathname}${window.location.search}`,
     );
   }
 
-  return '/';
+  return DEFAULT_RETURN_TO;
 }
 
 export function buildLoginUrl(

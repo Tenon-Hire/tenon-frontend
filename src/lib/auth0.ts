@@ -3,7 +3,7 @@ import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextResponse, type NextRequest } from 'next/server';
 import { cache } from 'react';
 import { normalizeUserClaims } from '@/lib/auth0-claims';
-import { modeForPath } from '@/lib/auth/routing';
+import { modeForPath, sanitizeReturnTo } from '@/lib/auth/routing';
 import {
   CUSTOM_CLAIM_PERMISSIONS,
   CUSTOM_CLAIM_PERMISSIONS_STR,
@@ -74,14 +74,6 @@ function createClient() {
     }
   };
 
-  const resolveReturnTo = (returnTo?: string | null): string => {
-    if (!returnTo || typeof returnTo !== 'string') return '/dashboard';
-    const trimmed = returnTo.trim();
-    if (!trimmed.startsWith('/')) return '/dashboard';
-    if (trimmed.startsWith('/auth/')) return '/dashboard';
-    return trimmed;
-  };
-
   const resolveModeForReturnTo = (returnTo: string): 'candidate' | 'recruiter' =>
     modeForPath(returnTo.split('?')[0] || returnTo);
 
@@ -93,6 +85,24 @@ function createClient() {
     return raw.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
   };
 
+  const toSafeErrorMessage = (error: unknown) => {
+    const raw =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : null;
+    if (!raw) return null;
+    const trimmed = raw
+      .replace(/https?:\/\/\S+/gi, '')
+      .replace(/[\r\n]+/g, ' ')
+      .replace(/[?&#].*/g, '')
+      .replace(/[^a-zA-Z0-9 .,:;_()-]/g, '')
+      .trim();
+    if (!trimmed) return null;
+    return trimmed.slice(0, 160);
+  };
+
   const createAuthErrorId = () => {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
       const maybe = (crypto as { randomUUID?: () => string }).randomUUID;
@@ -101,6 +111,21 @@ function createClient() {
     return `auth-${Date.now().toString(36)}-${Math.random()
       .toString(16)
       .slice(2, 10)}`;
+  };
+
+  const resolveBaseUrl = () => {
+    const raw = process.env.TENON_APP_BASE_URL;
+    if (!raw) return null;
+    try {
+      return new URL(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const buildRedirect = (path: string) => {
+    const base = resolveBaseUrl();
+    return base ? new URL(path, base) : path;
   };
 
   return new Auth0Client({
@@ -117,30 +142,27 @@ function createClient() {
     onCallback: async (error, ctx) => {
       if (error) {
         const errorId = createAuthErrorId();
-        const safeReturnTo = resolveReturnTo(ctx.returnTo);
+        const safeReturnTo = sanitizeReturnTo(ctx.returnTo);
         const mode = resolveModeForReturnTo(safeReturnTo);
         const errorCode = toSafeErrorCode(error);
+        const errorMessage = toSafeErrorMessage(error);
         // eslint-disable-next-line no-console
         console.warn(
-          `[auth0] callback error id=${errorId} code=${errorCode}`,
-          error,
+          `[auth0] callback error id=${errorId} code=${errorCode}${errorMessage ? ` msg=${errorMessage}` : ''}`,
         );
 
-        const redirectUrl = new URL(
-          '/auth/error',
-          process.env.TENON_APP_BASE_URL,
+        const params = new URLSearchParams();
+        params.set('mode', mode);
+        params.set('returnTo', safeReturnTo);
+        params.set('error', 'callback_failed');
+        params.set('errorCode', errorCode);
+        params.set('errorId', errorId);
+        return NextResponse.redirect(
+          buildRedirect(`/auth/error?${params.toString()}`),
         );
-        redirectUrl.searchParams.set('mode', mode);
-        redirectUrl.searchParams.set('returnTo', safeReturnTo);
-        redirectUrl.searchParams.set('error', 'callback_failed');
-        redirectUrl.searchParams.set('errorCode', errorCode);
-        redirectUrl.searchParams.set('errorId', errorId);
-        return NextResponse.redirect(redirectUrl);
       }
-      const returnTo = resolveReturnTo(ctx.returnTo);
-      return NextResponse.redirect(
-        new URL(returnTo, process.env.TENON_APP_BASE_URL),
-      );
+      const returnTo = sanitizeReturnTo(ctx.returnTo);
+      return NextResponse.redirect(buildRedirect(returnTo));
     },
     beforeSessionSaved: async (session, idToken) => {
       const user = normalizeUserClaims(

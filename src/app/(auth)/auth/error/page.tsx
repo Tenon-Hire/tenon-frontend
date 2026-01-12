@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import AuthErrorPage from '@/features/auth/AuthErrorPage';
 import { BRAND_NAME } from '@/lib/brand';
-import { modeForPath } from '@/lib/auth/routing';
+import { modeForPath, sanitizeReturnTo } from '@/lib/auth/routing';
 
 export const metadata: Metadata = {
   title: `Sign-in error | ${BRAND_NAME}`,
@@ -25,7 +25,7 @@ export default async function AuthErrorRoutePage({
   const resolved = searchParams ? await searchParams : undefined;
   const returnTo =
     resolved && typeof resolved.returnTo === 'string'
-      ? resolved.returnTo
+      ? sanitizeReturnTo(resolved.returnTo)
       : undefined;
   const rawMode = resolved?.mode;
   const mode =
