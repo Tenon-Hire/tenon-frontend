@@ -7,9 +7,10 @@ import { contentContainer } from './layoutStyles';
 
 type AppShellProps = {
   children: ReactNode;
+  navScope?: 'candidate' | 'recruiter' | 'marketing' | 'auth';
 };
 
-export default async function AppShell({ children }: AppShellProps) {
+export default async function AppShell({ children, navScope }: AppShellProps) {
   const session = await getCachedSessionNormalized();
   const isAuthed = !!session?.user;
   const permissions = extractPermissions(session?.user, null);
@@ -23,7 +24,11 @@ export default async function AppShell({ children }: AppShellProps) {
       >
         Skip to main content
       </a>
-      <AppHeader isAuthed={isAuthed} permissions={permissions} />
+      <AppHeader
+        isAuthed={isAuthed}
+        permissions={permissions}
+        navScope={navScope}
+      />
       <main id="main-content" className={`${contentContainer} py-6`}>
         {children}
       </main>

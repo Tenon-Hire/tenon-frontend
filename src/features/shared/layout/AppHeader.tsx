@@ -6,9 +6,14 @@ import { contentContainer } from './layoutStyles';
 type AppHeaderProps = {
   isAuthed: boolean;
   permissions?: string[];
+  navScope?: 'candidate' | 'recruiter' | 'marketing' | 'auth';
 };
 
-export function AppHeader({ isAuthed, permissions = [] }: AppHeaderProps) {
+export function AppHeader({
+  isAuthed,
+  permissions = [],
+  navScope,
+}: AppHeaderProps) {
   return (
     <header className="border-b bg-white">
       <div
@@ -17,7 +22,11 @@ export function AppHeader({ isAuthed, permissions = [] }: AppHeaderProps) {
         <Link href="/" className="text-lg font-semibold tracking-tight">
           {BRAND_NAME}
         </Link>
-        <AppNav isAuthed={isAuthed} permissions={permissions} />
+        <AppNav
+          isAuthed={isAuthed}
+          permissions={permissions}
+          navScope={navScope}
+        />
       </div>
     </header>
   );
