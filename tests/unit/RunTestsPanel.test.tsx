@@ -211,4 +211,34 @@ describe('RunTestsPanel', () => {
     expect(nextStart).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/Unable to run tests/i)).toBeInTheDocument();
   });
+
+  it('clears start errors after a successful run start', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const onStart = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('fail to start'))
+      .mockResolvedValueOnce({ runId: 'r-ok' });
+    const onPoll = jest.fn().mockResolvedValue({ status: 'running' as const });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={40} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await act(async () => Promise.resolve());
+
+    expect(
+      await screen.findByText(/Failed to start tests/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    expect(onStart).toHaveBeenCalledTimes(2);
+
+    expect(await screen.findByText(/Tests are running/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Failed to start tests/i),
+    ).not.toBeInTheDocument();
+  });
 });

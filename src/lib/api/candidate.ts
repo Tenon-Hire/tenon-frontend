@@ -128,6 +128,17 @@ function toStringOrNull(value: unknown): string | null {
   return null;
 }
 
+function toIdString(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+}
+
 function normalizeWorkspaceStatus(data: unknown): CandidateWorkspaceStatus {
   if (!data || typeof data !== 'object') {
     return { repoUrl: null, repoName: null, codespaceUrl: null };
@@ -863,7 +874,7 @@ export async function startCandidateTestRun(params: {
 
     if (data && typeof data === 'object') {
       const rec = data as Record<string, unknown>;
-      const runId = toStringOrNull(rec.runId);
+      const runId = toIdString(rec.runId ?? rec.run_id ?? rec.id);
       if (runId) return { runId };
     }
     throw new HttpError(500, 'Missing run id from test run.');

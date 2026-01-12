@@ -599,6 +599,45 @@ describe('candidate api helpers', () => {
     expect(polled).toEqual({ status: 'passed', message: 'All green' });
   });
 
+  it('accepts numeric run ids from startCandidateTestRun', async () => {
+    mockPost.mockResolvedValueOnce({ runId: 12345 });
+
+    const { startCandidateTestRun } = await import('@/lib/api/candidate');
+
+    const start = await startCandidateTestRun({
+      taskId: 21,
+      token: 'auth',
+      candidateSessionId: 77,
+    });
+
+    expect(start).toEqual({ runId: '12345' });
+  });
+
+  it('accepts full run results responses with numeric run id', async () => {
+    mockPost.mockResolvedValueOnce({
+      runId: 20908570424,
+      passed: 3,
+      failed: 1,
+      total: 4,
+      stdout: 'ok',
+      stderr: '',
+      timeout: false,
+      conclusion: 'failure',
+      workflowUrl: 'https://github.com/acme/repo/actions/runs/1',
+      commitSha: 'abc123',
+    });
+
+    const { startCandidateTestRun } = await import('@/lib/api/candidate');
+
+    const start = await startCandidateTestRun({
+      taskId: 22,
+      token: 'auth',
+      candidateSessionId: 88,
+    });
+
+    expect(start).toEqual({ runId: '20908570424' });
+  });
+
   it('normalizes running, timeout, and error run statuses', async () => {
     mockGet
       .mockResolvedValueOnce({ status: 'running' })
