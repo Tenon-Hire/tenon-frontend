@@ -1,9 +1,6 @@
 import {
-  clearCodeDraftForTask,
   clearTextDraft,
-  loadCodeDraftForTask,
   loadTextDraft,
-  saveCodeDraftForTask,
   saveTextDraft,
 } from '@/features/candidate/session/task/utils/draftStorage';
 
@@ -20,14 +17,6 @@ describe('draftStorage helpers', () => {
     expect(loadTextDraft(1)).toBe('');
   });
 
-  it('saves and clears code drafts scoped by session id', () => {
-    expect(loadCodeDraftForTask(10, 2)).toBeNull();
-    saveCodeDraftForTask(10, 2, 'code');
-    expect(loadCodeDraftForTask(10, 2)).toBe('code');
-    clearCodeDraftForTask(10, 2);
-    expect(loadCodeDraftForTask(10, 2)).toBeNull();
-  });
-
   it('returns safe defaults when storage calls fail', () => {
     const getItem = jest
       .spyOn(Storage.prototype, 'getItem')
@@ -41,9 +30,7 @@ describe('draftStorage helpers', () => {
       });
 
     expect(loadTextDraft(9)).toBe('');
-    expect(loadCodeDraftForTask(1, 1)).toBeNull();
     expect(() => clearTextDraft(9)).not.toThrow();
-    expect(() => clearCodeDraftForTask(1, 1)).not.toThrow();
 
     getItem.mockRestore();
     removeItem.mockRestore();

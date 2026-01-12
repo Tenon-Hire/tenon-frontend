@@ -1,8 +1,3 @@
-import {
-  clearCodeDraft,
-  loadCodeDraft,
-  saveCodeDraft,
-} from '@/lib/storage/candidateDrafts';
 import { BRAND_SLUG } from '@/lib/brand';
 
 function textDraftKey(taskId: number) {
@@ -30,26 +25,4 @@ export function clearTextDraft(taskId: number) {
   try {
     window.sessionStorage.removeItem(textDraftKey(taskId));
   } catch {}
-}
-
-export function loadCodeDraftForTask(
-  candidateSessionId: number,
-  taskId: number,
-): string | null {
-  return loadCodeDraft(candidateSessionId, taskId);
-}
-
-export function saveCodeDraftForTask(
-  candidateSessionId: number,
-  taskId: number,
-  code: string,
-) {
-  return saveCodeDraft(candidateSessionId, taskId, code);
-}
-
-export function clearCodeDraftForTask(
-  candidateSessionId: number,
-  taskId: number,
-) {
-  return clearCodeDraft(candidateSessionId, taskId);
 }

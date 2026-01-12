@@ -4,7 +4,6 @@ describe('components/ui index export', () => {
     expect(ui).toHaveProperty('Button');
     expect(ui).toHaveProperty('Input');
     expect(ui).toHaveProperty('PageHeader');
-    expect(ui).toHaveProperty('CodeEditor');
     expect(ui).toHaveProperty('StatusPill');
     expect(ui).toHaveProperty('Card');
     expect(ui).toHaveProperty('cn');

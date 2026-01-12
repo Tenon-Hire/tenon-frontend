@@ -76,6 +76,7 @@ jest.mock('next/server', () => {
     };
     method: string;
     private _body?: ArrayBuffer;
+    private _textBody?: string;
     signal: AbortSignal;
     constructor(
       url: URL | string,
@@ -94,10 +95,12 @@ jest.mock('next/server', () => {
         headerStore.set(k.toLowerCase(), v),
       );
       if (init?.body) {
-        this._body =
-          typeof init.body === 'string'
-            ? new TextEncoder().encode(init.body).buffer
-            : (init.body as ArrayBuffer);
+        if (typeof init.body === 'string') {
+          this._textBody = init.body;
+          this._body = new TextEncoder().encode(init.body).buffer;
+        } else {
+          this._body = init.body as ArrayBuffer;
+        }
       }
       this.headers = {
         get: (key: string) => headerStore.get(key.toLowerCase()) ?? null,
@@ -110,6 +113,14 @@ jest.mock('next/server', () => {
       if (this._body) return this._body;
       return new ArrayBuffer(0);
     }
+
+    async text() {
+      if (typeof this._textBody === 'string') return this._textBody;
+      if (this._body) {
+        return new TextDecoder().decode(this._body);
+      }
+      return '';
+    }
   }
 
   return {
@@ -120,7 +131,7 @@ jest.mock('next/server', () => {
 
 import { TextDecoder, TextEncoder } from 'util';
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/backend/[...path]/route';
+import { GET, POST } from '@/app/api/backend/[...path]/route';
 type FakeResponseShape = {
   body: unknown;
   status: number;
@@ -502,10 +513,8 @@ describe('/api/backend proxy', () => {
       method: 'POST',
       headers: { 'content-length': '5000000' },
     }) as never;
-    const arrayBufferSpy = jest.fn(async () => new ArrayBuffer(0));
-    (
-      req as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
-    ).arrayBuffer = arrayBufferSpy;
+    const textSpy = jest.fn(async () => '');
+    (req as unknown as { text: () => Promise<string> }).text = textSpy;
 
     const res = await GET(req, {
       params: Promise.resolve({ path: ['oversize'] }),
@@ -514,7 +523,103 @@ describe('/api/backend proxy', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(res.status).toBe(413);
     expect(res.headers.get('x-tenon-request-id')).toBe('req-test');
-    expect(arrayBufferSpy).not.toHaveBeenCalled();
+    expect(textSpy).not.toHaveBeenCalled();
+  });
+
+  it('forwards empty json body strings for POST requests', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(JSON.stringify({ runId: 'run-1' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/backend/tasks/123/run', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }) as never,
+      { params: Promise.resolve({ path: ['tasks', '123', 'run'] }) },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://backend.test/api/tasks/123/run',
+      expect.objectContaining({
+        body: '{}',
+      }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('uses a longer timeout for task run endpoints', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(JSON.stringify({ runId: 'run-2' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    await POST(
+      new NextRequest('http://localhost/api/backend/tasks/987/run', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }) as never,
+      { params: Promise.resolve({ path: ['tasks', '987', 'run'] }) },
+    );
+
+    expect(upstreamRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutMs: 90000, maxTotalTimeMs: 90000 }),
+    );
+  });
+
+  it('forwards empty json bodies for submit requests', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(JSON.stringify({ submissionId: 1 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    const res = await POST(
+      new NextRequest('http://localhost/api/backend/tasks/321/submit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }) as never,
+      { params: Promise.resolve({ path: ['tasks', '321', 'submit'] }) },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://backend.test/api/tasks/321/submit',
+      expect.objectContaining({
+        body: '{}',
+      }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('uses a longer timeout for task submit endpoints', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(JSON.stringify({ submissionId: 2 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    await POST(
+      new NextRequest('http://localhost/api/backend/tasks/777/submit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }) as never,
+      { params: Promise.resolve({ path: ['tasks', '777', 'submit'] }) },
+    );
+
+    expect(upstreamRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutMs: 90000, maxTotalTimeMs: 90000 }),
+    );
   });
 
   it('times out and returns an error response', async () => {

@@ -30,7 +30,7 @@ function Harness({
   setTaskError: jest.Mock;
   clearTaskError: jest.Mock;
   refreshTask: jest.Mock;
-  payload?: { contentText?: string; codeBlob?: string };
+  payload?: { contentText?: string };
 }) {
   const { submitting, handleSubmit } = useTaskSubmission({
     token,
@@ -119,7 +119,6 @@ describe('useTaskSubmission', () => {
       token: 'auth',
       candidateSessionId: 5,
       contentText: 'answer',
-      codeBlob: undefined,
     });
 
     await act(async () => {
@@ -127,5 +126,42 @@ describe('useTaskSubmission', () => {
     });
     expect(refreshTask).toHaveBeenCalled();
     jest.useRealTimers();
+  });
+
+  it('submits GitHub-native tasks without code or text payloads', async () => {
+    const setTaskError = jest.fn();
+    const clearTaskError = jest.fn();
+    const refreshTask = jest.fn();
+    submitMock.mockResolvedValue({ ok: true });
+
+    render(
+      <Harness
+        token="auth"
+        candidateSessionId={12}
+        currentTask={{
+          id: 12,
+          dayIndex: 2,
+          type: 'code',
+          title: 'Day 2',
+          description: '',
+        }}
+        setTaskError={setTaskError}
+        clearTaskError={clearTaskError}
+        refreshTask={refreshTask}
+        payload={{}}
+      />,
+    );
+
+    await act(async () => {
+      screen.getByText('submit').click();
+    });
+
+    expect(setTaskError).not.toHaveBeenCalled();
+    expect(submitMock).toHaveBeenCalledWith({
+      taskId: 12,
+      token: 'auth',
+      candidateSessionId: 12,
+      contentText: undefined,
+    });
   });
 });

@@ -275,6 +275,53 @@ describe('candidate api helpers', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
+  it('submits empty payloads without code or text', async () => {
+    mockPost.mockResolvedValueOnce({ submissionId: 10 });
+    const { submitCandidateTask } = await import('@/lib/api/candidate');
+
+    await submitCandidateTask({
+      taskId: 8,
+      token: 'auth',
+      candidateSessionId: 8,
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/tasks/8/submit',
+      {},
+      expect.objectContaining({
+        headers: {
+          'Content-Type': 'application/json',
+          'x-candidate-session-id': '8',
+        },
+      }),
+      expect.objectContaining({ authToken: 'auth' }),
+    );
+  });
+
+  it('submits text content when provided', async () => {
+    mockPost.mockResolvedValueOnce({ submissionId: 11 });
+    const { submitCandidateTask } = await import('@/lib/api/candidate');
+
+    await submitCandidateTask({
+      taskId: 9,
+      token: 'auth',
+      candidateSessionId: 9,
+      contentText: 'Hello world',
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/tasks/9/submit',
+      { contentText: 'Hello world' },
+      expect.objectContaining({
+        headers: {
+          'Content-Type': 'application/json',
+          'x-candidate-session-id': '9',
+        },
+      }),
+      expect.objectContaining({ authToken: 'auth' }),
+    );
+  });
+
   it('handles submitCandidateTask conflict and network errors', async () => {
     mockPost.mockRejectedValueOnce({ status: 409, details: 'dup' });
     mockPost.mockRejectedValueOnce(new TypeError('offline'));
@@ -467,23 +514,307 @@ describe('candidate api helpers', () => {
     });
   });
 
-  it('submits code tasks through submitCandidateCodeTask wrapper', async () => {
-    mockPost.mockResolvedValueOnce({ submissionId: 99 });
-    const { submitCandidateCodeTask } = await import('@/lib/api/candidate');
+  it('initializes workspace and normalizes response fields', async () => {
+    mockPost.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
+      codespaceUrl: 'https://codespaces.new/acme/repo',
+    });
 
-    const result = await submitCandidateCodeTask({
-      taskId: 9,
+    const { initCandidateWorkspace } = await import('@/lib/api/candidate');
+    const result = await initCandidateWorkspace({
+      taskId: 11,
       token: 'auth',
-      candidateSessionId: 9,
-      codeBlob: 'blob',
+      candidateSessionId: 77,
     });
 
     expect(mockPost).toHaveBeenCalledWith(
-      '/tasks/9/submit',
-      expect.objectContaining({ codeBlob: 'blob' }),
-      expect.any(Object),
+      '/tasks/11/codespace/init',
+      {},
+      expect.objectContaining({
+        headers: { 'x-candidate-session-id': '77' },
+      }),
       expect.objectContaining({ authToken: 'auth' }),
     );
-    expect(result).toEqual({ submissionId: 99 });
+    expect(result).toEqual({
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
+      codespaceUrl: 'https://codespaces.new/acme/repo',
+    });
+  });
+
+  it('fetches workspace status via codespace/status', async () => {
+    mockGet.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/acme/repo2',
+      repoName: 'acme/repo2',
+    });
+
+    const { getCandidateWorkspaceStatus } = await import('@/lib/api/candidate');
+    const result = await getCandidateWorkspaceStatus({
+      taskId: 12,
+      token: 'auth',
+      candidateSessionId: 88,
+    });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      '/tasks/12/codespace/status',
+      expect.objectContaining({
+        headers: { 'x-candidate-session-id': '88' },
+      }),
+      expect.objectContaining({ authToken: 'auth' }),
+    );
+    expect(result).toEqual({
+      repoUrl: 'https://github.com/acme/repo2',
+      repoName: 'acme/repo2',
+      codespaceUrl: null,
+    });
+  });
+
+  it('normalizes snake_case workspace fields', async () => {
+    mockGet.mockResolvedValueOnce({
+      repo_url: 'https://github.com/acme/repo3',
+      repo_name: 'acme/repo3',
+      codespace_url: 'https://codespaces.new/acme/repo3',
+    });
+
+    const { getCandidateWorkspaceStatus } = await import('@/lib/api/candidate');
+    const result = await getCandidateWorkspaceStatus({
+      taskId: 14,
+      token: 'auth',
+      candidateSessionId: 55,
+    });
+
+    expect(result).toEqual({
+      repoUrl: 'https://github.com/acme/repo3',
+      repoName: 'acme/repo3',
+      codespaceUrl: 'https://codespaces.new/acme/repo3',
+    });
+  });
+
+  it('starts and polls candidate test runs', async () => {
+    mockPost.mockResolvedValueOnce({ runId: 'run-xyz' });
+    mockGet.mockResolvedValueOnce({
+      status: 'completed',
+      conclusion: 'success',
+      message: 'All green',
+    });
+
+    const { startCandidateTestRun, pollCandidateTestRun } =
+      await import('@/lib/api/candidate');
+
+    const start = await startCandidateTestRun({
+      taskId: 13,
+      token: 'auth',
+      candidateSessionId: 99,
+    });
+    expect(start).toEqual({ runId: 'run-xyz' });
+    expect(mockPost).toHaveBeenCalledWith(
+      '/tasks/13/run',
+      {},
+      expect.objectContaining({
+        headers: { 'x-candidate-session-id': '99' },
+      }),
+      expect.objectContaining({ authToken: 'auth' }),
+    );
+
+    const polled = await pollCandidateTestRun({
+      taskId: 13,
+      runId: 'run-xyz',
+      token: 'auth',
+      candidateSessionId: 99,
+    });
+    expect(polled).toEqual({ status: 'passed', message: 'All green' });
+  });
+
+  it('accepts numeric run ids from startCandidateTestRun', async () => {
+    mockPost.mockResolvedValueOnce({ runId: 12345 });
+
+    const { startCandidateTestRun } = await import('@/lib/api/candidate');
+
+    const start = await startCandidateTestRun({
+      taskId: 21,
+      token: 'auth',
+      candidateSessionId: 77,
+    });
+
+    expect(start).toEqual({ runId: '12345' });
+  });
+
+  it('accepts full run results responses with numeric run id', async () => {
+    mockPost.mockResolvedValueOnce({
+      runId: 20908570424,
+      passed: 3,
+      failed: 1,
+      total: 4,
+      stdout: 'ok',
+      stderr: '',
+      timeout: false,
+      conclusion: 'failure',
+      workflowUrl: 'https://github.com/acme/repo/actions/runs/1',
+      commitSha: 'abc123',
+    });
+
+    const { startCandidateTestRun } = await import('@/lib/api/candidate');
+
+    const start = await startCandidateTestRun({
+      taskId: 22,
+      token: 'auth',
+      candidateSessionId: 88,
+    });
+
+    expect(start).toEqual({ runId: '20908570424' });
+  });
+
+  it('normalizes running, timeout, and error run statuses', async () => {
+    mockGet
+      .mockResolvedValueOnce({ status: 'running' })
+      .mockResolvedValueOnce({ conclusion: 'timed_out' })
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ status: 'failed', message: 'Red' })
+      .mockResolvedValueOnce({ status: 'completed', conclusion: 'failure' });
+
+    const { pollCandidateTestRun } = await import('@/lib/api/candidate');
+
+    const running = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-a',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(running).toEqual({ status: 'running', message: undefined });
+
+    const timeout = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-b',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(timeout).toEqual({ status: 'timeout', message: undefined });
+
+    const error = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-c',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(error).toEqual({ status: 'error' });
+
+    const failed = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-d',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(failed).toEqual({ status: 'failed', message: 'Red' });
+
+    const completedFailure = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-e',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(completedFailure).toEqual({
+      status: 'failed',
+      message: undefined,
+    });
+  });
+
+  it('handles workspace and run network errors', async () => {
+    mockPost.mockRejectedValueOnce(new TypeError('offline'));
+    mockGet.mockRejectedValueOnce(new TypeError('offline'));
+    mockPost.mockRejectedValueOnce(new TypeError('offline'));
+    mockGet.mockRejectedValueOnce(new TypeError('offline'));
+
+    const {
+      initCandidateWorkspace,
+      getCandidateWorkspaceStatus,
+      startCandidateTestRun,
+      pollCandidateTestRun,
+    } = await import('@/lib/api/candidate');
+
+    await expect(
+      initCandidateWorkspace({
+        taskId: 20,
+        token: 'auth',
+        candidateSessionId: 2,
+      }),
+    ).rejects.toMatchObject({ status: 0 });
+
+    await expect(
+      getCandidateWorkspaceStatus({
+        taskId: 20,
+        token: 'auth',
+        candidateSessionId: 2,
+      }),
+    ).rejects.toMatchObject({ status: 0 });
+
+    await expect(
+      startCandidateTestRun({
+        taskId: 21,
+        token: 'auth',
+        candidateSessionId: 3,
+      }),
+    ).rejects.toMatchObject({ status: 0 });
+
+    await expect(
+      pollCandidateTestRun({
+        taskId: 21,
+        runId: 'run-x',
+        token: 'auth',
+        candidateSessionId: 3,
+      }),
+    ).rejects.toMatchObject({ status: 0 });
+  });
+
+  it('throws when test run start response is missing a run id', async () => {
+    mockPost.mockResolvedValueOnce({});
+    const { startCandidateTestRun, HttpError } =
+      await import('@/lib/api/candidate');
+
+    await expect(
+      startCandidateTestRun({
+        taskId: 30,
+        token: 'auth',
+        candidateSessionId: 4,
+      }),
+    ).rejects.toBeInstanceOf(HttpError);
+  });
+
+  it('propagates workspace and run status errors via toHttpError', async () => {
+    mockPost.mockRejectedValueOnce({ status: 500 });
+    mockGet.mockRejectedValueOnce({ status: 500 });
+    mockGet.mockRejectedValueOnce({ status: 500 });
+
+    const {
+      initCandidateWorkspace,
+      getCandidateWorkspaceStatus,
+      pollCandidateTestRun,
+      HttpError,
+    } = await import('@/lib/api/candidate');
+
+    await expect(
+      initCandidateWorkspace({
+        taskId: 40,
+        token: 'auth',
+        candidateSessionId: 4,
+      }),
+    ).rejects.toBeInstanceOf(HttpError);
+
+    await expect(
+      getCandidateWorkspaceStatus({
+        taskId: 40,
+        token: 'auth',
+        candidateSessionId: 4,
+      }),
+    ).rejects.toBeInstanceOf(HttpError);
+
+    await expect(
+      pollCandidateTestRun({
+        taskId: 41,
+        runId: 'run-y',
+        token: 'auth',
+        candidateSessionId: 4,
+      }),
+    ).rejects.toBeInstanceOf(HttpError);
   });
 });

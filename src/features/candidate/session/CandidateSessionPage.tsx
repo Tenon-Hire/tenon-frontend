@@ -5,10 +5,15 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import CandidateTaskView from '@/features/candidate/session/task/CandidateTaskView';
 import CandidateTaskProgress from '@/features/candidate/session/task/CandidateTaskProgress';
+import { RunTestsPanel } from '@/features/candidate/session/task/components/RunTestsPanel';
+import { WorkspacePanel } from '@/features/candidate/session/task/components/WorkspacePanel';
+import { ResourcePanel } from '@/features/candidate/session/task/components/ResourcePanel';
 import {
   type CandidateSessionBootstrapResponse,
   getCandidateCurrentTask,
+  pollCandidateTestRun,
   resolveCandidateInviteToken,
+  startCandidateTestRun,
 } from '@/lib/api/candidate';
 import { useCandidateSession } from './CandidateSessionProvider';
 import { useTaskSubmission } from './hooks/useTaskSubmission';
@@ -22,6 +27,7 @@ import {
   friendlyBootstrapError,
   friendlyTaskError,
 } from './utils/errorMessages';
+import { extractFirstUrl } from './utils/extractUrl';
 import { CandidateVerificationPanel } from './components/CandidateVerificationPanel';
 
 type ViewState = 'loading' | 'verify' | 'starting' | 'error' | 'running';
@@ -246,15 +252,51 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     view,
   ]);
 
+  const currentTask = state.taskState.currentTask;
   const completedCount = state.taskState.completedTaskIds.length;
+  const isComplete = state.taskState.isComplete;
   const currentDayIndex = useMemo(
-    () =>
-      deriveCurrentDayIndex(
-        completedCount,
-        state.taskState.currentTask,
-        state.taskState.isComplete,
-      ),
-    [completedCount, state.taskState.currentTask, state.taskState.isComplete],
+    () => deriveCurrentDayIndex(completedCount, currentTask, isComplete),
+    [completedCount, currentTask, isComplete],
+  );
+
+  const showWorkspacePanel = Boolean(
+    currentTask && (currentTask.dayIndex === 2 || currentTask.dayIndex === 3),
+  );
+  const showRecordingPanel =
+    currentTask?.dayIndex === 4 || currentTask?.type === 'handoff';
+  const showDocsPanel =
+    currentTask?.dayIndex === 5 || currentTask?.type === 'documentation';
+
+  const resourceLink = useMemo(
+    () => extractFirstUrl(currentTask?.description ?? null),
+    [currentTask?.description],
+  );
+
+  const handleStartTests = useCallback(async () => {
+    if (!candidateSessionId || !state.token || !currentTask) {
+      throw new Error('Missing session context.');
+    }
+    return startCandidateTestRun({
+      taskId: currentTask.id,
+      token: state.token,
+      candidateSessionId,
+    });
+  }, [candidateSessionId, currentTask, state.token]);
+
+  const handlePollTests = useCallback(
+    async (runId: string) => {
+      if (!candidateSessionId || !state.token || !currentTask) {
+        throw new Error('Missing session context.');
+      }
+      return pollCandidateTestRun({
+        taskId: currentTask.id,
+        runId,
+        token: state.token,
+        candidateSessionId,
+      });
+    },
+    [candidateSessionId, currentTask, state.token],
   );
 
   const handleStart = useCallback(() => {
@@ -387,6 +429,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       <CandidateTaskProgress
         completedCount={completedCount}
         currentDayIndex={currentDayIndex}
+        currentTaskTitle={currentTask?.title ?? null}
       />
 
       {state.taskState.error ? (
@@ -401,15 +444,46 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         </div>
       ) : null}
 
-      {state.taskState.currentTask && candidateSessionId !== null ? (
+      {showWorkspacePanel && candidateSessionId !== null && currentTask ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          <WorkspacePanel
+            taskId={currentTask.id}
+            candidateSessionId={candidateSessionId}
+            token={state.token}
+            dayIndex={currentTask.dayIndex}
+          />
+          <RunTestsPanel onStart={handleStartTests} onPoll={handlePollTests} />
+        </div>
+      ) : null}
+
+      {showRecordingPanel ? (
+        <ResourcePanel
+          title="Day 4 recording"
+          description="Record a short walkthrough covering your decisions."
+          linkUrl={resourceLink}
+          linkLabel="Open recording link"
+          emptyMessage="Look for the recording link in your prompt."
+        />
+      ) : null}
+
+      {showDocsPanel ? (
+        <ResourcePanel
+          title="Day 5 documentation"
+          description="Capture your final notes and next steps."
+          linkUrl={resourceLink}
+          linkLabel="Open documentation link"
+          emptyMessage="Look for the documentation link in your prompt."
+        />
+      ) : null}
+
+      {currentTask && candidateSessionId !== null ? (
         <CandidateTaskView
-          task={state.taskState.currentTask}
-          candidateSessionId={candidateSessionId}
+          task={currentTask}
           submitting={submitting}
           submitError={state.taskState.error}
           onSubmit={handleSubmit}
         />
-      ) : state.taskState.currentTask ? (
+      ) : currentTask ? (
         <div className="border rounded-md p-4 text-sm text-gray-700">
           Session not ready. Please refresh.
         </div>

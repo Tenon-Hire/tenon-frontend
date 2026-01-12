@@ -227,58 +227,9 @@ describe('CandidateSubmissionsPage', () => {
       ),
     ).toBeInTheDocument();
 
-    expect(screen.getByText('Code')).toBeInTheDocument();
     expect(
-      screen.getByText("console.log('hello from candidate');"),
+      screen.getByText('No content captured for this submission.'),
     ).toBeInTheDocument();
-
-    const writeText = jest
-      .fn()
-      .mockRejectedValue(new Error('clipboard blocked'));
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText },
-      configurable: true,
-    });
-
-    const createObjectURL = jest.fn().mockReturnValue('blob://mock');
-    const revokeObjectURL = jest.fn();
-    const originalCreateObjectURL = URL.createObjectURL;
-    const originalRevokeObjectURL = URL.revokeObjectURL;
-    Object.defineProperty(URL, 'createObjectURL', {
-      value: createObjectURL,
-      writable: true,
-      configurable: true,
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', {
-      value: revokeObjectURL,
-      writable: true,
-      configurable: true,
-    });
-
-    const downloadBtn = screen.getByRole('button', { name: 'Download' });
-    const copyBtn = screen.getByRole('button', { name: 'Copy code' });
-
-    await waitFor(async () => {
-      copyBtn.click();
-      downloadBtn.click();
-    });
-
-    expect(writeText).toHaveBeenCalledWith(
-      "console.log('hello from candidate');",
-    );
-    expect(createObjectURL).toHaveBeenCalled();
-    expect(revokeObjectURL).toHaveBeenCalled();
-
-    Object.defineProperty(URL, 'createObjectURL', {
-      value: originalCreateObjectURL,
-      writable: true,
-      configurable: true,
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', {
-      value: originalRevokeObjectURL,
-      writable: true,
-      configurable: true,
-    });
   });
 
   it('renders empty state when candidate has no submissions', async () => {
@@ -520,7 +471,7 @@ describe('CandidateSubmissionsPage', () => {
     expect(await screen.findByText('Request failed')).toBeInTheDocument();
   });
 
-  it('renders repo path when provided on code artifact', async () => {
+  it('renders fallback message for code artifacts without text content', async () => {
     setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
@@ -584,6 +535,8 @@ describe('CandidateSubmissionsPage', () => {
     render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/Path Task/)).toBeInTheDocument();
-    expect(screen.getByText(/src\/index\.ts/)).toBeInTheDocument();
+    expect(
+      screen.getByText('No content captured for this submission.'),
+    ).toBeInTheDocument();
   });
 });

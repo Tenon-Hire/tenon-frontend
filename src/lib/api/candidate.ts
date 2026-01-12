@@ -72,6 +72,21 @@ export type CandidateTaskSubmitResponse = {
   isComplete: boolean;
 };
 
+export type CandidateWorkspaceStatus = {
+  repoUrl: string | null;
+  repoName: string | null;
+  codespaceUrl: string | null;
+};
+
+export type CandidateTestRunStartResponse = {
+  runId: string;
+};
+
+export type CandidateTestRunStatusResponse = {
+  status: 'running' | 'passed' | 'failed' | 'timeout' | 'error';
+  message?: string;
+};
+
 function toClientOptions(authToken: string): ApiClientOptions {
   return { ...baseClientOptions, authToken };
 }
@@ -106,6 +121,94 @@ function toSimulationSummary(value: unknown): SimulationSummary {
     return value as SimulationSummary;
   }
   return { title: '', role: '' };
+}
+
+function toStringOrNull(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) return value;
+  return null;
+}
+
+function toIdString(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+}
+
+function normalizeWorkspaceStatus(data: unknown): CandidateWorkspaceStatus {
+  if (!data || typeof data !== 'object') {
+    return { repoUrl: null, repoName: null, codespaceUrl: null };
+  }
+  const rec = data as Record<string, unknown>;
+  const repoUrl = toStringOrNull(rec.repoUrl ?? rec.repo_url) ?? null;
+  const repoName = toStringOrNull(rec.repoName ?? rec.repo_name) ?? null;
+  const codespaceUrl =
+    toStringOrNull(rec.codespaceUrl ?? rec.codespace_url) ?? null;
+
+  return { repoUrl, repoName, codespaceUrl };
+}
+
+function normalizeRunStatus(data: unknown): CandidateTestRunStatusResponse {
+  if (!data || typeof data !== 'object') {
+    return { status: 'error' };
+  }
+  const rec = data as Record<string, unknown>;
+  const rawStatus = rec.status ?? '';
+  const rawConclusion = rec.conclusion ?? '';
+  const status = String(rawStatus).toLowerCase();
+  const conclusion = String(rawConclusion).toLowerCase();
+  const timeout =
+    rec.timeout === true ||
+    status === 'timed_out' ||
+    conclusion === 'timed_out';
+
+  if (timeout) {
+    return {
+      status: 'timeout',
+      message: toStringOrNull(rec.message) ?? undefined,
+    };
+  }
+  if (status === 'running' || status === 'in_progress' || status === 'queued') {
+    return {
+      status: 'running',
+      message: toStringOrNull(rec.message) ?? undefined,
+    };
+  }
+  if (conclusion === 'success' || status === 'passed' || status === 'success') {
+    return {
+      status: 'passed',
+      message: toStringOrNull(rec.message) ?? undefined,
+    };
+  }
+  if (conclusion === 'failure' || status === 'failed' || status === 'failure') {
+    return {
+      status: 'failed',
+      message: toStringOrNull(rec.message) ?? undefined,
+    };
+  }
+  if (status === 'completed') {
+    if (conclusion === 'success')
+      return {
+        status: 'passed',
+        message: toStringOrNull(rec.message) ?? undefined,
+      };
+    if (conclusion === 'failure')
+      return {
+        status: 'failed',
+        message: toStringOrNull(rec.message) ?? undefined,
+      };
+    if (conclusion === 'timed_out')
+      return {
+        status: 'timeout',
+        message: toStringOrNull(rec.message) ?? undefined,
+      };
+  }
+
+  return { status: 'error', message: toStringOrNull(rec.message) ?? undefined };
 }
 
 function parseSessionResponse(
@@ -676,25 +779,171 @@ export async function getCandidateCurrentTask(
   }
 }
 
+export async function initCandidateWorkspace(params: {
+  taskId: number;
+  token: string;
+  candidateSessionId: number;
+}): Promise<CandidateWorkspaceStatus> {
+  const { taskId, token, candidateSessionId } = params;
+  ensureAuthToken(token);
+  const path = `/tasks/${taskId}/codespace/init`;
+
+  try {
+    const data = await apiClient.post<unknown>(
+      path,
+      {},
+      {
+        headers: {
+          'x-candidate-session-id': String(candidateSessionId),
+        },
+        cache: 'no-store',
+      },
+      toClientOptions(token),
+    );
+    return normalizeWorkspaceStatus(data);
+  } catch (err: unknown) {
+    if (err instanceof TypeError) {
+      throw new HttpError(
+        0,
+        'Network error. Please check your connection and try again.',
+      );
+    }
+    throw toHttpError(err, {
+      status: 500,
+      message: 'Unable to load your workspace right now.',
+    });
+  }
+}
+
+export async function getCandidateWorkspaceStatus(params: {
+  taskId: number;
+  token: string;
+  candidateSessionId: number;
+}): Promise<CandidateWorkspaceStatus> {
+  const { taskId, token, candidateSessionId } = params;
+  ensureAuthToken(token);
+  const path = `/tasks/${taskId}/codespace/status`;
+
+  try {
+    const data = await apiClient.get<unknown>(
+      path,
+      {
+        headers: {
+          'x-candidate-session-id': String(candidateSessionId),
+        },
+        cache: 'no-store',
+      },
+      toClientOptions(token),
+    );
+    return normalizeWorkspaceStatus(data);
+  } catch (err: unknown) {
+    if (err instanceof TypeError) {
+      throw new HttpError(
+        0,
+        'Network error. Please check your connection and try again.',
+      );
+    }
+    throw toHttpError(err, {
+      status: 500,
+      message: 'Unable to load your workspace right now.',
+    });
+  }
+}
+
+export async function startCandidateTestRun(params: {
+  taskId: number;
+  token: string;
+  candidateSessionId: number;
+}): Promise<CandidateTestRunStartResponse> {
+  const { taskId, token, candidateSessionId } = params;
+  ensureAuthToken(token);
+  const path = `/tasks/${taskId}/run`;
+
+  try {
+    const data = await apiClient.post<unknown>(
+      path,
+      {},
+      {
+        headers: {
+          'x-candidate-session-id': String(candidateSessionId),
+        },
+        cache: 'no-store',
+      },
+      toClientOptions(token),
+    );
+
+    if (data && typeof data === 'object') {
+      const rec = data as Record<string, unknown>;
+      const runId = toIdString(rec.runId ?? rec.run_id ?? rec.id);
+      if (runId) return { runId };
+    }
+    throw new HttpError(500, 'Missing run id from test run.');
+  } catch (err: unknown) {
+    if (err instanceof TypeError) {
+      throw new HttpError(
+        0,
+        'Network error. Please check your connection and try again.',
+      );
+    }
+    throw toHttpError(err, {
+      status: 500,
+      message: 'Unable to start tests right now.',
+    });
+  }
+}
+
+export async function pollCandidateTestRun(params: {
+  taskId: number;
+  runId: string;
+  token: string;
+  candidateSessionId: number;
+}): Promise<CandidateTestRunStatusResponse> {
+  const { taskId, runId, token, candidateSessionId } = params;
+  ensureAuthToken(token);
+  const path = `/tasks/${taskId}/run/${encodeURIComponent(runId)}`;
+
+  try {
+    const data = await apiClient.get<unknown>(
+      path,
+      {
+        headers: {
+          'x-candidate-session-id': String(candidateSessionId),
+        },
+        cache: 'no-store',
+      },
+      toClientOptions(token),
+    );
+    return normalizeRunStatus(data);
+  } catch (err: unknown) {
+    if (err instanceof TypeError) {
+      throw new HttpError(
+        0,
+        'Network error. Please check your connection and try again.',
+      );
+    }
+    throw toHttpError(err, {
+      status: 500,
+      message: 'Unable to check test status right now.',
+    });
+  }
+}
+
 export async function submitCandidateTask(params: {
   taskId: number;
   token: string;
   candidateSessionId: number;
   contentText?: string;
-  codeBlob?: string;
 }) {
-  const { taskId, token, candidateSessionId, contentText, codeBlob } = params;
+  const { taskId, token, candidateSessionId, contentText } = params;
 
   ensureAuthToken(token);
   const path = `/tasks/${taskId}/submit`;
+  const payload = typeof contentText === 'string' ? { contentText } : {};
 
   try {
     return await apiClient.post<CandidateTaskSubmitResponse>(
       path,
-      {
-        ...(typeof contentText === 'string' ? { contentText } : {}),
-        ...(typeof codeBlob === 'string' ? { codeBlob } : {}),
-      },
+      payload,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -745,18 +994,4 @@ export async function submitCandidateTask(params: {
       message: 'Something went wrong submitting your task.',
     });
   }
-}
-
-export async function submitCandidateCodeTask(params: {
-  taskId: number;
-  token: string;
-  candidateSessionId: number;
-  codeBlob: string;
-}) {
-  return submitCandidateTask({
-    taskId: params.taskId,
-    token: params.token,
-    candidateSessionId: params.candidateSessionId,
-    codeBlob: params.codeBlob,
-  });
 }

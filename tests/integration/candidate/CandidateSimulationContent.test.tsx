@@ -86,7 +86,8 @@ describe('CandidateSessionPage', () => {
     await user.click(screen.getByRole('button', { name: /Start simulation/i }));
 
     expect(await screen.findByText(/Role:\s*Backend/i)).toBeInTheDocument();
-    expect(await screen.findByText('Day 1 — Architecture')).toBeInTheDocument();
+    const dayTitles = await screen.findAllByText('Day 1 — Architecture');
+    expect(dayTitles.length).toBeGreaterThan(0);
     expect(currentTaskMock).toHaveBeenCalledWith(123, 'candidate-token');
   });
 

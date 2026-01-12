@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
-import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import type { CandidateSession } from '@/types/recruiter';
 import { toUserMessage } from '@/lib/utils/errors';
@@ -33,28 +32,11 @@ type SubmissionArtifact = {
     prompt: string | null;
   };
   contentText: string | null;
-  code: { blob: string | null; repoPath: string | null } | null;
   testResults: unknown | null;
   submittedAt: string;
 };
 
-function downloadTextFile(filename: string, contents: string) {
-  const blob = new Blob([contents], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
-  const isCodeTask =
-    artifact.task.type === 'code' || artifact.task.type === 'debug';
-  const codeBlob = (artifact.code?.blob ?? '').trim();
-
   return (
     <div className="rounded border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
@@ -67,30 +49,6 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
             {new Date(artifact.submittedAt).toLocaleString()}
           </div>
         </div>
-
-        {isCodeTask && codeBlob ? (
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(codeBlob);
-                } catch {}
-              }}
-            >
-              Copy code
-            </Button>
-            <Button
-              onClick={() =>
-                downloadTextFile(
-                  `day-${artifact.task.dayIndex}-${artifact.task.type}.txt`,
-                  codeBlob,
-                )
-              }
-            >
-              Download
-            </Button>
-          </div>
-        ) : null}
       </div>
 
       {artifact.task.prompt ? (
@@ -113,20 +71,6 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
         </div>
       ) : null}
 
-      {isCodeTask && codeBlob ? (
-        <div className="mt-3">
-          <div className="mb-1 text-xs font-medium text-gray-600">Code</div>
-          <pre className="max-h-[520px] overflow-auto rounded bg-gray-50 p-3 text-xs text-gray-900">
-            {codeBlob}
-          </pre>
-          {artifact.code?.repoPath ? (
-            <div className="mt-2 text-xs text-gray-500">
-              Path: {artifact.code.repoPath}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       {artifact.testResults ? (
         <div className="mt-3">
           <div className="mb-1 text-xs font-medium text-gray-600">
@@ -138,7 +82,7 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
         </div>
       ) : null}
 
-      {!artifact.contentText && !(isCodeTask && codeBlob) ? (
+      {!artifact.contentText ? (
         <div className="mt-3 text-sm text-gray-600">
           No content captured for this submission.
         </div>

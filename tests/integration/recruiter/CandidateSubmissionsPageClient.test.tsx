@@ -23,7 +23,7 @@ afterAll(() => {
 });
 
 describe('CandidateSubmissionsPage', () => {
-  it('renders submission artifacts with code and test results', async () => {
+  it('renders submission artifacts with test results', async () => {
     fetchMock
       .mockResolvedValueOnce(
         jsonResponse([
@@ -74,8 +74,6 @@ describe('CandidateSubmissionsPage', () => {
 
     expect(await screen.findByText(/Dee — Submissions/i)).toBeInTheDocument();
     expect(await screen.findByText(/Day 2: Debug API/i)).toBeInTheDocument();
-    expect(screen.getByText(/console.log/)).toBeInTheDocument();
-    expect(screen.getByText(/Path: src\/index\.ts/i)).toBeInTheDocument();
     expect(screen.getByText(/\"passed\": true/i)).toBeInTheDocument();
   });
 

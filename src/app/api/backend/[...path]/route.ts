@@ -30,14 +30,15 @@ const MAX_PROXY_BODY_BYTES = Number(
   process.env.TENON_PROXY_MAX_BODY_BYTES ?? 2 * 1024 * 1024,
 );
 const PROXY_TIMEOUT_MS = 20000;
+const LONG_PROXY_TIMEOUT_MS = 90000;
 const MAX_PROXY_RESPONSE_BYTES = Number(
   process.env.TENON_PROXY_MAX_RESPONSE_BYTES ?? 2 * 1024 * 1024,
 );
 
-async function readBodyWithLimit(
+async function readBodyTextWithLimit(
   req: NextRequest,
   limit: number,
-): Promise<{ body?: ArrayBuffer; tooLarge?: boolean; invalid?: boolean }> {
+): Promise<{ body?: string; tooLarge?: boolean; invalid?: boolean }> {
   const declaredLength = req.headers.get('content-length');
   if (declaredLength) {
     const numeric = Number(declaredLength);
@@ -45,8 +46,10 @@ async function readBodyWithLimit(
   }
 
   try {
-    const body = await req.arrayBuffer();
-    if (body.byteLength > limit) return { tooLarge: true };
+    const body = await req.text();
+    const byteLength =
+      typeof Buffer !== 'undefined' ? Buffer.byteLength(body) : body.length;
+    if (byteLength > limit) return { tooLarge: true };
     return { body };
   } catch {
     return { invalid: true };
@@ -107,6 +110,33 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
   const search = req.nextUrl.search ?? '';
   const backendPath = `/api/${encodedPath}${search}`;
   const targetUrl = `${getBackendBaseUrl()}${backendPath}`;
+  const method = req.method.toUpperCase();
+  const isRunEndpoint =
+    method === 'POST' &&
+    pathSegments.length === 3 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'run';
+  const isCodespaceInit =
+    method === 'POST' &&
+    pathSegments.length === 4 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'codespace' &&
+    pathSegments[3] === 'init';
+  const isCodespaceStatus =
+    method === 'GET' &&
+    pathSegments.length === 4 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'codespace' &&
+    pathSegments[3] === 'status';
+  const isSubmitEndpoint =
+    method === 'POST' &&
+    pathSegments.length === 3 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'submit';
+  const timeoutMs =
+    isRunEndpoint || isCodespaceInit || isCodespaceStatus || isSubmitEndpoint
+      ? LONG_PROXY_TIMEOUT_MS
+      : PROXY_TIMEOUT_MS;
 
   const headers: Record<string, string> = {};
   req.headers.forEach((value, key) => {
@@ -122,9 +152,9 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
         `[debug:backend-proxy] [req ${requestId}] ${req.method} ${req.nextUrl.pathname}${search} -> ${targetUrl}`,
       );
     }
-    let body: ArrayBuffer | undefined;
+    let body: string | undefined;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
-      const limited = await readBodyWithLimit(req, MAX_PROXY_BODY_BYTES);
+      const limited = await readBodyTextWithLimit(req, MAX_PROXY_BODY_BYTES);
       if (limited.invalid) {
         const resp = NextResponse.json(
           { message: 'Invalid request body' },
@@ -151,19 +181,20 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
         );
         return resp;
       }
-      body = limited.body;
+      const bodyText = limited.body ?? '';
+      body = bodyText.length > 0 ? bodyText : undefined;
     }
 
     const upstream = await upstreamRequest({
       url: targetUrl,
-      method: req.method,
+      method,
       headers,
       body,
       cache: 'no-store',
-      timeoutMs: PROXY_TIMEOUT_MS,
+      timeoutMs,
       requestId,
       signal: req.signal,
-      maxTotalTimeMs: PROXY_TIMEOUT_MS,
+      maxTotalTimeMs: timeoutMs,
     });
     const upstreamStatus = upstream.status;
     const blockedRedirect = upstreamStatus >= 300 && upstreamStatus < 400;

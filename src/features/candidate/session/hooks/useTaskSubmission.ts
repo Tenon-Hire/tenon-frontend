@@ -4,7 +4,11 @@ import {
   type CandidateTaskSubmitResponse,
 } from '@/lib/api/candidate';
 import { friendlySubmitError } from '../utils/errorMessages';
-import { isCodeTask, isTextTask } from '../task/utils/taskGuards';
+import {
+  isCodeTask,
+  isGithubNativeDay,
+  isTextTask,
+} from '../task/utils/taskGuards';
 import type { Task } from '../task/types';
 import type { SubmitPayload } from '../task/types';
 
@@ -44,20 +48,13 @@ export function useTaskSubmission({
 
       const type = String(currentTask.type);
       const wantsText = isTextTask(type);
-      const wantsCode = isCodeTask(type);
+      const isCode = isCodeTask(type);
+      const isGithubNative = isGithubNativeDay(currentTask.dayIndex) || isCode;
 
-      if (wantsText) {
+      if (!isGithubNative && wantsText) {
         const trimmed = (payload.contentText ?? '').trim();
         if (!trimmed) {
           setTaskError('Please enter an answer before submitting.');
-          return;
-        }
-      }
-
-      if (wantsCode) {
-        const trimmedCode = (payload.codeBlob ?? '').trim();
-        if (!trimmedCode) {
-          setTaskError('Please write some code before submitting.');
           return;
         }
       }
@@ -70,8 +67,7 @@ export function useTaskSubmission({
           taskId: currentTask.id,
           token,
           candidateSessionId,
-          contentText: payload.contentText,
-          codeBlob: payload.codeBlob,
+          contentText: isGithubNative ? undefined : payload.contentText,
         });
 
         if (refreshTimerRef.current) {

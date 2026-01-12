@@ -14,6 +14,10 @@ export function isTextTask(type: TaskType) {
   return type === 'design' || type === 'documentation' || type === 'handoff';
 }
 
+export function isGithubNativeDay(dayIndex: number) {
+  return dayIndex === 2 || dayIndex === 3;
+}
+
 export function isSubmitResponse(x: unknown): x is {
   submissionId: number;
   taskId: number;
