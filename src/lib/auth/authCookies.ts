@@ -1,12 +1,5 @@
-const COOKIE_EXACT = new Set(['__session', 'appSession']);
-const COOKIE_PREFIXES = [
-  '__session__',
-  'appSession__',
-  'appSession.',
-  '__txn_',
-  '__FC',
-  'a0:',
-];
+const COOKIE_EXACT = new Set(['appSession']);
+const COOKIE_PREFIXES = ['a0:'];
 
 export function normalizeAuthCookieName(name: string) {
   if (name.startsWith('__Secure-')) return name.slice('__Secure-'.length);

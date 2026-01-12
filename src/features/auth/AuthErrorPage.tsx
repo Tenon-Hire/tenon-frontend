@@ -44,9 +44,7 @@ export default function AuthErrorPage({
       subtitle={subtitle}
       footer={
         <div className="space-y-1">
-          {errorCode ? (
-            <div>Code: {errorCode}</div>
-          ) : null}
+          {errorCode ? <div>Code: {errorCode}</div> : null}
           {errorId ? <div>Trace ID: {errorId}</div> : null}
         </div>
       }

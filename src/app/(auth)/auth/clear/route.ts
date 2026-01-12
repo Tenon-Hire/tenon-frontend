@@ -3,7 +3,6 @@ import { isAuthCookie } from '@/lib/auth/authCookies';
 import { modeForPath, sanitizeReturnTo } from '@/lib/auth/routing';
 
 function resolveCookieDomain(request: NextRequest) {
-  // Set TENON_AUTH0_COOKIE_DOMAIN in prod if cookies are scoped to a parent domain.
   const envDomain = process.env.TENON_AUTH0_COOKIE_DOMAIN;
   if (envDomain && envDomain.trim()) return envDomain.trim();
   const hostname = request.nextUrl.hostname;
@@ -11,9 +10,7 @@ function resolveCookieDomain(request: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const returnTo = sanitizeReturnTo(
-    req.nextUrl.searchParams.get('returnTo'),
-  );
+  const returnTo = sanitizeReturnTo(req.nextUrl.searchParams.get('returnTo'));
   const rawMode = req.nextUrl.searchParams.get('mode');
   const mode =
     rawMode === 'candidate' || rawMode === 'recruiter'
@@ -27,12 +24,11 @@ export async function GET(req: NextRequest) {
 
   const res = NextResponse.redirect(redirectUrl);
   const domain = resolveCookieDomain(req);
-  const deleteOptions = { path: '/' as const };
   req.cookies.getAll().forEach((cookie) => {
     if (!isAuthCookie(cookie.name)) return;
-    res.cookies.delete(cookie.name, deleteOptions);
+    res.cookies.delete({ name: cookie.name, path: '/' });
     if (domain) {
-      res.cookies.delete(cookie.name, { ...deleteOptions, domain });
+      res.cookies.delete({ name: cookie.name, path: '/', domain });
     }
   });
   return res;

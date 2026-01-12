@@ -74,7 +74,9 @@ function createClient() {
     }
   };
 
-  const resolveModeForReturnTo = (returnTo: string): 'candidate' | 'recruiter' =>
+  const resolveModeForReturnTo = (
+    returnTo: string,
+  ): 'candidate' | 'recruiter' =>
     modeForPath(returnTo.split(/[?#]/)[0] || returnTo);
 
   const toSafeErrorCode = (error: { code?: unknown; name?: unknown }) => {
@@ -134,7 +136,16 @@ function createClient() {
   };
 
   const buildRedirect = (path: string) => {
-    const base = resolveBaseUrl() ?? new URL('http://localhost:3000');
+    const base =
+      resolveBaseUrl() ??
+      (process.env.NODE_ENV !== 'production'
+        ? new URL('http://localhost:3000')
+        : null);
+    if (!base) {
+      throw new Error(
+        'TENON_APP_BASE_URL (or VERCEL_URL) must be set in production',
+      );
+    }
     return new URL(path, base);
   };
 

@@ -28,8 +28,6 @@ describe('AuthErrorPage', () => {
 
   it('shows cleared state notice', () => {
     render(<AuthErrorPage returnTo="/dashboard" cleared />);
-    expect(
-      screen.getByText(/Auth state cleared/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Auth state cleared/i)).toBeInTheDocument();
   });
 });
