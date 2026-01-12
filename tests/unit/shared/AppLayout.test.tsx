@@ -51,14 +51,32 @@ describe('shared layout components', () => {
 
   it('renders role-scoped nav links without cross-portal items', () => {
     const { rerender } = render(
-      <AppNav isAuthed navScope="candidate" permissions={['candidate:access']} />,
+      <AppNav
+        isAuthed
+        navScope="candidate"
+        permissions={['candidate:access']}
+      />,
     );
     expect(screen.getByText(/Candidate Portal/i)).toBeInTheDocument();
     expect(screen.queryByText(/Recruiter Dashboard/i)).toBeNull();
 
     rerender(
-      <AppNav isAuthed navScope="recruiter" permissions={['recruiter:access']} />,
+      <AppNav
+        isAuthed
+        navScope="recruiter"
+        permissions={['recruiter:access']}
+      />,
     );
+    expect(screen.getByText(/Recruiter Dashboard/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Candidate Portal/i)).toBeNull();
+  });
+
+  it('allows scoped portal links when permissions are empty', () => {
+    const { rerender } = render(<AppNav isAuthed navScope="candidate" />);
+    expect(screen.getByText(/Candidate Portal/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Recruiter Dashboard/i)).toBeNull();
+
+    rerender(<AppNav isAuthed navScope="recruiter" />);
     expect(screen.getByText(/Recruiter Dashboard/i)).toBeInTheDocument();
     expect(screen.queryByText(/Candidate Portal/i)).toBeNull();
   });

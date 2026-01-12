@@ -6,21 +6,21 @@ type AppNavProps = {
   navScope?: 'candidate' | 'recruiter' | 'marketing' | 'auth';
 };
 
-export function AppNav({
-  isAuthed,
-  permissions = [],
-  navScope,
-}: AppNavProps) {
+export function AppNav({ isAuthed, permissions = [], navScope }: AppNavProps) {
   if (!isAuthed) {
     return null;
   }
 
   const canRecruiter = permissions.includes('recruiter:access');
   const canCandidate = permissions.includes('candidate:access');
-  const scopedRecruiter = navScope === 'recruiter' && canRecruiter;
-  const scopedCandidate = navScope === 'candidate' && canCandidate;
-  const showRecruiter = scopedRecruiter;
-  const showCandidate = scopedCandidate;
+  const isRecruiterScope = navScope === 'recruiter';
+  const isCandidateScope = navScope === 'candidate';
+  const allowRecruiter =
+    isRecruiterScope && (canRecruiter || permissions.length === 0);
+  const allowCandidate =
+    isCandidateScope && (canCandidate || permissions.length === 0);
+  const showRecruiter = allowRecruiter;
+  const showCandidate = allowCandidate;
 
   return (
     <nav className="flex items-center gap-4 text-sm">
