@@ -436,6 +436,21 @@ describe('CandidateSubmissionsPage', () => {
     expect(calledUrls).toEqual(['/api/simulations/1/candidates']);
   });
 
+  it('blocks submissions when candidate id is invalid', async () => {
+    setMockParams({ id: '1', candidateSessionId: 'abc' });
+
+    const fetchMock = jest.fn(async () => {
+      return textResponse('Not found', 404);
+    });
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsPage />);
+
+    expect(await screen.findByText(/Invalid candidate id/i)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('renders prompt/test results and fallback artifact message when submissions load', async () => {
     setMockParams({ id: '1', candidateSessionId: '2' });
 

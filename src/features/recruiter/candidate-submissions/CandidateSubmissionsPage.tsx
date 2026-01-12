@@ -95,7 +95,6 @@ export default function CandidateSubmissionsPage() {
   const params = useParams<{ id: string; candidateSessionId: string }>();
   const simulationId = params.id;
   const candidateSessionIdParam = params.candidateSessionId ?? '';
-  const candidateSessionId = Number(candidateSessionIdParam);
   const candidateSessionKey = String(candidateSessionIdParam).trim();
   const includeDetail = process.env.NODE_ENV !== 'production';
 
@@ -116,6 +115,10 @@ export default function CandidateSubmissionsPage() {
       try {
         setLoading(true);
         setError(null);
+
+        if (!candidateSessionKey || !/^\d+$/.test(candidateSessionKey)) {
+          throw new Error('Invalid candidate id.');
+        }
 
         const candRes = await fetch(
           `/api/simulations/${simulationId}/candidates`,
@@ -145,7 +148,7 @@ export default function CandidateSubmissionsPage() {
         // TODO: Submissions endpoint should require simulationId and confirm membership.
         const listRes = await fetch(
           `/api/submissions?candidateSessionId=${encodeURIComponent(
-            candidateSessionKey || String(candidateSessionId),
+            candidateSessionKey,
           )}`,
           { method: 'GET', cache: 'no-store' },
         );
@@ -217,13 +220,13 @@ export default function CandidateSubmissionsPage() {
     const label =
       candidate?.candidateName ||
       candidate?.inviteEmail ||
-      `Candidate ${candidateSessionId}`;
+      `Candidate ${candidateSessionKey}`;
     return `${label} — Submissions`;
-  }, [candidate, candidateSessionId]);
+  }, [candidate, candidateSessionKey]);
 
   const subtitle = useMemo(() => {
     const bits: string[] = [];
-    bits.push(`CandidateSession: ${candidateSessionId}`);
+    bits.push(`CandidateSession: ${candidateSessionKey}`);
     if (statusDisplay) bits.push(`Status: ${statusDisplay}`);
     if (candidate?.startedAt)
       bits.push(`Started: ${new Date(candidate.startedAt).toLocaleString()}`);

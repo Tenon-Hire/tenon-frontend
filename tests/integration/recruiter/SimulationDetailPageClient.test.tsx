@@ -140,6 +140,43 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(completed.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('does not fetch or render submission content on simulation overview', async () => {
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([
+        {
+          candidateSessionId: 33,
+          inviteEmail: 'c@example.com',
+          candidateName: 'Casey',
+          status: 'in_progress',
+          startedAt: '2025-01-01T00:00:00Z',
+          completedAt: null,
+          hasReport: false,
+          contentText: 'secret submission',
+          testResults: { passed: true },
+        },
+      ]),
+    });
+
+    render(<RecruiterSimulationDetailPage />);
+
+    expect(await screen.findByText('Casey')).toBeInTheDocument();
+    expect(screen.queryByText(/secret submission/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\"passed\": true/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Text answer/i)).not.toBeInTheDocument();
+
+    const calledUrls = fetchMock.mock.calls.map((call) => getUrl(call[0]));
+    expect(
+      calledUrls.some((url) => url.startsWith('/api/submissions')),
+    ).toBe(false);
+  });
+
   it('creates an invite and refreshes the list', async () => {
     const user = userEvent.setup();
 
