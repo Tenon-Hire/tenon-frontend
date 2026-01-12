@@ -128,8 +128,13 @@ async function proxyToBackend(req: NextRequest, context: BackendRouteContext) {
     pathSegments[0] === 'tasks' &&
     pathSegments[2] === 'codespace' &&
     pathSegments[3] === 'status';
+  const isSubmitEndpoint =
+    method === 'POST' &&
+    pathSegments.length === 3 &&
+    pathSegments[0] === 'tasks' &&
+    pathSegments[2] === 'submit';
   const timeoutMs =
-    isRunEndpoint || isCodespaceInit || isCodespaceStatus
+    isRunEndpoint || isCodespaceInit || isCodespaceStatus || isSubmitEndpoint
       ? LONG_PROXY_TIMEOUT_MS
       : PROXY_TIMEOUT_MS;
 

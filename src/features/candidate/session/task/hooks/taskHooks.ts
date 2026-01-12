@@ -7,16 +7,22 @@ import {
   saveCodeDraftForTask,
   saveTextDraft,
 } from '../utils/draftStorage';
-import { isCodeTask, isTextTask, isSubmitResponse } from '../utils/taskGuards';
+import {
+  isCodeTask,
+  isGithubNativeDay,
+  isTextTask,
+  isSubmitResponse,
+} from '../utils/taskGuards';
 
 type SubmitPayload = { contentText?: string; codeBlob?: string };
 
 export function useTaskDrafts(
-  task: { id: number; type: string },
+  task: { id: number; type: string; dayIndex: number },
   candidateSessionId: number,
 ) {
-  const codeTask = isCodeTask(task.type);
-  const textTask = isTextTask(task.type);
+  const githubNative = isGithubNativeDay(task.dayIndex);
+  const codeTask = !githubNative && isCodeTask(task.type);
+  const textTask = !githubNative && isTextTask(task.type);
   const [text, setText] = useState<string>(() =>
     textTask ? loadTextDraft(task.id) : '',
   );
@@ -50,10 +56,16 @@ export function useTaskDrafts(
 
   useEffect(() => {
     setSavedAt(null);
-    if (textTask) setText(loadTextDraft(task.id));
+    if (textTask) {
+      setText(loadTextDraft(task.id));
+    } else {
+      setText('');
+    }
     if (codeTask) {
       const draft = loadCodeDraftForTask(candidateSessionId, task.id);
       setCode(draft ?? '// start here\n');
+    } else {
+      setCode('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id]);

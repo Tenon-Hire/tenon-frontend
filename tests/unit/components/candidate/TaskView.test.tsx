@@ -47,10 +47,26 @@ const textTask = {
 
 const codeTask = {
   id: 9,
-  dayIndex: 2,
+  dayIndex: 1,
   type: 'code',
   title: 'Implement feature',
   description: 'Write the code.',
+};
+
+const githubNativeTask = {
+  id: 11,
+  dayIndex: 2,
+  type: 'code',
+  title: 'Implement feature',
+  description: 'Write the code in GitHub.',
+};
+
+const githubNativeDay3Task = {
+  id: 12,
+  dayIndex: 3,
+  type: 'code',
+  title: 'Implement feature',
+  description: 'Write the code in GitHub.',
 };
 
 describe('TaskView', () => {
@@ -193,6 +209,52 @@ describe('TaskView', () => {
       9,
       'const updated = true;',
     );
+  });
+
+  it('hides the code editor for GitHub-native days', async () => {
+    const onSubmit = jest.fn().mockResolvedValue({ ok: true });
+
+    render(
+      <TaskView
+        task={githubNativeTask}
+        candidateSessionId={111}
+        submitting={false}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(screen.queryByTestId('mock-code-editor')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /submit & continue/i }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith({});
+  });
+
+  it('hides the code editor for Day 3 GitHub-native tasks', async () => {
+    const onSubmit = jest.fn().mockResolvedValue({ ok: true });
+
+    render(
+      <TaskView
+        task={githubNativeDay3Task}
+        candidateSessionId={222}
+        submitting={false}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(screen.queryByTestId('mock-code-editor')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /submit & continue/i }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith({});
   });
 
   it('shows validation for empty code submissions', async () => {

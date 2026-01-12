@@ -128,4 +128,42 @@ describe('useTaskSubmission', () => {
     expect(refreshTask).toHaveBeenCalled();
     jest.useRealTimers();
   });
+
+  it('submits GitHub-native tasks without code or text payloads', async () => {
+    const setTaskError = jest.fn();
+    const clearTaskError = jest.fn();
+    const refreshTask = jest.fn();
+    submitMock.mockResolvedValue({ ok: true });
+
+    render(
+      <Harness
+        token="auth"
+        candidateSessionId={12}
+        currentTask={{
+          id: 12,
+          dayIndex: 2,
+          type: 'code',
+          title: 'Day 2',
+          description: '',
+        }}
+        setTaskError={setTaskError}
+        clearTaskError={clearTaskError}
+        refreshTask={refreshTask}
+        payload={{ codeBlob: '' }}
+      />,
+    );
+
+    await act(async () => {
+      screen.getByText('submit').click();
+    });
+
+    expect(setTaskError).not.toHaveBeenCalled();
+    expect(submitMock).toHaveBeenCalledWith({
+      taskId: 12,
+      token: 'auth',
+      candidateSessionId: 12,
+      contentText: undefined,
+      codeBlob: undefined,
+    });
+  });
 });

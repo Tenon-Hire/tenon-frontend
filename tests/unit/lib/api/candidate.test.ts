@@ -275,6 +275,53 @@ describe('candidate api helpers', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
+  it('submits empty payloads without code or text', async () => {
+    mockPost.mockResolvedValueOnce({ submissionId: 10 });
+    const { submitCandidateTask } = await import('@/lib/api/candidate');
+
+    await submitCandidateTask({
+      taskId: 8,
+      token: 'auth',
+      candidateSessionId: 8,
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/tasks/8/submit',
+      {},
+      expect.objectContaining({
+        headers: {
+          'Content-Type': 'application/json',
+          'x-candidate-session-id': '8',
+        },
+      }),
+      expect.objectContaining({ authToken: 'auth' }),
+    );
+  });
+
+  it('submits text content when provided', async () => {
+    mockPost.mockResolvedValueOnce({ submissionId: 11 });
+    const { submitCandidateTask } = await import('@/lib/api/candidate');
+
+    await submitCandidateTask({
+      taskId: 9,
+      token: 'auth',
+      candidateSessionId: 9,
+      contentText: 'Hello world',
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/tasks/9/submit',
+      { contentText: 'Hello world' },
+      expect.objectContaining({
+        headers: {
+          'Content-Type': 'application/json',
+          'x-candidate-session-id': '9',
+        },
+      }),
+      expect.objectContaining({ authToken: 'auth' }),
+    );
+  });
+
   it('handles submitCandidateTask conflict and network errors', async () => {
     mockPost.mockRejectedValueOnce({ status: 409, details: 'dup' });
     mockPost.mockRejectedValueOnce(new TypeError('offline'));

@@ -939,14 +939,18 @@ export async function submitCandidateTask(params: {
 
   ensureAuthToken(token);
   const path = `/tasks/${taskId}/submit`;
+  const payload =
+    typeof contentText === 'string' || typeof codeBlob === 'string'
+      ? {
+          ...(typeof contentText === 'string' ? { contentText } : {}),
+          ...(typeof codeBlob === 'string' ? { codeBlob } : {}),
+        }
+      : {};
 
   try {
     return await apiClient.post<CandidateTaskSubmitResponse>(
       path,
-      {
-        ...(typeof contentText === 'string' ? { contentText } : {}),
-        ...(typeof codeBlob === 'string' ? { codeBlob } : {}),
-      },
+      payload,
       {
         headers: {
           'Content-Type': 'application/json',
