@@ -94,7 +94,10 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
 export default function CandidateSubmissionsPage() {
   const params = useParams<{ id: string; candidateSessionId: string }>();
   const simulationId = params.id;
-  const candidateSessionId = Number(params.candidateSessionId);
+  const candidateSessionIdParam = params.candidateSessionId ?? '';
+  const candidateSessionId = Number(candidateSessionIdParam);
+  const candidateSessionKey = String(candidateSessionIdParam).trim();
+  const includeDetail = process.env.NODE_ENV !== 'production';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,37 +124,28 @@ export default function CandidateSubmissionsPage() {
 
         if (!candRes.ok) {
           const candParsed: unknown = await candRes.json().catch(() => null);
-          if (!cancelled) {
-            setCandidate(null);
-            setItems([]);
-            setArtifacts({});
-            setError(
-              toUserMessage(candParsed, 'Unable to verify candidate access.', {
-                includeDetail: true,
-              }),
-            );
-          }
-          return;
+          throw new Error(
+            toUserMessage(candParsed, 'Unable to verify candidate access.', {
+              includeDetail,
+            }),
+          );
         }
 
         const candArr = (await candRes.json()) as CandidateSession[];
         const found =
-          candArr.find((c) => c.candidateSessionId === candidateSessionId) ??
-          null;
+          candArr.find(
+            (c) => String(c.candidateSessionId) === candidateSessionKey,
+          ) ?? null;
         if (!found) {
-          if (!cancelled) {
-            setCandidate(null);
-            setItems([]);
-            setArtifacts({});
-            setError('Candidate not found for this simulation.');
-          }
-          return;
+          throw new Error('Candidate not found for this simulation.');
         }
         if (!cancelled) setCandidate(found);
 
+        // Client guard reduces accidental exposure; server must verify access too.
+        // TODO: Submissions endpoint should require simulationId and confirm membership.
         const listRes = await fetch(
           `/api/submissions?candidateSessionId=${encodeURIComponent(
-            String(candidateSessionId),
+            candidateSessionKey || String(candidateSessionId),
           )}`,
           { method: 'GET', cache: 'no-store' },
         );
@@ -162,7 +156,7 @@ export default function CandidateSubmissionsPage() {
           const msg =
             maybeJson !== null
               ? toUserMessage(maybeJson, 'Request failed', {
-                  includeDetail: true,
+                  includeDetail,
                 })
               : fallbackText;
           throw new Error(
@@ -200,8 +194,14 @@ export default function CandidateSubmissionsPage() {
         }
         if (!cancelled) setArtifacts(map);
       } catch (e: unknown) {
-        if (!cancelled)
-          setError(toUserMessage(e, 'Request failed', { includeDetail: true }));
+        if (!cancelled) {
+          setCandidate(null);
+          setItems([]);
+          setArtifacts({});
+          setError(
+            toUserMessage(e, 'Request failed', { includeDetail: includeDetail }),
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
