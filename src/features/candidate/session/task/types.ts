@@ -14,7 +14,7 @@ export type Task = {
   description: string;
 };
 
-export type SubmitPayload = { contentText?: string; codeBlob?: string };
+export type SubmitPayload = { contentText?: string };
 
 export type SubmitResponse = {
   submissionId: number;

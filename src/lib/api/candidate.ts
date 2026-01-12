@@ -933,19 +933,12 @@ export async function submitCandidateTask(params: {
   token: string;
   candidateSessionId: number;
   contentText?: string;
-  codeBlob?: string;
 }) {
-  const { taskId, token, candidateSessionId, contentText, codeBlob } = params;
+  const { taskId, token, candidateSessionId, contentText } = params;
 
   ensureAuthToken(token);
   const path = `/tasks/${taskId}/submit`;
-  const payload =
-    typeof contentText === 'string' || typeof codeBlob === 'string'
-      ? {
-          ...(typeof contentText === 'string' ? { contentText } : {}),
-          ...(typeof codeBlob === 'string' ? { codeBlob } : {}),
-        }
-      : {};
+  const payload = typeof contentText === 'string' ? { contentText } : {};
 
   try {
     return await apiClient.post<CandidateTaskSubmitResponse>(
@@ -1001,18 +994,4 @@ export async function submitCandidateTask(params: {
       message: 'Something went wrong submitting your task.',
     });
   }
-}
-
-export async function submitCandidateCodeTask(params: {
-  taskId: number;
-  token: string;
-  candidateSessionId: number;
-  codeBlob: string;
-}) {
-  return submitCandidateTask({
-    taskId: params.taskId,
-    token: params.token,
-    candidateSessionId: params.candidateSessionId,
-    codeBlob: params.codeBlob,
-  });
 }

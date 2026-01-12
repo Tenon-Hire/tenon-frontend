@@ -1,36 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  clearCodeDraftForTask,
   clearTextDraft,
-  loadCodeDraftForTask,
   loadTextDraft,
-  saveCodeDraftForTask,
   saveTextDraft,
 } from '../utils/draftStorage';
 import {
-  isCodeTask,
   isGithubNativeDay,
   isTextTask,
   isSubmitResponse,
 } from '../utils/taskGuards';
 
-type SubmitPayload = { contentText?: string; codeBlob?: string };
+type SubmitPayload = { contentText?: string };
 
-export function useTaskDrafts(
-  task: { id: number; type: string; dayIndex: number },
-  candidateSessionId: number,
-) {
+export function useTaskDrafts(task: {
+  id: number;
+  type: string;
+  dayIndex: number;
+}) {
   const githubNative = isGithubNativeDay(task.dayIndex);
-  const codeTask = !githubNative && isCodeTask(task.type);
   const textTask = !githubNative && isTextTask(task.type);
   const [text, setText] = useState<string>(() =>
     textTask ? loadTextDraft(task.id) : '',
   );
-  const [code, setCode] = useState<string>(() => {
-    if (!codeTask) return '';
-    const draft = loadCodeDraftForTask(candidateSessionId, task.id);
-    return draft ?? '// start here\n';
-  });
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   const saveTimerRef = useRef<number | null>(null);
@@ -40,13 +31,12 @@ export function useTaskDrafts(
 
     saveTimerRef.current = window.setTimeout(() => {
       if (textTask) saveTextDraft(task.id, text);
-      if (codeTask) saveCodeDraftForTask(candidateSessionId, task.id, code);
     }, 350);
 
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     };
-  }, [candidateSessionId, code, codeTask, task.id, text, textTask]);
+  }, [task.id, text, textTask]);
 
   useEffect(() => {
     return () => {
@@ -61,12 +51,6 @@ export function useTaskDrafts(
     } else {
       setText('');
     }
-    if (codeTask) {
-      const draft = loadCodeDraftForTask(candidateSessionId, task.id);
-      setCode(draft ?? '// start here\n');
-    } else {
-      setCode('');
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id]);
 
@@ -79,18 +63,14 @@ export function useTaskDrafts(
 
   const clearDrafts = () => {
     if (textTask) clearTextDraft(task.id);
-    if (codeTask) clearCodeDraftForTask(candidateSessionId, task.id);
   };
 
   return {
     text,
     setText,
-    code,
-    setCode,
     savedAt,
     saveDraftNow,
     clearDrafts,
-    codeTask,
     textTask,
   };
 }

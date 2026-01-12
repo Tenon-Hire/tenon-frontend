@@ -47,22 +47,14 @@ export function useTaskSubmission({
       if (!token || !candidateSessionId || !currentTask) return;
 
       const type = String(currentTask.type);
-      const isGithubNative = isGithubNativeDay(currentTask.dayIndex);
       const wantsText = isTextTask(type);
-      const wantsCode = isCodeTask(type);
+      const isCode = isCodeTask(type);
+      const isGithubNative = isGithubNativeDay(currentTask.dayIndex) || isCode;
 
       if (!isGithubNative && wantsText) {
         const trimmed = (payload.contentText ?? '').trim();
         if (!trimmed) {
           setTaskError('Please enter an answer before submitting.');
-          return;
-        }
-      }
-
-      if (!isGithubNative && wantsCode) {
-        const trimmedCode = (payload.codeBlob ?? '').trim();
-        if (!trimmedCode) {
-          setTaskError('Please write some code before submitting.');
           return;
         }
       }
@@ -76,7 +68,6 @@ export function useTaskSubmission({
           token,
           candidateSessionId,
           contentText: isGithubNative ? undefined : payload.contentText,
-          codeBlob: isGithubNative ? undefined : payload.codeBlob,
         });
 
         if (refreshTimerRef.current) {

@@ -514,26 +514,6 @@ describe('candidate api helpers', () => {
     });
   });
 
-  it('submits code tasks through submitCandidateCodeTask wrapper', async () => {
-    mockPost.mockResolvedValueOnce({ submissionId: 99 });
-    const { submitCandidateCodeTask } = await import('@/lib/api/candidate');
-
-    const result = await submitCandidateCodeTask({
-      taskId: 9,
-      token: 'auth',
-      candidateSessionId: 9,
-      codeBlob: 'blob',
-    });
-
-    expect(mockPost).toHaveBeenCalledWith(
-      '/tasks/9/submit',
-      expect.objectContaining({ codeBlob: 'blob' }),
-      expect.any(Object),
-      expect.objectContaining({ authToken: 'auth' }),
-    );
-    expect(result).toEqual({ submissionId: 99 });
-  });
-
   it('initializes workspace and normalizes response fields', async () => {
     mockPost.mockResolvedValueOnce({
       repoUrl: 'https://github.com/acme/repo',

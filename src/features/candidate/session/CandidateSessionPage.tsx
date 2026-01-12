@@ -479,7 +479,6 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       {currentTask && candidateSessionId !== null ? (
         <CandidateTaskView
           task={currentTask}
-          candidateSessionId={candidateSessionId}
           submitting={submitting}
           submitError={state.taskState.error}
           onSubmit={handleSubmit}

@@ -30,7 +30,7 @@ function Harness({
   setTaskError: jest.Mock;
   clearTaskError: jest.Mock;
   refreshTask: jest.Mock;
-  payload?: { contentText?: string; codeBlob?: string };
+  payload?: { contentText?: string };
 }) {
   const { submitting, handleSubmit } = useTaskSubmission({
     token,
@@ -119,7 +119,6 @@ describe('useTaskSubmission', () => {
       token: 'auth',
       candidateSessionId: 5,
       contentText: 'answer',
-      codeBlob: undefined,
     });
 
     await act(async () => {
@@ -149,7 +148,7 @@ describe('useTaskSubmission', () => {
         setTaskError={setTaskError}
         clearTaskError={clearTaskError}
         refreshTask={refreshTask}
-        payload={{ codeBlob: '' }}
+        payload={{}}
       />,
     );
 
@@ -163,7 +162,6 @@ describe('useTaskSubmission', () => {
       token: 'auth',
       candidateSessionId: 12,
       contentText: undefined,
-      codeBlob: undefined,
     });
   });
 });
