@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ReactNode } from 'react';
 import './globals.css';
-import AppShell from '@/features/shared/layout/AppShell';
 import { BRAND_NAME } from '@/lib/brand';
 
 export const metadata: Metadata = {
@@ -19,7 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <AppShell>{children}</AppShell>
+        {children}
       </body>
     </html>
   );
