@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import {
   CandidateSessionProvider,
   useCandidateSession,
@@ -81,9 +87,11 @@ describe('CandidateSessionProvider', () => {
   beforeEach(() => {
     sessionStorage.clear();
     localStorage.clear();
-    global.fetch = jest.fn().mockResolvedValue(
-      responseHelpers.jsonResponse({ accessToken: 'stored-token' }),
-    );
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(
+        responseHelpers.jsonResponse({ accessToken: 'stored-token' }),
+      );
   });
 
   afterAll(() => {

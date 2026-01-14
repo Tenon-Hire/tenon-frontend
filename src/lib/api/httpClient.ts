@@ -1,3 +1,4 @@
+import { getAuthToken } from '../auth';
 import type { Result } from './types';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -117,7 +118,11 @@ async function request<TResponse = unknown>(
     'authToken',
   );
 
-  const token = hasAuthToken ? clientOptions.authToken : null;
+  const token = hasAuthToken
+    ? clientOptions.authToken
+    : typeof window !== 'undefined'
+      ? getAuthToken()
+      : null;
 
   if (!clientOptions.skipAuth && token) {
     headers['Authorization'] = `Bearer ${token}`;

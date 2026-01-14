@@ -1,5 +1,10 @@
 import { apiClient, login, safeRequest } from '@/lib/api/httpClient';
+import { getAuthToken } from '@/lib/auth';
 import { responseHelpers } from '../../setup';
+
+jest.mock('@/lib/auth', () => ({
+  getAuthToken: jest.fn(),
+}));
 
 const fetchMock = jest.fn();
 
@@ -7,14 +12,16 @@ describe('apiClient request helpers', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
+    (getAuthToken as jest.Mock).mockReset();
   });
 
-  it('attaches auth token when provided and normalizes URLs', async () => {
+  it('attaches stored auth token by default and normalizes URLs', async () => {
+    (getAuthToken as jest.Mock).mockReturnValue('token-123');
     fetchMock.mockResolvedValue(
       responseHelpers.jsonResponse({ ok: true, data: { message: 'hi' } }),
     );
 
-    await apiClient.get('/jobs', undefined, { authToken: 'token-123' });
+    await apiClient.get('/jobs');
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/backend/jobs',
@@ -173,6 +180,24 @@ describe('apiClient request helpers', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ ok: true }),
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+    );
+  });
+
+  it('respects provided authToken over stored token', async () => {
+    (getAuthToken as jest.Mock).mockReturnValue('ignored');
+    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({ ok: true }));
+
+    await apiClient.get('/auth-pref', { authToken: 'from-opts' });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/auth-pref',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { Authorization: 'Bearer from-opts' },
+        body: undefined,
         credentials: 'include',
         cache: 'no-store',
       }),

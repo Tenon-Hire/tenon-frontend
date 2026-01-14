@@ -61,7 +61,7 @@ describe('CandidateSessionPage', () => {
     global.fetch = realFetch;
   });
 
-  it('claims invite and starts current task', async () => {
+  it('resolves invite and starts current task', async () => {
     resolveMock.mockResolvedValueOnce({
       candidateSessionId: 123,
       status: 'in_progress',

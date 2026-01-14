@@ -11,12 +11,29 @@ function connectionForMode(mode?: LoginMode): string | null {
 }
 
 export function buildLoginHref(returnTo?: string, mode?: LoginMode): string {
+  return buildAuthHref({ returnTo, mode });
+}
+
+export function buildSignupHref(returnTo?: string, mode?: LoginMode): string {
+  return buildAuthHref({ returnTo, mode, screenHint: 'signup' });
+}
+
+function buildAuthHref({
+  returnTo,
+  mode,
+  screenHint,
+}: {
+  returnTo?: string;
+  mode?: LoginMode;
+  screenHint?: 'signup';
+}): string {
   const params = new URLSearchParams();
   params.set('returnTo', buildReturnTo(returnTo));
   const resolvedMode = mode ?? 'recruiter';
   params.set('mode', resolvedMode);
   const connection = connectionForMode(resolvedMode);
   if (connection) params.set('connection', connection);
+  if (screenHint) params.set('screen_hint', screenHint);
 
   const query = params.toString();
   return `/auth/login${query ? `?${query}` : ''}`;

@@ -2,7 +2,7 @@ import Button from '@/components/ui/Button';
 import LoginLink from '@/features/auth/LoginLink';
 import { BRAND_NAME } from '@/lib/brand';
 import { AuthPageLayout } from './AuthPageLayout';
-import type { LoginMode } from './authPaths';
+import { buildSignupHref, type LoginMode } from './authPaths';
 
 export default function LoginPage({
   returnTo,
@@ -26,6 +26,10 @@ export default function LoginPage({
     process.env.NODE_ENV !== 'production' &&
     isCandidate &&
     !(process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION ?? '').trim();
+
+  const signupHref = isCandidate
+    ? buildSignupHref(returnTo || '/candidate/dashboard', 'candidate')
+    : null;
 
   return (
     <AuthPageLayout title={title} subtitle={subtitle}>
@@ -51,6 +55,15 @@ export default function LoginPage({
           Continue with Auth0
         </Button>
       </LoginLink>
+
+      {signupHref ? (
+        <a
+          href={signupHref}
+          className="mt-3 block text-center text-sm text-blue-600 hover:underline"
+        >
+          New candidate? Create your account
+        </a>
+      ) : null}
     </AuthPageLayout>
   );
 }

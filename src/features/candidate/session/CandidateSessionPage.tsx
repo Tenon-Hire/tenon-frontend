@@ -199,16 +199,22 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         initRef.current.done = true;
       } catch (err) {
         const status = (err as { status?: unknown }).status;
-        if (status === 401 || status === 403) {
+        if (status === 401) {
           devDebug('token invalid', err);
           setToken(null);
-          setAuthMessage('Your session expired. Please sign in again.');
+          setAuthMessage('Please sign in again.');
           setView('auth');
           void loadAccessToken();
-        } else {
-          setErrorMessage(friendlyBootstrapError(err));
-          setView('error');
+          return;
         }
+        if (status === 403) {
+          setToken(null);
+          setAuthMessage(friendlyBootstrapError(err));
+          setView('auth');
+          return;
+        }
+        setErrorMessage(friendlyBootstrapError(err));
+        setView('error');
         initRef.current.done = true;
       } finally {
         initRef.current.inFlight = false;
@@ -352,10 +358,19 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   }
 
   if (view === 'auth') {
+    const loginHref = buildLoginHref(
+      `/candidate/session/${encodeURIComponent(token)}`,
+      'candidate',
+    );
     return (
       <StateMessage
         title="Sign in to continue"
         description={authMessage ?? 'Redirecting you to sign in.'}
+        action={
+          <a href={loginHref}>
+            <Button>Continue to sign in</Button>
+          </a>
+        }
       />
     );
   }

@@ -90,6 +90,11 @@ describe('CandidateSessionPage (auth flow)', () => {
 
     const taskTitles = await screen.findAllByText('Task One');
     expect(taskTitles.length).toBeGreaterThan(0);
+    expect(
+      fetchMock.mock.calls.find(([url]) =>
+        String(url).includes('/verification/code'),
+      ),
+    ).toBeUndefined();
   });
 
   it('redirects to login when unauthenticated', async () => {

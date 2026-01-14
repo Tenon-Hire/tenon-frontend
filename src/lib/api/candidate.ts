@@ -368,22 +368,41 @@ export async function resolveCandidateInviteToken(
   } catch (err: unknown) {
     if (err && typeof err === 'object') {
       const status = (err as { status?: unknown }).status;
+      const details = (err as { details?: unknown }).details;
+      const backendMsg = extractBackendMessage(details, true) ?? '';
+      const lowerMsg = backendMsg.toLowerCase();
+
       if (status === 404)
-        throw new HttpError(404, 'That invite link is invalid.');
+        throw new HttpError(404, 'That invite link is invalid or unavailable.');
+      if (status === 401) throw new HttpError(401, 'Please sign in again.');
+      if (status === 403) {
+        if (
+          lowerMsg.includes('verify') ||
+          lowerMsg.includes('email verification') ||
+          lowerMsg.includes('email_verified')
+        ) {
+          throw new HttpError(403, 'Please verify your email, then try again.');
+        }
+        if (lowerMsg.includes('email claim') || lowerMsg.includes('email')) {
+          throw new HttpError(
+            403,
+            'We could not confirm your email. Please sign in again.',
+          );
+        }
+        throw new HttpError(403, 'You do not have access to this invite.');
+      }
       if (status === 410)
         throw new HttpError(410, 'That invite link has expired.');
 
-      const backendMsg = extractBackendMessage(
-        (err as { details?: unknown }).details,
-        false,
-      );
+      const fallbackMsg =
+        extractBackendMessage(details, false) ?? backendMsg ?? '';
 
       const safeStatus =
         typeof status === 'number' ? status : fallbackStatus(err, 500);
 
       throw new HttpError(
         safeStatus,
-        backendMsg?.trim() || 'Something went wrong loading your simulation.',
+        fallbackMsg.trim() || 'Something went wrong loading your simulation.',
       );
     }
 

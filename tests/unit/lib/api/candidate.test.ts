@@ -64,6 +64,28 @@ describe('candidate api helpers', () => {
     ).rejects.toMatchObject({ status: 410 });
   });
 
+  it('maps resolveCandidateInviteToken auth errors', async () => {
+    mockGet.mockRejectedValueOnce({ status: 401 });
+    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+    await expect(
+      resolveCandidateInviteToken('tok', 'auth'),
+    ).rejects.toMatchObject({
+      status: 401,
+      message: 'Please sign in again.',
+    });
+
+    mockGet.mockRejectedValueOnce({
+      status: 403,
+      details: { message: 'Email verification required' },
+    });
+    await expect(
+      resolveCandidateInviteToken('tok', 'auth'),
+    ).rejects.toMatchObject({
+      status: 403,
+      message: 'Please verify your email, then try again.',
+    });
+  });
+
   it('maps current task network errors to HttpError', async () => {
     mockGet.mockRejectedValueOnce(new TypeError('network'));
     const { getCandidateCurrentTask } = await import('@/lib/api/candidate');
