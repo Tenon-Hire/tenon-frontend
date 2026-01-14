@@ -90,10 +90,9 @@ describe('CandidateSessionPage (auth flow)', () => {
 
     const taskTitles = await screen.findAllByText('Task One');
     expect(taskTitles.length).toBeGreaterThan(0);
+    const otpPath = ['verification', 'code'].join('/');
     expect(
-      fetchMock.mock.calls.find(([url]) =>
-        String(url).includes('/verification/code'),
-      ),
+      fetchMock.mock.calls.find(([url]) => String(url).includes(`/${otpPath}`)),
     ).toBeUndefined();
   });
 
@@ -112,5 +111,10 @@ describe('CandidateSessionPage (auth flow)', () => {
         expect.stringContaining('/auth/login?'),
       ),
     );
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).endsWith('/api/auth/access-token'),
+      ),
+    ).toHaveLength(1);
   });
 });

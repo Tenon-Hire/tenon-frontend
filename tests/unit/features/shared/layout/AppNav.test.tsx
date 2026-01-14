@@ -14,6 +14,20 @@ describe('auth navigation links', () => {
     );
   });
 
+  it('uses public returnTo for candidate logout', () => {
+    render(
+      <AppNav
+        isAuthed
+        navScope="candidate"
+        permissions={['candidate:access']}
+      />,
+    );
+    expect(screen.getByText('Logout')).toHaveAttribute(
+      'href',
+      '/auth/logout?returnTo=%2F',
+    );
+  });
+
   it('renders logout as an anchor in the marketing signed-in view', () => {
     render(<MarketingHomeSignedIn name="Tester" />);
     const logout = screen.getByText('Logout');

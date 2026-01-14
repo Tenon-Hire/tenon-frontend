@@ -53,7 +53,6 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     setTaskError,
     clearTaskError,
     reset,
-    loadAccessToken,
   } = useCandidateSession();
   const router = useRouter();
 
@@ -204,7 +203,6 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           setToken(null);
           setAuthMessage('Please sign in again.');
           setView('auth');
-          void loadAccessToken();
           return;
         }
         if (status === 403) {
@@ -226,7 +224,6 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       setCandidateSessionId,
       setToken,
       state.token,
-      loadAccessToken,
     ],
   );
 

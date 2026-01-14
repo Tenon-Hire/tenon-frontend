@@ -22,9 +22,7 @@ export function AppNav({ isAuthed, permissions = [], navScope }: AppNavProps) {
     isCandidateScope && (canCandidate || permissions.length === 0);
   const showRecruiter = allowRecruiter;
   const showCandidate = allowCandidate;
-  const logoutReturnTo = isCandidateScope
-    ? '/candidate/dashboard'
-    : '/dashboard';
+  const logoutReturnTo = isCandidateScope ? '/' : '/dashboard';
 
   return (
     <nav className="flex items-center gap-4 text-sm">

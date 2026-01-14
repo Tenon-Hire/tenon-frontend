@@ -19,9 +19,7 @@ export function friendlyBootstrapError(err: unknown): string {
   if (status === 404) return 'That invite link is invalid or unavailable.';
   if (status === 401) return 'Please sign in again.';
   if (status === 403) {
-    const msg = messageFromUnknown(err)?.trim();
-    if (msg) return msg;
-    return 'You do not have access to this invite.';
+    return 'We could not confirm your email. Please sign in again.';
   }
   if (status === 410) return 'That invite link has expired.';
   if (!status || status === 0)
@@ -55,9 +53,7 @@ export function friendlyClaimError(err: unknown): string {
   if (status === 410) return 'That invite link has expired.';
   if (status === 401) return 'Please sign in again.';
   if (status === 403) {
-    const msg = messageFromUnknown(err)?.trim();
-    if (msg) return msg;
-    return 'You do not have access to this invite.';
+    return 'We could not confirm your email. Please sign in again.';
   }
   if (!status || status === 0)
     return 'Network error. Please check your connection and try again.';
