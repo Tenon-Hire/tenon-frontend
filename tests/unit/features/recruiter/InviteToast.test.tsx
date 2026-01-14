@@ -63,6 +63,7 @@ describe('InviteToast', () => {
       screen.getByDisplayValue('http://example.com/invite'),
     ).toBeInTheDocument();
 
+    fireEvent.focus(screen.getByLabelText('Invite URL'));
     fireEvent.click(screen.getByRole('button', { name: /Copy/i }));
     await waitFor(() => {
       expect(copyToClipboard).toHaveBeenCalledWith('http://example.com/invite');

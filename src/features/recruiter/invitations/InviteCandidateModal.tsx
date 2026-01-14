@@ -66,8 +66,7 @@ export function InviteCandidateModal({
 
   const disabled = state.status === 'loading';
   const submitDisabled = disabled || Boolean(clientValidationError);
-  const primaryLabel =
-    state.status === 'loading' ? 'Sending…' : 'Send invite';
+  const primaryLabel = state.status === 'loading' ? 'Sending…' : 'Send invite';
 
   return (
     <div

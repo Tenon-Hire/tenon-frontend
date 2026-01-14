@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
 import { jsonResponse, type MockResponse } from '../../setup/responseHelpers';
@@ -261,12 +261,12 @@ describe('RecruiterSimulationDetailPage', () => {
     ).length;
 
     await user.click(screen.getByRole('button', { name: /Invite candidate/i }));
-    await Promise.resolve();
-
-    const candidateCallsAfterOpen = fetchMock.mock.calls.filter(
-      (call) => getUrl(call[0]) === candidatesUrl,
-    ).length;
-    expect(candidateCallsAfterOpen).toBe(candidateCallsBefore);
+    await waitFor(() => {
+      const candidateCallsAfterOpen = fetchMock.mock.calls.filter(
+        (call) => getUrl(call[0]) === candidatesUrl,
+      ).length;
+      expect(candidateCallsAfterOpen).toBe(candidateCallsBefore);
+    });
 
     await user.type(screen.getByLabelText(/Candidate name/i), 'New Person');
     await user.type(
@@ -275,12 +275,12 @@ describe('RecruiterSimulationDetailPage', () => {
     );
     await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
-    await Promise.resolve();
-
-    const inviteCalls = fetchMock.mock.calls.filter(
-      (call) => getUrl(call[0]) === '/api/simulations/sim-1/invite',
-    ).length;
-    expect(inviteCalls).toBe(1);
+    await waitFor(() => {
+      const inviteCalls = fetchMock.mock.calls.filter(
+        (call) => getUrl(call[0]) === '/api/simulations/sim-1/invite',
+      ).length;
+      expect(inviteCalls).toBe(1);
+    });
   });
 
   it('shows invite errors for 409, 422, and 429 responses', async () => {

@@ -47,8 +47,6 @@ describe('RecruiterDashboardPage', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    mockedInviteCandidate.mockReset();
-    mockedListSimulationCandidates.mockReset();
     mockUseDashboardData.mockReturnValue({
       profile: null,
       profileError: null,
@@ -97,8 +95,9 @@ describe('RecruiterDashboardPage', () => {
       await screen.findByRole('button', { name: 'Invite candidate' }),
     );
 
-    await Promise.resolve();
-    expect(mockedListSimulationCandidates).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockedListSimulationCandidates).not.toHaveBeenCalled(),
+    );
 
     await user.type(screen.getByLabelText(/Candidate name/i), 'Jane Doe');
     await user.type(
@@ -107,9 +106,10 @@ describe('RecruiterDashboardPage', () => {
     );
     await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
-    await Promise.resolve();
-    expect(mockedListSimulationCandidates).not.toHaveBeenCalled();
-    expect(mockedInviteCandidate).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(mockedListSimulationCandidates).not.toHaveBeenCalled(),
+    );
+    await waitFor(() => expect(mockedInviteCandidate).toHaveBeenCalledTimes(1));
   });
 
   it('renders profile details when available', async () => {
@@ -250,9 +250,7 @@ describe('RecruiterDashboardPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     expect(
-      await screen.findByText(
-        'Invite sent for Jane Doe (jane@example.com).',
-      ),
+      await screen.findByText('Invite sent for Jane Doe (jane@example.com).'),
     ).toBeInTheDocument();
 
     expect(mockedInviteCandidate).toHaveBeenCalledWith(
@@ -505,9 +503,7 @@ describe('RecruiterDashboardPage', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /Dismiss/i }));
-    expect(
-      screen.queryByText(/Invite sent for Alex/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Invite sent for Alex/i)).not.toBeInTheDocument();
   });
 
   it('auto-dismisses success toast after timeout', async () => {
