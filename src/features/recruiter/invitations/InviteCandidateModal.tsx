@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
-import { listSimulationCandidates } from '@/lib/api/recruiter';
-import type { CandidateSession } from '@/types/recruiter';
 
 export type InviteUiState =
   | { status: 'idle' }
@@ -11,43 +9,28 @@ export type InviteUiState =
 type InviteCandidateModalProps = {
   open: boolean;
   title: string;
-  simulationId?: string | number;
   initialName?: string;
   initialEmail?: string;
-  existingInviteMap?: Map<string, CandidateSession>;
   state: InviteUiState;
   onClose: () => void;
   onSubmit: (candidateName: string, inviteEmail: string) => void;
-  onResend: (candidateSessionId: number) => void;
 };
 
 export function InviteCandidateModal({
   open,
   title,
-  simulationId,
   initialName,
   initialEmail,
-  existingInviteMap,
   state,
   onClose,
   onSubmit,
-  onResend,
 }: InviteCandidateModalProps) {
   const [candidateName, setCandidateName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const emailInputRef = useRef<HTMLInputElement | null>(null);
-  const [loadedInviteMap, setLoadedInviteMap] = useState<
-    Map<string, CandidateSession>
-  >(new Map());
-  const [inviteListStatus, setInviteListStatus] = useState<
-    'idle' | 'loading' | 'error'
-  >('idle');
-  const inviteLoadKeyRef = useRef<string | null>(null);
 
   const nameInputId = 'invite-candidate-name';
   const emailInputId = 'invite-candidate-email';
-  const safeSimulationId =
-    simulationId == null ? '' : String(simulationId).trim();
 
   const openKey = open
     ? `${initialName ?? ''}::${initialEmail ?? ''}`
@@ -65,85 +48,26 @@ export function InviteCandidateModal({
     [inviteEmail],
   );
 
-  const effectiveInviteMap = existingInviteMap ?? loadedInviteMap;
-
-  useEffect(() => {
-    if (!open) {
-      inviteLoadKeyRef.current = null;
-      setInviteListStatus('idle');
-      setLoadedInviteMap(new Map());
-      return;
-    }
-    if (existingInviteMap || !safeSimulationId) return;
-
-    const loadKey = `${safeSimulationId}::${openKey}`;
-    if (inviteLoadKeyRef.current === loadKey) return;
-    inviteLoadKeyRef.current = loadKey;
-
-    let cancelled = false;
-    setInviteListStatus('loading');
-
-    listSimulationCandidates(safeSimulationId)
-      .then((candidates) => {
-        const nextMap = new Map<string, CandidateSession>();
-        candidates.forEach((candidate) => {
-          const key = candidate.inviteEmail?.trim().toLowerCase() ?? '';
-          if (!key) return;
-          nextMap.set(key, candidate);
-        });
-        if (!cancelled) {
-          setLoadedInviteMap(nextMap);
-          setInviteListStatus('idle');
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setInviteListStatus('error');
-      });
-
-    return () => {
-      cancelled = true;
-      if (inviteLoadKeyRef.current === loadKey) {
-        inviteLoadKeyRef.current = null;
-      }
-    };
-  }, [existingInviteMap, open, openKey, safeSimulationId]);
-
-  const existingCandidate = useMemo(() => {
-    if (!normalizedEmail) return null;
-    if (!effectiveInviteMap || effectiveInviteMap.size === 0) return null;
-    return effectiveInviteMap.get(normalizedEmail) ?? null;
-  }, [effectiveInviteMap, normalizedEmail]);
-  const isResendMode = Boolean(existingCandidate);
-
   const clientValidationError = useMemo(() => {
     if (!open) return null;
     if (!inviteEmail.trim()) return 'Candidate email is required.';
     const basicEmailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
     if (!basicEmailOk) return 'Enter a valid email address.';
-    if (!isResendMode && !candidateName.trim())
-      return 'Candidate name is required.';
+    if (!candidateName.trim()) return 'Candidate name is required.';
     return null;
-  }, [open, candidateName, inviteEmail, normalizedEmail, isResendMode]);
+  }, [open, candidateName, inviteEmail, normalizedEmail]);
 
   useEffect(() => {
     if (!open) return;
-    if (isResendMode) {
-      emailInputRef.current?.focus();
-    }
-  }, [open, isResendMode]);
+    emailInputRef.current?.focus();
+  }, [open]);
 
   if (!open) return null;
 
   const disabled = state.status === 'loading';
-  const submitDisabled =
-    disabled || inviteListStatus !== 'idle' || Boolean(clientValidationError);
-  const primaryLabel = isResendMode
-    ? state.status === 'loading'
-      ? 'Resending…'
-      : 'Resend invite'
-    : state.status === 'loading'
-      ? 'Creating…'
-      : 'Create invite';
+  const submitDisabled = disabled || Boolean(clientValidationError);
+  const primaryLabel =
+    state.status === 'loading' ? 'Sending…' : 'Send invite';
 
   return (
     <div
@@ -207,28 +131,6 @@ export function InviteCandidateModal({
             />
           </div>
 
-          {inviteListStatus === 'loading' ? (
-            <div className="text-xs text-gray-500">
-              Loading existing invites…
-            </div>
-          ) : null}
-
-          {inviteListStatus === 'error' ? (
-            <div className="rounded border border-red-200 bg-red-50 p-3">
-              <p className="text-sm text-red-700">
-                Couldn’t load existing invites. Refresh and try again.
-              </p>
-            </div>
-          ) : null}
-
-          {existingCandidate ? (
-            <div className="rounded border border-gray-200 bg-gray-50 p-3">
-              <p className="text-sm text-gray-700">
-                This email is already invited to this simulation.
-              </p>
-            </div>
-          ) : null}
-
           {clientValidationError ? (
             <div className="rounded border border-red-200 bg-red-50 p-3">
               <p className="text-sm text-red-700">{clientValidationError}</p>
@@ -250,10 +152,6 @@ export function InviteCandidateModal({
           <Button
             onClick={() => {
               if (clientValidationError) return;
-              if (existingCandidate) {
-                onResend(existingCandidate.candidateSessionId);
-                return;
-              }
               onSubmit(candidateName, inviteEmail);
             }}
             disabled={submitDisabled}

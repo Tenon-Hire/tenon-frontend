@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
 import { jsonResponse, type MockResponse } from '../../setup/responseHelpers';
@@ -209,6 +209,7 @@ describe('RecruiterSimulationDetailPage', () => {
         candidateSessionId: '99',
         token: 'invite-token',
         inviteUrl: 'https://example.com/candidate/session/invite-token',
+        outcome: 'created',
       }),
     });
 
@@ -223,59 +224,11 @@ describe('RecruiterSimulationDetailPage', () => {
       'new@example.com',
     );
 
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
-    expect(await screen.findByText(/Invite created for/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Invite sent for/i)).toBeInTheDocument();
 
     expect(await screen.findByText('New Person')).toBeInTheDocument();
-  });
-
-  it('shows resend CTA for existing emails', async () => {
-    const user = userEvent.setup();
-
-    mockFetchHandlers({
-      '/api/simulations': jsonResponse([
-        {
-          id: 'sim-1',
-          title: 'Simulation sim-1',
-          templateKey: 'python-fastapi',
-        },
-      ]),
-      '/api/simulations/sim-1/candidates': jsonResponse([
-        {
-          candidateSessionId: 11,
-          inviteEmail: 'Test@Email.com',
-          candidateName: 'Alex',
-          status: 'not_started',
-          startedAt: null,
-          completedAt: null,
-          hasReport: false,
-        },
-      ]),
-      '/api/simulations/sim-1/candidates/11/invite/resend': jsonResponse({
-        inviteEmailStatus: 'sent',
-      }),
-    });
-
-    render(<RecruiterSimulationDetailPage />);
-
-    await user.click(screen.getByRole('button', { name: /Invite candidate/i }));
-    await user.type(screen.getByLabelText(/Candidate name/i), 'Alex');
-    await user.type(
-      screen.getByLabelText(/Candidate email/i),
-      '  test@email.com  ',
-    );
-
-    expect(
-      await screen.findByText(
-        /This email is already invited to this simulation\./i,
-      ),
-    ).toBeInTheDocument();
-    const dialog = screen.getByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: /Resend invite/i }),
-    );
-    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it('shows invite errors for 409, 422, and 429 responses', async () => {
@@ -294,7 +247,16 @@ describe('RecruiterSimulationDetailPage', () => {
       '/api/simulations/sim-1/invite': () => {
         inviteStep += 1;
         if (inviteStep === 1) {
-          return jsonResponse({ message: 'Already invited' }, 409);
+          return jsonResponse(
+            {
+              error: {
+                code: 'candidate_already_completed',
+                message: 'Candidate already completed simulation',
+                outcome: 'rejected',
+              },
+            },
+            409,
+          );
         }
         if (inviteStep === 2) {
           return jsonResponse({ message: 'Invalid email' }, 422);
@@ -311,15 +273,17 @@ describe('RecruiterSimulationDetailPage', () => {
       screen.getByLabelText(/Candidate email/i),
       'alex@example.com',
     );
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
-    expect(await screen.findByText(/already invited/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/already completed this simulation/i),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
     expect(await screen.findByText(/valid email/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
     expect(await screen.findByText(/too many invites/i)).toBeInTheDocument();
   });

@@ -721,15 +721,6 @@ export default function RecruiterSimulationDetailPage() {
       );
     });
   }, [candidates, searchQuery]);
-  const existingInviteMap = useMemo(() => {
-    const entries = new Map<string, CandidateSession>();
-    candidates.forEach((candidate) => {
-      const key = candidate.inviteEmail?.trim().toLowerCase() ?? '';
-      if (!key) return;
-      entries.set(key, candidate);
-    });
-    return entries;
-  }, [candidates]);
 
   const updateRowState = useCallback(
     (
@@ -957,20 +948,6 @@ export default function RecruiterSimulationDetailPage() {
     [dismissToast, loadCandidates, simulationId, updateRowState],
   );
 
-  const handleResendFromModal = useCallback(
-    async (candidateSessionId: CandidateSession['candidateSessionId']) => {
-      const candidate = candidates.find(
-        (item) =>
-          candidateKey(item.candidateSessionId) ===
-          candidateKey(candidateSessionId),
-      );
-      if (!candidate) return;
-      const ok = await handleResend(candidate);
-      if (ok) setInviteModalOpen(false);
-    },
-    [candidates, handleResend],
-  );
-
   const inviteLabel = useMemo(
     () => `Simulation ${simulationId}`,
     [simulationId],
@@ -1013,10 +990,11 @@ export default function RecruiterSimulationDetailPage() {
         ? `${res.candidateName} (${res.candidateEmail})`
         : res.candidateEmail;
 
+      const actionLabel = res.outcome === 'resent' ? 'resent' : 'sent';
       setToast({
         open: true,
         kind: 'success',
-        message: `Invite created for ${who}.`,
+        message: `Invite ${actionLabel} for ${who}.`,
         inviteUrl: res.inviteUrl,
       });
 
@@ -1531,8 +1509,6 @@ export default function RecruiterSimulationDetailPage() {
       <InviteCandidateModal
         open={inviteModalOpen}
         title={inviteLabel}
-        simulationId={simulationId}
-        existingInviteMap={existingInviteMap}
         state={
           inviteFlow.state.status === 'error'
             ? { status: 'error', message: inviteFlow.state.message ?? '' }
@@ -1543,7 +1519,6 @@ export default function RecruiterSimulationDetailPage() {
           setInviteModalOpen(false);
         }}
         onSubmit={submitInvite}
-        onResend={handleResendFromModal}
         initialName=""
         initialEmail=""
       />
