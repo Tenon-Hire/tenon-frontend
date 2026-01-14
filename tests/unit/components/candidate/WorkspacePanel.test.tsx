@@ -80,9 +80,10 @@ describe('WorkspacePanel', () => {
     await screen.findByText(/Repository is ready/i);
     expect(statusMock).toHaveBeenCalledTimes(1);
     expect(initMock).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole('link', { name: /open repo/i }),
-    ).toHaveAttribute('href', 'https://github.com/acme/repo');
+    expect(screen.getByRole('link', { name: /open repo/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
     await user.click(screen.getByRole('button', { name: /refresh/i }));
 
     await waitFor(() => {
@@ -93,6 +94,32 @@ describe('WorkspacePanel', () => {
       });
     });
     expect(initMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders repo CTA when codespace is not available', async () => {
+    statusMock.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
+      codespaceUrl: null,
+    });
+
+    render(
+      <WorkspacePanel
+        taskId={13}
+        candidateSessionId={14}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    await screen.findByText(/Repository is ready/i);
+    expect(initMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: /open repo/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
+    expect(screen.queryByRole('link', { name: /open codespace/i })).toBeNull();
+    expect(screen.getByText('acme/repo')).toBeInTheDocument();
   });
 
   it('initializes when status is empty', async () => {
@@ -119,9 +146,10 @@ describe('WorkspacePanel', () => {
     await screen.findByText(/Repository is ready/i);
     expect(statusMock).toHaveBeenCalledTimes(1);
     expect(initMock).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole('link', { name: /open repo/i }),
-    ).toHaveAttribute('href', 'https://github.com/acme/repo');
+    expect(screen.getByRole('link', { name: /open repo/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('initializes when status returns 404', async () => {
@@ -144,9 +172,10 @@ describe('WorkspacePanel', () => {
     await screen.findByText(/Repository is ready/i);
     expect(statusMock).toHaveBeenCalledTimes(1);
     expect(initMock).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByRole('link', { name: /open repo/i }),
-    ).toHaveAttribute('href', 'https://github.com/acme/repo');
+    expect(screen.getByRole('link', { name: /open repo/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('shows a provisioning notice when repo is not ready yet', async () => {

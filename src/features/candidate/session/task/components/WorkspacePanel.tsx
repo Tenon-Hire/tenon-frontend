@@ -167,12 +167,13 @@ export function WorkspacePanel({
         <div className="mt-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800">
           {error}
         </div>
-      ) : notice ? (
-        <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
-          {notice}
-        </div>
       ) : (
         <div className="mt-3 space-y-2 text-sm text-gray-700">
+          {notice ? (
+            <div className="rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+              {notice}
+            </div>
+          ) : null}
           <div>{workspaceMessage}</div>
           {workspace?.repoName ? <div>{repoLabel}</div> : null}
           {cta ? (
@@ -180,13 +181,13 @@ export function WorkspacePanel({
               className="block text-blue-600 hover:underline"
               href={cta.href}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               {cta.label}
             </a>
           ) : (
             <div className="text-xs text-gray-500">
-              Workspace link will appear when ready.
+              Codespace link will appear when ready.
             </div>
           )}
         </div>
