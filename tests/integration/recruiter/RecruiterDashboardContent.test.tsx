@@ -47,6 +47,8 @@ describe('RecruiterDashboardPage', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    mockedInviteCandidate.mockReset();
+    mockedListSimulationCandidates.mockReset();
     mockUseDashboardData.mockReturnValue({
       profile: null,
       profileError: null,
@@ -95,6 +97,7 @@ describe('RecruiterDashboardPage', () => {
       await screen.findByRole('button', { name: 'Invite candidate' }),
     );
 
+    await Promise.resolve();
     expect(mockedListSimulationCandidates).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText(/Candidate name/i), 'Jane Doe');
@@ -104,7 +107,9 @@ describe('RecruiterDashboardPage', () => {
     );
     await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
+    await Promise.resolve();
     expect(mockedListSimulationCandidates).not.toHaveBeenCalled();
+    expect(mockedInviteCandidate).toHaveBeenCalledTimes(1);
   });
 
   it('renders profile details when available', async () => {

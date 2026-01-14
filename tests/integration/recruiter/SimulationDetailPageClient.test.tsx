@@ -231,6 +231,58 @@ describe('RecruiterSimulationDetailPage', () => {
     expect(await screen.findByText('New Person')).toBeInTheDocument();
   });
 
+  it('does not pre-check candidates when opening the invite modal', async () => {
+    const user = userEvent.setup();
+
+    mockFetchHandlers({
+      '/api/simulations': jsonResponse([
+        {
+          id: 'sim-1',
+          title: 'Simulation sim-1',
+          templateKey: 'python-fastapi',
+        },
+      ]),
+      '/api/simulations/sim-1/candidates': jsonResponse([]),
+      '/api/simulations/sim-1/invite': jsonResponse({
+        candidateSessionId: '99',
+        token: 'invite-token',
+        inviteUrl: 'https://example.com/candidate/session/invite-token',
+        outcome: 'created',
+      }),
+    });
+
+    render(<RecruiterSimulationDetailPage />);
+
+    await screen.findByText(/No candidates yet/i);
+
+    const candidatesUrl = '/api/simulations/sim-1/candidates';
+    const candidateCallsBefore = fetchMock.mock.calls.filter(
+      (call) => getUrl(call[0]) === candidatesUrl,
+    ).length;
+
+    await user.click(screen.getByRole('button', { name: /Invite candidate/i }));
+    await Promise.resolve();
+
+    const candidateCallsAfterOpen = fetchMock.mock.calls.filter(
+      (call) => getUrl(call[0]) === candidatesUrl,
+    ).length;
+    expect(candidateCallsAfterOpen).toBe(candidateCallsBefore);
+
+    await user.type(screen.getByLabelText(/Candidate name/i), 'New Person');
+    await user.type(
+      screen.getByLabelText(/Candidate email/i),
+      'new@example.com',
+    );
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
+
+    await Promise.resolve();
+
+    const inviteCalls = fetchMock.mock.calls.filter(
+      (call) => getUrl(call[0]) === '/api/simulations/sim-1/invite',
+    ).length;
+    expect(inviteCalls).toBe(1);
+  });
+
   it('shows invite errors for 409, 422, and 429 responses', async () => {
     const user = userEvent.setup();
 
