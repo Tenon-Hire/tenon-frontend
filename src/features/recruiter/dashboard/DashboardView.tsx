@@ -171,7 +171,6 @@ export default function DashboardView({
         <InviteCandidateModal
           open={modal.open}
           title={inviteWho}
-          simulationId={modal.simulationId}
           state={modalState}
           onClose={() => {
             setModal({ open: false, simulationId: '', simulationTitle: '' });

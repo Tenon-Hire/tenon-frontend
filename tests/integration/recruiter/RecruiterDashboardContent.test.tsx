@@ -9,7 +9,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import RecruiterDashboardPage from '@/features/recruiter/dashboard/RecruiterDashboardPage';
 import type { RecruiterProfile } from '@/types/recruiter';
-import { inviteCandidate } from '@/lib/api/recruiter';
+import { inviteCandidate, listSimulationCandidates } from '@/lib/api/recruiter';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
 
 jest.mock('@/lib/api/recruiter', () => {
@@ -17,6 +17,7 @@ jest.mock('@/lib/api/recruiter', () => {
   return {
     ...actual,
     listSimulations: jest.fn(),
+    listSimulationCandidates: jest.fn(),
     inviteCandidate: jest.fn(),
   };
 });
@@ -28,6 +29,10 @@ jest.mock('@/features/recruiter/dashboard/hooks/useDashboardData', () => ({
 const mockedInviteCandidate = inviteCandidate as jest.MockedFunction<
   typeof inviteCandidate
 >;
+const mockedListSimulationCandidates =
+  listSimulationCandidates as jest.MockedFunction<
+    typeof listSimulationCandidates
+  >;
 const mockUseDashboardData = useDashboardData as jest.MockedFunction<
   typeof useDashboardData
 >;
@@ -55,6 +60,51 @@ describe('RecruiterDashboardPage', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('does not pre-check invited emails when opening the modal', async () => {
+    const user = userEvent.setup();
+
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
+        {
+          id: 'sim_1',
+          title: 'Sim 1',
+          role: 'Backend',
+          createdAt: '2025-12-10T10:00:00Z',
+        },
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
+
+    mockedInviteCandidate.mockResolvedValueOnce({
+      candidateSessionId: 'cs_1',
+      token: 'tok_123',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
+      outcome: 'created',
+    });
+
+    render(<RecruiterDashboardPage />);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Invite candidate' }),
+    );
+
+    expect(mockedListSimulationCandidates).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText(/Candidate name/i), 'Jane Doe');
+    await user.type(
+      screen.getByLabelText(/Candidate email/i),
+      'jane@example.com',
+    );
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
+
+    expect(mockedListSimulationCandidates).not.toHaveBeenCalled();
   });
 
   it('renders profile details when available', async () => {
