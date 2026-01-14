@@ -44,6 +44,7 @@ export function WorkspacePanel({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const initAttemptedRef = useRef(false);
 
   const loadWorkspace = useCallback(
@@ -61,6 +62,7 @@ export function WorkspacePanel({
           setRefreshing(true);
         }
         setError(null);
+        setNotice(null);
         let status: CandidateWorkspaceStatus;
         try {
           status = await getCandidateWorkspaceStatus({
@@ -104,6 +106,13 @@ export function WorkspacePanel({
         const status = toStatus(err);
         if (status === 401 || status === 403) {
           setError('Session expired. Please sign in again.');
+        } else if (status === 409) {
+          setNotice(
+            toUserMessage(
+              err,
+              'Workspace repo not provisioned yet. Please try again.',
+            ),
+          );
         } else {
           setError(
             toUserMessage(err, 'Unable to load your workspace right now.'),
@@ -124,8 +133,13 @@ export function WorkspacePanel({
     void loadWorkspace('init');
   }, [loadWorkspace]);
 
-  const repoLabel = workspace?.repoName ?? 'View repository';
+  const repoLabel = workspace?.repoName ?? 'Repository';
   const workspaceMessage = buildWorkspaceMessage(workspace);
+  const cta = workspace?.codespaceUrl
+    ? { href: workspace.codespaceUrl, label: 'Open Codespace' }
+    : workspace?.repoUrl
+      ? { href: workspace.repoUrl, label: 'Open Repo' }
+      : null;
 
   return (
     <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
@@ -155,27 +169,21 @@ export function WorkspacePanel({
         </div>
       ) : (
         <div className="mt-3 space-y-2 text-sm text-gray-700">
-          <div>{workspaceMessage}</div>
-          {workspace?.repoUrl ? (
-            <a
-              className="block text-blue-600 hover:underline"
-              href={workspace.repoUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {repoLabel}
-            </a>
-          ) : workspace?.repoName ? (
-            <div>{repoLabel}</div>
+          {notice ? (
+            <div className="rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800">
+              {notice}
+            </div>
           ) : null}
-          {workspace?.codespaceUrl ? (
+          <div>{workspaceMessage}</div>
+          {workspace?.repoName ? <div>{repoLabel}</div> : null}
+          {cta ? (
             <a
               className="block text-blue-600 hover:underline"
-              href={workspace.codespaceUrl}
+              href={cta.href}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
-              Open codespace
+              {cta.label}
             </a>
           ) : (
             <div className="text-xs text-gray-500">
