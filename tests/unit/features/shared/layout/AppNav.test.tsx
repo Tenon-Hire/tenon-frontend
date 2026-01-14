@@ -8,14 +8,34 @@ describe('auth navigation links', () => {
     render(<AppNav isAuthed permissions={['recruiter:access']} />);
     const logout = screen.getByText('Logout');
     expect(logout.tagName).toBe('A');
-    expect(logout).toHaveAttribute('href', '/auth/logout');
+    expect(logout).toHaveAttribute(
+      'href',
+      '/auth/logout?returnTo=%2Fdashboard',
+    );
+  });
+
+  it('uses public returnTo for candidate logout', () => {
+    render(
+      <AppNav
+        isAuthed
+        navScope="candidate"
+        permissions={['candidate:access']}
+      />,
+    );
+    expect(screen.getByText('Logout')).toHaveAttribute(
+      'href',
+      '/auth/logout?returnTo=%2F',
+    );
   });
 
   it('renders logout as an anchor in the marketing signed-in view', () => {
     render(<MarketingHomeSignedIn name="Tester" />);
     const logout = screen.getByText('Logout');
     expect(logout.tagName).toBe('A');
-    expect(logout).toHaveAttribute('href', '/auth/logout');
+    expect(logout).toHaveAttribute(
+      'href',
+      '/auth/logout?returnTo=%2Fdashboard',
+    );
   });
 
   it('renders login CTA as an anchor in the marketing signed-out view', () => {

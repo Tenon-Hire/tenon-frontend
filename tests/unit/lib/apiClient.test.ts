@@ -15,7 +15,7 @@ describe('apiClient request helpers', () => {
     (getAuthToken as jest.Mock).mockReset();
   });
 
-  it('attaches auth token by default and normalizes URLs', async () => {
+  it('attaches stored auth token by default and normalizes URLs', async () => {
     (getAuthToken as jest.Mock).mockReturnValue('token-123');
     fetchMock.mockResolvedValue(
       responseHelpers.jsonResponse({ ok: true, data: { message: 'hi' } }),
@@ -186,6 +186,24 @@ describe('apiClient request helpers', () => {
     );
   });
 
+  it('respects provided authToken over stored token', async () => {
+    (getAuthToken as jest.Mock).mockReturnValue('ignored');
+    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({ ok: true }));
+
+    await apiClient.get('/auth-pref', { authToken: 'from-opts' });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/auth-pref',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { Authorization: 'Bearer from-opts' },
+        body: undefined,
+        credentials: 'include',
+        cache: 'no-store',
+      }),
+    );
+  });
+
   it('uses explicit authToken and merges headers for put/patch/delete', async () => {
     fetchMock
       .mockResolvedValueOnce(responseHelpers.jsonResponse({ ok: true }))
@@ -228,24 +246,6 @@ describe('apiClient request helpers', () => {
       method: 'DELETE',
       headers: {},
     });
-  });
-
-  it('respects provided authToken even when window is defined', async () => {
-    (getAuthToken as jest.Mock).mockReturnValue('ignored');
-    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({ ok: true }));
-
-    await apiClient.get('/auth-pref', { authToken: 'from-opts' });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/backend/auth-pref',
-      expect.objectContaining({
-        method: 'GET',
-        headers: { Authorization: 'Bearer from-opts' },
-        body: undefined,
-        credentials: 'include',
-        cache: 'no-store',
-      }),
-    );
   });
 
   it('safeRequest returns data and wraps unknown errors', async () => {

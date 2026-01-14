@@ -1,4 +1,8 @@
-import { buildClearAuthHref, buildLoginHref } from '@/features/auth/authPaths';
+import {
+  buildClearAuthHref,
+  buildLoginHref,
+  buildSignupHref,
+} from '@/features/auth/authPaths';
 
 const originalCandidate =
   process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION;
@@ -28,6 +32,12 @@ describe('authPaths buildLoginHref', () => {
     expect(href).toContain('mode=recruiter');
     expect(href).toContain('connection=rec-db');
     expect(href).toContain('returnTo=%2Fdashboard');
+  });
+
+  it('builds signup link with screen_hint', () => {
+    const href = buildSignupHref('/candidate/dashboard', 'candidate');
+    expect(href).toContain('screen_hint=signup');
+    expect(href).toContain('mode=candidate');
   });
 });
 

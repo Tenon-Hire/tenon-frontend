@@ -33,6 +33,12 @@ describe('LoginPage', () => {
       'href',
       '/auth/login?returnTo=%2Fcandidate%2Fsession%2Ftok_123&mode=candidate',
     );
+    expect(
+      screen.getByRole('link', { name: /Create your account/i }),
+    ).toHaveAttribute(
+      'href',
+      '/auth/login?returnTo=%2Fcandidate%2Fsession%2Ftok_123&mode=candidate&screen_hint=signup',
+    );
   });
 
   it('still treats legacy candidate-sessions returnTo as candidate mode', () => {

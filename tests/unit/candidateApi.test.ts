@@ -55,41 +55,6 @@ describe('candidateApi', () => {
     ).rejects.toBeInstanceOf(HttpError);
   });
 
-  it('claims invite token with bearer auth', async () => {
-    const fetchMock = jest.fn() as FetchMock;
-    fetchMock.mockResolvedValue(
-      jsonRes({
-        candidateSessionId: 99,
-        status: 'in_progress',
-        simulation: { title: 'Infra', role: 'Platform' },
-      }),
-    );
-    global.fetch = fetchMock as unknown as typeof fetch;
-
-    const { claimCandidateInvite } = await importApi();
-    const result = await claimCandidateInvite('tok_123', 'auth-token');
-
-    expect(result.candidateSessionId).toBe(99);
-    expect(result.simulation.title).toBe('Infra');
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://api.example.com/candidate/session/tok_123/claim',
-      expect.objectContaining({
-        method: 'POST',
-        cache: 'no-store',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer auth-token',
-        }),
-      }),
-    );
-  });
-
-  it('requires bearer token for claim', async () => {
-    const { claimCandidateInvite, HttpError } = await importApi();
-    await expect(claimCandidateInvite('tok_123', '')).rejects.toBeInstanceOf(
-      HttpError,
-    );
-  });
-
   it('lists candidate invites with bearer auth', async () => {
     const fetchMock = jest.fn() as FetchMock;
     fetchMock.mockResolvedValue(

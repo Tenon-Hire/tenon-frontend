@@ -15,6 +15,7 @@ import {
   resolveCandidateInviteToken,
   startCandidateTestRun,
 } from '@/lib/api/candidate';
+import { buildLoginHref } from '@/features/auth/authPaths';
 import { useCandidateSession } from './CandidateSessionProvider';
 import { useTaskSubmission } from './hooks/useTaskSubmission';
 import {
@@ -28,9 +29,8 @@ import {
   friendlyTaskError,
 } from './utils/errorMessages';
 import { extractFirstUrl } from './utils/extractUrl';
-import { CandidateVerificationPanel } from './components/CandidateVerificationPanel';
 
-type ViewState = 'loading' | 'verify' | 'starting' | 'error' | 'running';
+type ViewState = 'loading' | 'auth' | 'starting' | 'error' | 'running';
 
 const isDev = process.env.NODE_ENV === 'development';
 function devDebug(message: string, ...args: unknown[]) {
@@ -45,7 +45,6 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     state,
     setInviteToken,
     setToken,
-    setVerifiedEmail,
     setCandidateSessionId,
     setBootstrap,
     setStarted,
@@ -65,9 +64,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   const [view, setView] = useState<ViewState>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [verificationError, setVerificationError] = useState<string | null>(
-    null,
-  );
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
   const lastTokenRef = useRef<string | null>(null);
   const initRef = useRef<{
     token: string | null;
@@ -139,7 +136,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     }
     initRef.current = { token: null, inFlight: false, done: false };
     setErrorMessage(null);
-    setVerificationError(null);
+    setAuthMessage(null);
     setView('loading');
     clearTaskError();
     if (state.inviteToken !== token) {
@@ -161,7 +158,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
       const authToken = authTokenOverride ?? state.token;
       if (!authToken) {
-        setView('verify');
+        setView('auth');
         return;
       }
 
@@ -184,7 +181,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       initRef.current = { token: initToken, inFlight: true, done: false };
       setView('loading');
       setErrorMessage(null);
-      setVerificationError(null);
+      setAuthMessage(null);
       devDebug('init start', { token: initToken });
 
       try {
@@ -201,17 +198,21 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         initRef.current.done = true;
       } catch (err) {
         const status = (err as { status?: unknown }).status;
-        if (status === 401 || status === 403) {
+        if (status === 401) {
           devDebug('token invalid', err);
           setToken(null);
-          setVerificationError(
-            'Your verification session expired. Please verify again.',
-          );
-          setView('verify');
-        } else {
-          setErrorMessage(friendlyBootstrapError(err));
-          setView('error');
+          setAuthMessage('Please sign in again.');
+          setView('auth');
+          return;
         }
+        if (status === 403) {
+          setToken(null);
+          setAuthMessage(friendlyBootstrapError(err));
+          setView('auth');
+          return;
+        }
+        setErrorMessage(friendlyBootstrapError(err));
+        setView('error');
         initRef.current.done = true;
       } finally {
         initRef.current.inFlight = false;
@@ -222,7 +223,6 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       setBootstrap,
       setCandidateSessionId,
       setToken,
-      setVerificationError,
       state.token,
     ],
   );
@@ -232,7 +232,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   }, [runInit, token]);
 
   useEffect(() => {
-    if (view === 'verify' || view === 'error') return;
+    if (view === 'auth' || view === 'error') return;
     if (!state.token || !candidateSessionId) return;
     if (state.taskState.loading) return;
     if (state.taskState.isComplete) return;
@@ -315,6 +315,12 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     state.taskState.currentTask,
   ]);
 
+  useEffect(() => {
+    if (state.authStatus !== 'unauthenticated') return;
+    const returnTo = `/candidate/session/${encodeURIComponent(token)}`;
+    router.replace(buildLoginHref(returnTo, 'candidate'));
+  }, [router, state.authStatus, token]);
+
   const retryInit = useCallback(() => {
     initRef.current = { token: null, inFlight: false, done: false };
     setView('loading');
@@ -322,26 +328,14 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     void runInit(token, true);
   }, [runInit, token]);
 
-  const handleVerified = useCallback(
-    (accessToken: string, email: string) => {
-      setToken(accessToken);
-      if (email) setVerifiedEmail(email);
-      setVerificationError(null);
-      initRef.current = { token: null, inFlight: false, done: false };
-      setView('loading');
-      void runInit(token, true, accessToken);
-    },
-    [runInit, setToken, setVerifiedEmail, token],
-  );
-
   const errorCopy =
     errorMessage ?? 'Something went wrong loading your simulation.';
 
-  if (view === 'loading') {
+  if (view === 'loading' || state.authStatus === 'loading') {
     return (
       <StateMessage
         title="Loading simulation…"
-        description="Validating your invite link."
+        description="Checking your session and invite link."
       />
     );
   }
@@ -360,14 +354,20 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     );
   }
 
-  if (view === 'verify') {
+  if (view === 'auth') {
+    const loginHref = buildLoginHref(
+      `/candidate/session/${encodeURIComponent(token)}`,
+      'candidate',
+    );
     return (
-      <CandidateVerificationPanel
-        token={token}
-        initialEmail={state.verifiedEmail}
-        errorMessage={verificationError}
-        onVerified={handleVerified}
-        onBack={() => router.push('/candidate/dashboard')}
+      <StateMessage
+        title="Sign in to continue"
+        description={authMessage ?? 'Redirecting you to sign in.'}
+        action={
+          <a href={loginHref}>
+            <Button>Continue to sign in</Button>
+          </a>
+        }
       />
     );
   }
@@ -376,7 +376,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     return (
       <StateMessage
         title={title || 'Preparing your simulation…'}
-        description="Finalizing verification and loading tasks."
+        description="Loading your tasks and workspace."
       />
     );
   }
@@ -398,8 +398,8 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           <div className="text-sm text-gray-600">Role: {role}</div>
         </div>
         <div className="text-sm text-gray-700">
-          Verification is complete. When you’re ready, start your simulation to
-          begin Day 1. You can come back anytime to resume.
+          You’re signed in. When you’re ready, start your simulation to begin
+          Day 1. You can come back anytime to resume.
         </div>
         <div className="flex gap-3">
           <Button onClick={handleStart}>Start simulation</Button>

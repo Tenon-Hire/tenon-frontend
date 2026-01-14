@@ -49,7 +49,6 @@ function redirectNotAuthorized(
 
 function shouldSkipAuth(pathname: string) {
   if (isPublicPath(pathname)) return true;
-  if (requiresCandidateAccess(pathname)) return true;
   return false;
 }
 
@@ -154,12 +153,14 @@ export async function middleware(request: NextRequest) {
   const permissions = extractPermissions(session.user, fallbackAccessToken);
   const wantsRecruiter = requiresRecruiterAccess(pathname);
   const wantsCandidate = requiresCandidateAccess(pathname);
+  const hasRecruiter = hasPermission(permissions, 'recruiter:access');
+  const hasCandidate = hasPermission(permissions, 'candidate:access');
 
-  if (wantsRecruiter && !hasPermission(permissions, 'recruiter:access')) {
+  if (wantsRecruiter && !hasRecruiter) {
     return responder(redirectNotAuthorized(request, 'recruiter'));
   }
 
-  if (wantsCandidate && !hasPermission(permissions, 'candidate:access')) {
+  if (wantsCandidate && hasRecruiter && !hasCandidate) {
     return responder(redirectNotAuthorized(request, 'candidate'));
   }
 

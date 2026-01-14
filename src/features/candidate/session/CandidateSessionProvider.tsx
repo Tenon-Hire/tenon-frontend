@@ -9,7 +9,7 @@ import React, {
   useReducer,
 } from 'react';
 import { BRAND_SLUG } from '@/lib/brand';
-import { getAuthToken, setAuthToken } from '@/lib/auth';
+import { fetchAuthAccessToken } from '@/lib/auth/accessToken';
 
 type SimulationSummary = {
   title: string;
@@ -49,17 +49,17 @@ type TaskState = {
 type CandidateSessionState = {
   inviteToken: string | null;
   token: string | null;
-  verifiedEmail: string | null;
   candidateSessionId: number | null;
   bootstrap: CandidateBootstrap | null;
   started: boolean;
   taskState: TaskState;
+  authStatus: 'idle' | 'loading' | 'ready' | 'unauthenticated' | 'error';
+  authError: string | null;
 };
 
 type Action =
   | { type: 'SET_INVITE_TOKEN'; inviteToken: string }
   | { type: 'SET_TOKEN'; token: string | null }
-  | { type: 'SET_VERIFIED_EMAIL'; email: string }
   | { type: 'SET_CANDIDATE_SESSION_ID'; candidateSessionId: number | null }
   | { type: 'SET_BOOTSTRAP'; bootstrap: CandidateBootstrap }
   | { type: 'SET_STARTED'; started: boolean }
@@ -74,7 +74,11 @@ type Action =
       };
     }
   | { type: 'TASK_ERROR'; error: string }
-  | { type: 'TASK_CLEAR_ERROR' };
+  | { type: 'TASK_CLEAR_ERROR' }
+  | { type: 'AUTH_LOADING' }
+  | { type: 'AUTH_READY' }
+  | { type: 'AUTH_UNAUTHENTICATED' }
+  | { type: 'AUTH_ERROR'; error: string };
 
 const initialTaskState: TaskState = {
   loading: false,
@@ -87,11 +91,12 @@ const initialTaskState: TaskState = {
 const initialState: CandidateSessionState = {
   inviteToken: null,
   token: null,
-  verifiedEmail: null,
   candidateSessionId: null,
   bootstrap: null,
   started: false,
   taskState: initialTaskState,
+  authStatus: 'idle',
+  authError: null,
 };
 
 function reducer(
@@ -106,10 +111,6 @@ function reducer(
     case 'SET_TOKEN':
       if (state.token === action.token) return state;
       return { ...state, token: action.token };
-
-    case 'SET_VERIFIED_EMAIL':
-      if (state.verifiedEmail === action.email) return state;
-      return { ...state, verifiedEmail: action.email };
 
     case 'SET_CANDIDATE_SESSION_ID':
       if (state.candidateSessionId === action.candidateSessionId) return state;
@@ -152,6 +153,23 @@ function reducer(
         taskState: { ...state.taskState, error: null },
       };
 
+    case 'AUTH_LOADING':
+      return { ...state, authStatus: 'loading', authError: null };
+
+    case 'AUTH_READY':
+      return { ...state, authStatus: 'ready', authError: null };
+
+    case 'AUTH_UNAUTHENTICATED':
+      return {
+        ...state,
+        authStatus: 'unauthenticated',
+        authError: null,
+        token: null,
+      };
+
+    case 'AUTH_ERROR':
+      return { ...state, authStatus: 'error', authError: action.error };
+
     case 'RESET':
       return initialState;
 
@@ -164,11 +182,11 @@ type Ctx = {
   state: CandidateSessionState;
   setInviteToken: (token: string) => void;
   setToken: (token: string | null) => void;
-  setVerifiedEmail: (email: string) => void;
   setCandidateSessionId: (id: number | null) => void;
   setBootstrap: (b: CandidateBootstrap) => void;
   setStarted: (started: boolean) => void;
   reset: () => void;
+  loadAccessToken: () => Promise<string | null>;
 
   setTaskLoading: () => void;
   setTaskLoaded: (p: {
@@ -186,7 +204,6 @@ const STORAGE_KEY = `${BRAND_SLUG}:candidate_session_v1`;
 
 type PersistedState = {
   inviteToken: string | null;
-  verifiedEmail: string | null;
   candidateSessionId: number | null;
   bootstrap: CandidateBootstrap | null;
   started: boolean;
@@ -205,13 +222,8 @@ export function CandidateSessionProvider({
     [],
   );
   const setToken = useCallback((token: string | null) => {
-    setAuthToken(token);
     dispatch({ type: 'SET_TOKEN', token });
   }, []);
-  const setVerifiedEmail = useCallback(
-    (email: string) => dispatch({ type: 'SET_VERIFIED_EMAIL', email }),
-    [],
-  );
   const setCandidateSessionId = useCallback(
     (candidateSessionId: number | null) =>
       dispatch({ type: 'SET_CANDIDATE_SESSION_ID', candidateSessionId }),
@@ -227,7 +239,6 @@ export function CandidateSessionProvider({
     [],
   );
   const reset = useCallback(() => {
-    setAuthToken(null);
     dispatch({ type: 'RESET' });
   }, []);
 
@@ -252,27 +263,36 @@ export function CandidateSessionProvider({
     [],
   );
 
+  const loadAccessToken = useCallback(async () => {
+    if (state.authStatus === 'loading') return null;
+    dispatch({ type: 'AUTH_LOADING' });
+    try {
+      const token = await fetchAuthAccessToken();
+      dispatch({ type: 'SET_TOKEN', token });
+      dispatch({ type: 'AUTH_READY' });
+      return token;
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      if (status === 401 || status === 403) {
+        dispatch({ type: 'AUTH_UNAUTHENTICATED' });
+        return null;
+      }
+      dispatch({
+        type: 'AUTH_ERROR',
+        error: 'Unable to authenticate. Please try again.',
+      });
+      return null;
+    }
+  }, [state.authStatus]);
+
   useEffect(() => {
     try {
-      const storedToken = getAuthToken();
-      if (storedToken) {
-        dispatch({ type: 'SET_TOKEN', token: storedToken });
-      }
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return;
 
       const parsed = JSON.parse(raw) as Partial<PersistedState>;
       if (typeof parsed?.inviteToken === 'string' && parsed.inviteToken) {
         dispatch({ type: 'SET_INVITE_TOKEN', inviteToken: parsed.inviteToken });
-      }
-      if (
-        typeof parsed?.verifiedEmail === 'string' &&
-        parsed.verifiedEmail.trim()
-      ) {
-        dispatch({
-          type: 'SET_VERIFIED_EMAIL',
-          email: parsed.verifiedEmail.trim(),
-        });
       }
       if (typeof parsed?.candidateSessionId === 'number') {
         dispatch({
@@ -293,10 +313,14 @@ export function CandidateSessionProvider({
   }, []);
 
   useEffect(() => {
+    if (state.token || state.authStatus !== 'idle') return;
+    void loadAccessToken();
+  }, [loadAccessToken, state.authStatus, state.token]);
+
+  useEffect(() => {
     try {
       const toPersist: PersistedState = {
         inviteToken: state.inviteToken,
-        verifiedEmail: state.verifiedEmail,
         candidateSessionId: state.candidateSessionId,
         bootstrap: state.bootstrap,
         started: state.started,
@@ -308,7 +332,6 @@ export function CandidateSessionProvider({
     state.inviteToken,
     state.started,
     state.candidateSessionId,
-    state.verifiedEmail,
   ]);
 
   const value = useMemo<Ctx>(
@@ -316,11 +339,11 @@ export function CandidateSessionProvider({
       state,
       setInviteToken,
       setToken,
-      setVerifiedEmail,
       setCandidateSessionId,
       setBootstrap,
       setStarted,
       reset,
+      loadAccessToken,
 
       setTaskLoading,
       setTaskLoaded,
@@ -338,7 +361,7 @@ export function CandidateSessionProvider({
       setTaskLoaded,
       setTaskLoading,
       setToken,
-      setVerifiedEmail,
+      loadAccessToken,
       state,
     ],
   );

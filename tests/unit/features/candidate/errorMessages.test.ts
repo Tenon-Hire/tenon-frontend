@@ -11,6 +11,12 @@ describe('candidate error messages', () => {
     expect(friendlyBootstrapError(new HttpError(404, 'x'))).toContain(
       'invalid',
     );
+    expect(friendlyBootstrapError(new HttpError(401, 'x'))).toContain(
+      'sign in',
+    );
+    expect(friendlyBootstrapError(new HttpError(403, 'x'))).toContain(
+      'sign in',
+    );
     expect(friendlyBootstrapError(new HttpError(410, 'x'))).toContain(
       'expired',
     );
@@ -20,11 +26,11 @@ describe('candidate error messages', () => {
   });
 
   it('maps claim errors including auth mismatch', () => {
-    expect(friendlyClaimError(new HttpError(401, ''))).toContain(
-      'different email',
-    );
+    expect(friendlyClaimError(new HttpError(401, ''))).toContain('sign in');
     expect(friendlyClaimError(new HttpError(410, 'x'))).toContain('expired');
-    expect(friendlyClaimError(new HttpError(401, 'use this'))).toBe('use this');
+    expect(friendlyClaimError(new HttpError(403, 'use this'))).toContain(
+      'sign in',
+    );
     expect(friendlyClaimError(new HttpError(500, ''))).toContain(
       'Unable to claim',
     );

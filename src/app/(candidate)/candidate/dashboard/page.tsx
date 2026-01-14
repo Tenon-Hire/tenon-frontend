@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import CandidateDashboardPage from '@/features/candidate/dashboard/CandidateDashboardPage';
 import { BRAND_NAME } from '@/lib/brand';
+import { getCachedSessionNormalized } from '@/lib/auth0';
 
 export const metadata: Metadata = {
   title: `Candidate dashboard | ${BRAND_NAME}`,
@@ -8,5 +9,10 @@ export const metadata: Metadata = {
 };
 
 export default async function CandidateDashboardRoute() {
-  return <CandidateDashboardPage />;
+  const session = await getCachedSessionNormalized();
+  const signedInEmail =
+    session?.user && typeof session.user.email === 'string'
+      ? session.user.email
+      : null;
+  return <CandidateDashboardPage signedInEmail={signedInEmail} />;
 }
