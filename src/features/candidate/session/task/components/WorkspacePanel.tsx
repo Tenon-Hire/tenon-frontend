@@ -49,7 +49,7 @@ export function WorkspacePanel({
   const loadWorkspace = useCallback(
     async (mode: 'init' | 'refresh') => {
       if (!token) {
-        setError('Session expired. Please verify your invite again.');
+        setError('Session expired. Please sign in again.');
         setLoading(false);
         return;
       }
@@ -103,7 +103,7 @@ export function WorkspacePanel({
       } catch (err) {
         const status = toStatus(err);
         if (status === 401 || status === 403) {
-          setError('Session expired. Please verify your invite again.');
+          setError('Session expired. Please sign in again.');
         } else {
           setError(
             toUserMessage(err, 'Unable to load your workspace right now.'),

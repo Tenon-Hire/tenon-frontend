@@ -7,7 +7,7 @@ import {
   getCandidateCurrentTask,
   resolveCandidateInviteToken,
 } from '@/lib/api/candidate';
-import { setAuthToken } from '@/lib/auth';
+import { jsonResponse } from '../../setup/responseHelpers';
 
 jest.mock('@/lib/api/candidate', () => {
   const actual = jest.requireActual('@/lib/api/candidate');
@@ -39,17 +39,26 @@ function renderWithProvider(ui: React.ReactNode) {
   return render(<CandidateSessionProvider>{ui}</CandidateSessionProvider>);
 }
 
+const realFetch = global.fetch;
+const fetchMock = jest.fn();
+
 describe('CandidateSessionPage', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     Object.values(routerMock).forEach((fn) => fn.mockReset());
     sessionStorage.clear();
     localStorage.clear();
+    fetchMock.mockReset();
+    global.fetch = fetchMock as unknown as typeof fetch;
     resolveMock.mockResolvedValue({
       candidateSessionId: 123,
       status: 'in_progress',
       simulation: { title: 'Sim', role: 'Backend' },
     });
+  });
+
+  afterAll(() => {
+    global.fetch = realFetch;
   });
 
   it('claims invite and starts current task', async () => {
@@ -70,7 +79,9 @@ describe('CandidateSessionPage', () => {
       },
     });
 
-    setAuthToken('candidate-token');
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ accessToken: 'candidate-token' }) as Response,
+    );
     renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
     expect(
@@ -91,21 +102,27 @@ describe('CandidateSessionPage', () => {
     expect(currentTaskMock).toHaveBeenCalledWith(123, 'candidate-token');
   });
 
-  it('shows verification screen when access token is missing', async () => {
+  it('redirects to login when access token is missing', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ message: 'Not authenticated' }, 401) as Response,
+    );
     renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
-    expect(await screen.findByText(/Verify your invite/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/login?'),
+      ),
+    );
   });
 
-  it('returns to verification when the stored token is invalid', async () => {
-    setAuthToken('candidate-token');
+  it('returns to auth state when the access token is rejected', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ accessToken: 'candidate-token' }) as Response,
+    );
     resolveMock.mockRejectedValueOnce({ status: 401 });
 
     renderWithProvider(<CandidateSessionPage token="VALID_TOKEN" />);
 
-    expect(await screen.findByText(/Verify your invite/i)).toBeInTheDocument();
-    expect(
-      await screen.findByText(/verification session expired/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/sign in to continue/i)).toBeInTheDocument();
   });
 });

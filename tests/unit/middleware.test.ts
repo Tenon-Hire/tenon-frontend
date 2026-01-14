@@ -196,7 +196,7 @@ describe('middleware', () => {
     );
   });
 
-  it('allows unauthenticated candidate dashboard access', async () => {
+  it('redirects unauthenticated candidate dashboard access to login', async () => {
     getSessionNormalizedMock.mockResolvedValue(null);
 
     const req = new NextRequest(
@@ -204,9 +204,11 @@ describe('middleware', () => {
     );
     const res = await middleware(req);
 
-    expect(res?.status).toBe(200);
-    expect(res?.headers.get('location')).toBeNull();
-    expect(getSessionNormalizedMock).not.toHaveBeenCalled();
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toBe(
+      'http://localhost/auth/login?mode=candidate&returnTo=%2Fcandidate%2Fdashboard',
+    );
+    expect(getSessionNormalizedMock).toHaveBeenCalled();
   });
 
   it('redirects unauthenticated recruiter dashboard to login with mode', async () => {
@@ -297,7 +299,7 @@ describe('middleware', () => {
     expect(res?.status).toBe(200);
   });
 
-  it('allows recruiters to access candidate pages without auth gating', async () => {
+  it('blocks recruiters from accessing candidate pages', async () => {
     getSessionNormalizedMock.mockResolvedValue({
       user: { permissions: ['recruiter:access'] },
     });
@@ -307,7 +309,7 @@ describe('middleware', () => {
     );
     const res = await middleware(req);
 
-    expect(res?.status).toBe(200);
-    expect(res?.headers.get('location')).toBeNull();
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toContain('/not-authorized');
   });
 });

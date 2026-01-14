@@ -1,10 +1,5 @@
 import { apiClient, login, safeRequest } from '@/lib/api/httpClient';
-import { getAuthToken } from '@/lib/auth';
 import { responseHelpers } from '../../setup';
-
-jest.mock('@/lib/auth', () => ({
-  getAuthToken: jest.fn(),
-}));
 
 const fetchMock = jest.fn();
 
@@ -12,16 +7,14 @@ describe('apiClient request helpers', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     global.fetch = fetchMock as unknown as typeof fetch;
-    (getAuthToken as jest.Mock).mockReset();
   });
 
-  it('attaches auth token by default and normalizes URLs', async () => {
-    (getAuthToken as jest.Mock).mockReturnValue('token-123');
+  it('attaches auth token when provided and normalizes URLs', async () => {
     fetchMock.mockResolvedValue(
       responseHelpers.jsonResponse({ ok: true, data: { message: 'hi' } }),
     );
 
-    await apiClient.get('/jobs');
+    await apiClient.get('/jobs', undefined, { authToken: 'token-123' });
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/backend/jobs',
@@ -228,24 +221,6 @@ describe('apiClient request helpers', () => {
       method: 'DELETE',
       headers: {},
     });
-  });
-
-  it('respects provided authToken even when window is defined', async () => {
-    (getAuthToken as jest.Mock).mockReturnValue('ignored');
-    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({ ok: true }));
-
-    await apiClient.get('/auth-pref', { authToken: 'from-opts' });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/backend/auth-pref',
-      expect.objectContaining({
-        method: 'GET',
-        headers: { Authorization: 'Bearer from-opts' },
-        body: undefined,
-        credentials: 'include',
-        cache: 'no-store',
-      }),
-    );
   });
 
   it('safeRequest returns data and wraps unknown errors', async () => {

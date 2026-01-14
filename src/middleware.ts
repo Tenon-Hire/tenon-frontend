@@ -49,7 +49,6 @@ function redirectNotAuthorized(
 
 function shouldSkipAuth(pathname: string) {
   if (isPublicPath(pathname)) return true;
-  if (requiresCandidateAccess(pathname)) return true;
   return false;
 }
 

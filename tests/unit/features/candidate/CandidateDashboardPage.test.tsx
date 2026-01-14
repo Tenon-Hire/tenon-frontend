@@ -4,7 +4,7 @@ import CandidateDashboardPage, {
 } from '@/features/candidate/dashboard/CandidateDashboardPage';
 import { CandidateSessionProvider } from '@/features/candidate/session/CandidateSessionProvider';
 import { listCandidateInvites } from '@/lib/api/candidate';
-import { setAuthToken } from '@/lib/auth';
+import { responseHelpers } from '../../../setup';
 
 jest.mock('@/lib/api/candidate', () => ({
   listCandidateInvites: jest.fn(),
@@ -24,11 +24,13 @@ jest.mock('next/navigation', () => ({
 }));
 
 const listInvitesMock = listCandidateInvites as jest.Mock;
+const realFetch = global.fetch;
+const fetchMock = jest.fn();
 
-function renderPage() {
+function renderPage(signedInEmail: string | null = 'candidate@example.com') {
   return render(
     <CandidateSessionProvider>
-      <CandidateDashboardPage />
+      <CandidateDashboardPage signedInEmail={signedInEmail} />
     </CandidateSessionProvider>,
   );
 }
@@ -38,8 +40,14 @@ describe('CandidateDashboardPage', () => {
     Object.values(routerMock).forEach((fn) => fn.mockReset());
     listInvitesMock.mockReset();
     listInvitesMock.mockResolvedValue([]);
+    fetchMock.mockReset();
+    global.fetch = fetchMock as unknown as typeof fetch;
     localStorage.clear();
     sessionStorage.clear();
+  });
+
+  afterAll(() => {
+    global.fetch = realFetch;
   });
 
   it('shows invites list with continue CTA', async () => {
@@ -58,7 +66,9 @@ describe('CandidateDashboardPage', () => {
       },
     ]);
 
-    setAuthToken('candidate-token');
+    fetchMock.mockResolvedValueOnce(
+      responseHelpers.jsonResponse({ accessToken: 'candidate-token' }),
+    );
     renderPage();
 
     expect(await screen.findByText(/Infra Simulation/i)).toBeInTheDocument();
@@ -70,7 +80,9 @@ describe('CandidateDashboardPage', () => {
   it('shows empty state when no invites', async () => {
     listInvitesMock.mockResolvedValue([]);
 
-    setAuthToken('candidate-token');
+    fetchMock.mockResolvedValueOnce(
+      responseHelpers.jsonResponse({ accessToken: 'candidate-token' }),
+    );
     renderPage();
 
     await waitFor(() =>
@@ -94,7 +106,9 @@ describe('CandidateDashboardPage', () => {
       },
     ]);
 
-    setAuthToken('candidate-token');
+    fetchMock.mockResolvedValueOnce(
+      responseHelpers.jsonResponse({ accessToken: 'candidate-token' }),
+    );
     renderPage();
 
     expect(await screen.findByText(/Old Simulation/i)).toBeInTheDocument();
@@ -104,11 +118,15 @@ describe('CandidateDashboardPage', () => {
     expect(cta).toBeDisabled();
   });
 
-  it('prompts for verification when no token is available', async () => {
-    renderPage();
+  it('redirects to login when no token is available', async () => {
+    fetchMock.mockResolvedValueOnce(
+      responseHelpers.jsonResponse({ message: 'Not authenticated' }, 401),
+    );
+    renderPage(null);
 
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(
-      await screen.findByText(/Verify an invite to see your simulations/i),
+      await screen.findByText(/Sign in to see your simulations/i),
     ).toBeInTheDocument();
     expect(listInvitesMock).not.toHaveBeenCalled();
   });

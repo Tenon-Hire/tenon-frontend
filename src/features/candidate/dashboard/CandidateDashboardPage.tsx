@@ -8,6 +8,7 @@ import {
   listCandidateInvites,
 } from '@/lib/api/candidate';
 import { toUserMessage } from '@/lib/utils/errors';
+import { buildLoginHref } from '@/features/auth/authPaths';
 import { useCandidateSession } from '../session/CandidateSessionProvider';
 
 type InviteCardProps = {
@@ -126,19 +127,19 @@ function InviteCard({ invite, onContinue, fallbackToken }: InviteCardProps) {
   );
 }
 
-export default function CandidateDashboardPage() {
+export default function CandidateDashboardPage({
+  signedInEmail,
+}: {
+  signedInEmail?: string | null;
+}) {
   const router = useRouter();
-  const { state } = useCandidateSession();
+  const { state, loadAccessToken } = useCandidateSession();
 
   const [invites, setInvites] = useState<CandidateInvite[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [needsVerification, setNeedsVerification] = useState<boolean>(false);
 
-  const displayEmail = useMemo(
-    () => state.verifiedEmail ?? '',
-    [state.verifiedEmail],
-  );
+  const displayEmail = useMemo(() => signedInEmail ?? '', [signedInEmail]);
 
   const sortedInvites = useMemo(() => {
     return [...invites].sort((a, b) => {
@@ -153,12 +154,10 @@ export default function CandidateDashboardPage() {
     const run = async () => {
       setLoading(true);
       setError(null);
-      setNeedsVerification(false);
 
       try {
         const accessToken = state.token;
         if (!accessToken) {
-          setNeedsVerification(true);
           setInvites([]);
           return;
         }
@@ -190,6 +189,16 @@ export default function CandidateDashboardPage() {
     };
   }, [loadInvites]);
 
+  useEffect(() => {
+    if (state.token || state.authStatus !== 'idle') return;
+    void loadAccessToken();
+  }, [loadAccessToken, state.authStatus, state.token]);
+
+  useEffect(() => {
+    if (state.authStatus !== 'unauthenticated') return;
+    router.replace(buildLoginHref('/candidate/dashboard', 'candidate'));
+  }, [router, state.authStatus]);
+
   const handleContinue = (invite: CandidateInvite) => {
     if (invite.isExpired) {
       setError('This invite has expired. Please contact your recruiter.');
@@ -218,8 +227,8 @@ export default function CandidateDashboardPage() {
         </h1>
         <p className="text-sm text-gray-600">
           {displayEmail
-            ? `Verified as ${displayEmail}`
-            : 'Verify an invite to see your simulations.'}
+            ? `Signed in as ${displayEmail}`
+            : 'Sign in to see your simulations.'}
         </p>
       </div>
 
@@ -256,11 +265,6 @@ export default function CandidateDashboardPage() {
                 <div className="mt-4 h-2 w-full rounded bg-gray-200" />
               </div>
             ))}
-          </div>
-        ) : needsVerification ? (
-          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Verify an invite to see your simulations here. Open the invite link
-            from your email to enter the verification code.
           </div>
         ) : error ? (
           <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
