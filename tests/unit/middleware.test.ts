@@ -250,9 +250,36 @@ describe('middleware', () => {
     expect(res?.headers.get('location')).toBeNull();
   });
 
+  it('allows dual-permission users to access candidate routes', async () => {
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: ['recruiter:access', 'candidate:access'] },
+    });
+
+    const req = new NextRequest(
+      new URL('http://localhost/candidate/session/tok_123'),
+    );
+    const res = await middleware(req);
+
+    expect(res?.headers.get('location')).toBeNull();
+  });
+
   it('redirects candidates hitting recruiter pages to not authorized', async () => {
     getSessionNormalizedMock.mockResolvedValue({
       user: { permissions: ['candidate:access'] },
+    });
+
+    const req = new NextRequest(new URL('http://localhost/dashboard'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toBe(
+      'http://localhost/not-authorized?mode=recruiter&returnTo=%2Fdashboard',
+    );
+  });
+
+  it('redirects empty-permission users hitting recruiter pages to not authorized', async () => {
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: [] },
     });
 
     const req = new NextRequest(new URL('http://localhost/dashboard'));
@@ -323,6 +350,8 @@ describe('middleware', () => {
     const res = await middleware(req);
 
     expect(res?.status).toBe(307);
-    expect(res?.headers.get('location')).toContain('/not-authorized');
+    expect(res?.headers.get('location')).toBe(
+      'http://localhost/not-authorized?mode=candidate&returnTo=%2Fcandidate%2Fdashboard',
+    );
   });
 });
