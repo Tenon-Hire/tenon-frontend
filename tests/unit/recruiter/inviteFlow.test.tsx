@@ -16,6 +16,7 @@ describe('useInviteCandidateFlow', () => {
       inviteUrl: '/invite/url',
       candidateSessionId: 'cs_1',
       token: 'tok',
+      outcome: 'created',
     });
 
     const { result } = renderHook(() =>
@@ -41,6 +42,7 @@ describe('useInviteCandidateFlow', () => {
     );
     expect(response).toEqual({
       inviteUrl: '/invite/url',
+      outcome: 'created',
       simulationId: 'sim-123',
       candidateName: 'Jane',
       candidateEmail: 'user@example.com',
@@ -66,5 +68,27 @@ describe('useInviteCandidateFlow', () => {
     expect(result.current.state.message).toContain(
       'Failed to invite candidate',
     );
+  });
+
+  it('shows completed guidance when backend rejects completed candidates', async () => {
+    (inviteCandidate as jest.Mock).mockRejectedValueOnce({
+      status: 409,
+      details: { error: { code: 'candidate_already_completed' } },
+    });
+
+    const { result } = renderHook(() =>
+      useInviteCandidateFlow({
+        open: true,
+        simulationId: 'sim-123',
+        simulationTitle: 'Sim 123',
+      }),
+    );
+
+    await act(async () => {
+      await result.current.submit('Jane', 'jane@example.com');
+    });
+
+    expect(result.current.state.status).toBe('error');
+    expect(result.current.state.message).toMatch(/already completed/i);
   });
 });

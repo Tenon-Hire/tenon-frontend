@@ -54,15 +54,16 @@ describe('InviteToast', () => {
     const { onCopyStateChange, onDismiss } = renderToast({
       open: true,
       kind: 'success',
-      message: 'Invite created',
+      message: 'Invite sent',
       inviteUrl: 'http://example.com/invite',
     });
 
-    expect(screen.getByText('Invite created')).toBeInTheDocument();
+    expect(screen.getByText('Invite sent')).toBeInTheDocument();
     expect(
       screen.getByDisplayValue('http://example.com/invite'),
     ).toBeInTheDocument();
 
+    fireEvent.focus(screen.getByLabelText('Invite URL'));
     fireEvent.click(screen.getByRole('button', { name: /Copy/i }));
     await waitFor(() => {
       expect(copyToClipboard).toHaveBeenCalledWith('http://example.com/invite');

@@ -17,6 +17,7 @@ export type InviteCandidateResponse = {
   candidateSessionId: string;
   token: string;
   inviteUrl: string;
+  outcome: 'created' | 'resent';
 };
 
 export type CreateSimulationInput = {
@@ -257,10 +258,17 @@ export function normalizeCandidateSession(raw: unknown): CandidateSession {
 
 function normalizeInviteResponse(raw: unknown): InviteCandidateResponse {
   if (!isRecord(raw)) {
-    return { candidateSessionId: '', token: '', inviteUrl: '' };
+    return {
+      candidateSessionId: '',
+      token: '',
+      inviteUrl: '',
+      outcome: 'created',
+    };
   }
 
   const token = getString(raw.token, '');
+  const outcomeRaw = getString(raw.outcome, 'created');
+  const outcome = outcomeRaw === 'resent' ? 'resent' : 'created';
   const inviteUrl = buildInviteUrl(
     token,
     getString(raw.inviteUrl ?? raw.invite_url, ''),
@@ -273,6 +281,7 @@ function normalizeInviteResponse(raw: unknown): InviteCandidateResponse {
     ),
     token,
     inviteUrl,
+    outcome,
   };
 }
 
@@ -291,7 +300,12 @@ export async function inviteCandidate(
   const safeEmail = safeTrim(inviteEmail).toLowerCase();
 
   if (!safeId || !safeName || !safeEmail) {
-    return { candidateSessionId: '', token: '', inviteUrl: '' };
+    return {
+      candidateSessionId: '',
+      token: '',
+      inviteUrl: '',
+      outcome: 'created',
+    };
   }
 
   const data = await recruiterBffClient.post<unknown>(

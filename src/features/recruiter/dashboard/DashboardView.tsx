@@ -8,8 +8,6 @@ import type { InviteModalState, RecruiterProfile } from './types';
 import type { SimulationListItem } from '@/types/recruiter';
 import { DashboardHeader } from './components/DashboardHeader';
 import { SimulationSection } from './components/SimulationSection';
-import { resendInvite } from '@/lib/api/recruiter';
-import { errorToMessage } from '../utils/formatters';
 import type { InviteUiState } from '@/features/recruiter/invitations/InviteCandidateModal';
 
 const InviteCandidateModal = dynamic(
@@ -63,9 +61,6 @@ export default function DashboardView({
   });
 
   const inviteFlow = useInviteCandidateFlow(modal.open ? modal : null);
-  const [resendState, setResendState] = useState<InviteUiState>({
-    status: 'idle',
-  });
 
   const [toast, setToast] = useState<
     | { open: false }
@@ -83,7 +78,6 @@ export default function DashboardView({
 
   function openInvite(simId: string, simTitle: string) {
     inviteFlow.reset();
-    setResendState({ status: 'idle' });
     setModal({ open: true, simulationId: simId, simulationTitle: simTitle });
   }
 
@@ -102,10 +96,11 @@ export default function DashboardView({
       ? `${res.candidateName} (${res.candidateEmail})`
       : res.candidateEmail;
 
+    const actionLabel = res.outcome === 'resent' ? 'resent' : 'sent';
     setToast({
       open: true,
       kind: 'success',
-      message: `Invite created for ${who}.`,
+      message: `Invite ${actionLabel} for ${who}.`,
       inviteUrl: res.inviteUrl,
     });
 
@@ -118,40 +113,10 @@ export default function DashboardView({
     void onRefresh();
   };
 
-  const handleResend = async (candidateSessionId: number) => {
-    if (!modal.simulationId) return;
-    setResendState({ status: 'loading' });
-    try {
-      await resendInvite(modal.simulationId, candidateSessionId);
-      setResendState({ status: 'idle' });
-      setModal({ open: false, simulationId: '', simulationTitle: '' });
-      setToast({
-        open: true,
-        kind: 'success',
-        message: 'Invite resent.',
-      });
-      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = window.setTimeout(() => {
-        dismissToast();
-        toastTimerRef.current = null;
-      }, 4000);
-    } catch (e: unknown) {
-      const status =
-        e && typeof e === 'object' ? (e as { status?: unknown }).status : null;
-      const message =
-        status === 429
-          ? 'Too many invites sent. Please wait and try again.'
-          : errorToMessage(e, 'Unable to resend invite.');
-      setResendState({ status: 'error', message });
-    }
-  };
-
   const modalState: InviteUiState =
-    resendState.status !== 'idle'
-      ? resendState
-      : inviteFlow.state.status === 'error'
-        ? { status: 'error', message: inviteFlow.state.message ?? '' }
-        : { status: inviteFlow.state.status };
+    inviteFlow.state.status === 'error'
+      ? { status: 'error', message: inviteFlow.state.message ?? '' }
+      : { status: inviteFlow.state.status };
 
   return (
     <main className="flex flex-col gap-4 py-8">
@@ -206,14 +171,11 @@ export default function DashboardView({
         <InviteCandidateModal
           open={modal.open}
           title={inviteWho}
-          simulationId={modal.simulationId}
           state={modalState}
           onClose={() => {
-            setResendState({ status: 'idle' });
             setModal({ open: false, simulationId: '', simulationTitle: '' });
           }}
           onSubmit={submitInvite}
-          onResend={handleResend}
           initialName=""
           initialEmail=""
         />

@@ -59,6 +59,7 @@ export function useInviteCandidateFlow(simulation: InviteModalState | null) {
         setState({ status: 'idle' });
         return {
           inviteUrl: res.inviteUrl,
+          outcome: res.outcome,
           simulationId: safeSimulationId,
           candidateName: safeName,
           candidateEmail: safeEmail,
@@ -68,9 +69,18 @@ export function useInviteCandidateFlow(simulation: InviteModalState | null) {
           e && typeof e === 'object'
             ? (e as { status?: unknown }).status
             : null;
+        const details =
+          e && typeof e === 'object'
+            ? (e as { details?: unknown }).details
+            : null;
+        const errorCode =
+          details && typeof details === 'object'
+            ? (details as { error?: { code?: unknown } }).error?.code
+            : null;
         const friendlyMessage = (() => {
-          if (status === 409)
-            return 'This candidate was already invited. Try resending from the table.';
+          if (status === 409 && errorCode === 'candidate_already_completed') {
+            return 'Candidate already completed this simulation and cannot be re-invited.';
+          }
           if (status === 422) return 'Enter a valid email address.';
           if (status === 429)
             return 'Too many invites sent. Please wait and try again.';

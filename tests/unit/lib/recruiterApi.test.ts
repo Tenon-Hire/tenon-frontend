@@ -140,6 +140,7 @@ describe('recruiterApi', () => {
         candidateSessionId: 'cs_1',
         token: 'tok_1',
         inviteUrl: 'http://localhost:3000/candidate/session/tok_1',
+        outcome: 'created',
       });
 
       await inviteCandidate('sim_1', 'Jane Doe', 'jane@example.com');
@@ -156,6 +157,7 @@ describe('recruiterApi', () => {
         candidateSessionId: 'cs_1',
         token: 'tok_1',
         inviteUrl: 'http://localhost:3000/candidate/session/tok_1',
+        outcome: 'created',
       });
 
       const result = await inviteCandidate(
@@ -168,6 +170,7 @@ describe('recruiterApi', () => {
         candidateSessionId: 'cs_1',
         token: 'tok_1',
         inviteUrl: 'http://localhost:3000/candidate/session/tok_1',
+        outcome: 'created',
       });
     });
 
@@ -188,6 +191,7 @@ describe('recruiterApi', () => {
         candidateSessionId: 'cs_2',
         token: 'tok_2',
         inviteUrl: 'http://localhost:3000/candidate/session/tok_2',
+        outcome: 'created',
       });
     });
 
@@ -209,6 +213,7 @@ describe('recruiterApi', () => {
       );
 
       expect(result.inviteUrl).toBe('/candidate/session/tok_3');
+      expect(result.outcome).toBe('created');
 
       if (originalWindow) {
         globalAny.window = originalWindow;
@@ -228,6 +233,7 @@ describe('recruiterApi', () => {
         candidateSessionId: '',
         token: '',
         inviteUrl: '',
+        outcome: 'created',
       });
     });
 
@@ -237,6 +243,7 @@ describe('recruiterApi', () => {
         candidateSessionId: '',
         token: '',
         inviteUrl: '',
+        outcome: 'created',
       });
       expect(mockedBffPost).not.toHaveBeenCalled();
     });
@@ -252,6 +259,7 @@ describe('recruiterApi', () => {
         candidateSessionId: '',
         token: '',
         inviteUrl: '',
+        outcome: 'created',
       });
       expect(mockedBffPost).not.toHaveBeenCalled();
     });

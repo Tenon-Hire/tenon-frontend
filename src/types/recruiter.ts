@@ -15,6 +15,7 @@ export type InviteModalState = {
 
 export type InviteSuccess = {
   inviteUrl: string;
+  outcome: 'created' | 'resent';
   candidateName: string;
   candidateEmail: string;
   simulationId: string;

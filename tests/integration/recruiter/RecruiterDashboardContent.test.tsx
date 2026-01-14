@@ -9,11 +9,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import RecruiterDashboardPage from '@/features/recruiter/dashboard/RecruiterDashboardPage';
 import type { RecruiterProfile } from '@/types/recruiter';
-import {
-  inviteCandidate,
-  listSimulationCandidates,
-  resendInvite,
-} from '@/lib/api/recruiter';
+import { inviteCandidate, listSimulationCandidates } from '@/lib/api/recruiter';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
 
 jest.mock('@/lib/api/recruiter', () => {
@@ -22,7 +18,6 @@ jest.mock('@/lib/api/recruiter', () => {
     ...actual,
     listSimulations: jest.fn(),
     listSimulationCandidates: jest.fn(),
-    resendInvite: jest.fn(),
     inviteCandidate: jest.fn(),
   };
 });
@@ -38,23 +33,9 @@ const mockedListSimulationCandidates =
   listSimulationCandidates as jest.MockedFunction<
     typeof listSimulationCandidates
   >;
-const mockedResendInvite = resendInvite as jest.MockedFunction<
-  typeof resendInvite
->;
 const mockUseDashboardData = useDashboardData as jest.MockedFunction<
   typeof useDashboardData
 >;
-
-async function waitForInviteLoad() {
-  await waitFor(() => {
-    expect(
-      screen.queryByText(/Loading existing invites/i),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/Couldn’t load existing invites/i),
-    ).not.toBeInTheDocument();
-  });
-}
 
 describe('RecruiterDashboardPage', () => {
   const profile: RecruiterProfile = {
@@ -75,11 +56,60 @@ describe('RecruiterDashboardPage', () => {
       loadingSimulations: false,
       refresh: jest.fn(),
     });
-    mockedListSimulationCandidates.mockResolvedValue([]);
   });
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('does not pre-check invited emails when opening the modal', async () => {
+    const user = userEvent.setup();
+
+    mockUseDashboardData.mockReturnValue({
+      profile: null,
+      profileError: null,
+      simulations: [
+        {
+          id: 'sim_1',
+          title: 'Sim 1',
+          role: 'Backend',
+          createdAt: '2025-12-10T10:00:00Z',
+        },
+      ],
+      simError: null,
+      loadingProfile: false,
+      loadingSimulations: false,
+      refresh: jest.fn(),
+    });
+
+    mockedInviteCandidate.mockResolvedValueOnce({
+      candidateSessionId: 'cs_1',
+      token: 'tok_123',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
+      outcome: 'created',
+    });
+
+    render(<RecruiterDashboardPage />);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Invite candidate' }),
+    );
+
+    await waitFor(() =>
+      expect(mockedListSimulationCandidates).not.toHaveBeenCalled(),
+    );
+
+    await user.type(screen.getByLabelText(/Candidate name/i), 'Jane Doe');
+    await user.type(
+      screen.getByLabelText(/Candidate email/i),
+      'jane@example.com',
+    );
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
+
+    await waitFor(() =>
+      expect(mockedListSimulationCandidates).not.toHaveBeenCalled(),
+    );
+    await waitFor(() => expect(mockedInviteCandidate).toHaveBeenCalledTimes(1));
   });
 
   it('renders profile details when available', async () => {
@@ -198,6 +228,7 @@ describe('RecruiterDashboardPage', () => {
       candidateSessionId: 'cs_1',
       token: 'tok_123',
       inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
+      outcome: 'created',
     });
 
     render(<RecruiterDashboardPage />);
@@ -206,7 +237,6 @@ describe('RecruiterDashboardPage', () => {
       name: 'Invite candidate',
     });
     await user.click(inviteBtn);
-    await waitForInviteLoad();
 
     await user.type(screen.getByLabelText(/Candidate name/i), 'Jane Doe');
     await user.type(
@@ -214,15 +244,13 @@ describe('RecruiterDashboardPage', () => {
       'jane@example.com',
     );
 
-    const createBtn = screen.getByRole('button', { name: /Create invite/i });
+    const createBtn = screen.getByRole('button', { name: /Send invite/i });
     await user.click(createBtn);
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     expect(
-      await screen.findByText(
-        'Invite created for Jane Doe (jane@example.com).',
-      ),
+      await screen.findByText('Invite sent for Jane Doe (jane@example.com).'),
     ).toBeInTheDocument();
 
     expect(mockedInviteCandidate).toHaveBeenCalledWith(
@@ -232,7 +260,7 @@ describe('RecruiterDashboardPage', () => {
     );
   });
 
-  it('shows resend CTA when email already invited', async () => {
+  it('shows resent messaging when backend reports resend', async () => {
     const user = userEvent.setup();
 
     mockUseDashboardData.mockReturnValue({
@@ -252,123 +280,28 @@ describe('RecruiterDashboardPage', () => {
       refresh: jest.fn(),
     });
 
-    mockedListSimulationCandidates.mockResolvedValueOnce([
-      {
-        candidateSessionId: 1,
-        inviteEmail: 'Test@Email.com',
-        candidateName: 'Alex',
-        status: 'not_started',
-        startedAt: null,
-        completedAt: null,
-        hasReport: false,
-      },
-    ]);
-    mockedResendInvite.mockResolvedValueOnce({});
+    mockedInviteCandidate.mockResolvedValueOnce({
+      candidateSessionId: 'cs_2',
+      token: 'tok_456',
+      inviteUrl: 'http://localhost:3000/candidate/session/tok_456',
+      outcome: 'resent',
+    });
 
     render(<RecruiterDashboardPage />);
 
-    await user.click(screen.getByRole('button', { name: 'Invite candidate' }));
-    await waitForInviteLoad();
-
+    await user.click(
+      await screen.findByRole('button', { name: 'Invite candidate' }),
+    );
     await user.type(screen.getByLabelText(/Candidate name/i), 'Alex');
     await user.type(
       screen.getByLabelText(/Candidate email/i),
-      '  test@email.com  ',
+      'alex@example.com',
     );
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
     expect(
-      await screen.findByText(
-        /This email is already invited to this simulation\./i,
-      ),
+      await screen.findByText(/Invite resent for Alex/i),
     ).toBeInTheDocument();
-    const resendBtn = screen.getByRole('button', { name: /Resend invite/i });
-    await user.click(resendBtn);
-
-    expect(mockedResendInvite).toHaveBeenCalledWith('sim_1', 1);
-    expect(mockedInviteCandidate).not.toHaveBeenCalled();
-    expect(mockedListSimulationCandidates).toHaveBeenCalledWith('sim_1');
-  });
-
-  it('disables submit while loading existing invites', async () => {
-    const user = userEvent.setup();
-    let resolveFetch: (value: unknown) => void = () => undefined;
-    const pending = new Promise((resolve) => {
-      resolveFetch = resolve;
-    });
-
-    mockUseDashboardData.mockReturnValue({
-      profile: null,
-      profileError: null,
-      simulations: [
-        {
-          id: 'sim_1',
-          title: 'Sim 1',
-          role: 'Backend',
-          createdAt: '2025-12-10T10:00:00Z',
-        },
-      ],
-      simError: null,
-      loadingProfile: false,
-      loadingSimulations: false,
-      refresh: jest.fn(),
-    });
-
-    mockedListSimulationCandidates.mockReturnValueOnce(
-      pending as Promise<Awaited<ReturnType<typeof listSimulationCandidates>>>,
-    );
-
-    render(<RecruiterDashboardPage />);
-
-    await user.click(screen.getByRole('button', { name: 'Invite candidate' }));
-
-    expect(
-      await screen.findByText(/Loading existing invites/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Create invite/i }),
-    ).toBeDisabled();
-
-    resolveFetch([]);
-    await waitFor(() => {
-      expect(
-        screen.queryByText(/Loading existing invites/i),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  it('shows error and disables submit when invites fail to load', async () => {
-    const user = userEvent.setup();
-
-    mockUseDashboardData.mockReturnValue({
-      profile: null,
-      profileError: null,
-      simulations: [
-        {
-          id: 'sim_1',
-          title: 'Sim 1',
-          role: 'Backend',
-          createdAt: '2025-12-10T10:00:00Z',
-        },
-      ],
-      simError: null,
-      loadingProfile: false,
-      loadingSimulations: false,
-      refresh: jest.fn(),
-    });
-
-    mockedListSimulationCandidates.mockRejectedValueOnce(new Error('nope'));
-
-    render(<RecruiterDashboardPage />);
-
-    await user.click(screen.getByRole('button', { name: 'Invite candidate' }));
-
-    expect(
-      await screen.findByText(/Couldn’t load existing invites/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Create invite/i }),
-    ).toBeDisabled();
-    expect(mockedInviteCandidate).not.toHaveBeenCalled();
   });
 
   it('copies invite url from toast and resets copied state', async () => {
@@ -401,6 +334,7 @@ describe('RecruiterDashboardPage', () => {
       candidateSessionId: 'cs_1',
       token: 'tok_123',
       inviteUrl: 'http://localhost:3000/candidate/session/tok_123',
+      outcome: 'created',
     });
 
     render(<RecruiterDashboardPage />);
@@ -409,13 +343,12 @@ describe('RecruiterDashboardPage', () => {
       name: 'Invite candidate',
     });
     await user.click(inviteBtn);
-    await waitForInviteLoad();
     await user.type(screen.getByLabelText(/Candidate name/i), 'Jane Doe');
     await user.type(
       screen.getByLabelText(/Candidate email/i),
       'jane@example.com',
     );
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
     const copyBtn = await screen.findByRole('button', { name: /Copy/i });
     await user.click(copyBtn);
@@ -439,7 +372,7 @@ describe('RecruiterDashboardPage', () => {
 
     await user.click(screen.getByRole('button', { name: /Dismiss/i }));
     expect(
-      screen.queryByText(/Invite created for Jane Doe/i),
+      screen.queryByText(/Invite sent for Jane Doe/i),
     ).not.toBeInTheDocument();
   }, 15000);
 
@@ -469,14 +402,13 @@ describe('RecruiterDashboardPage', () => {
       name: 'Invite candidate',
     });
     fireEvent.click(inviteBtn);
-    await waitForInviteLoad();
     fireEvent.change(screen.getByLabelText(/Candidate name/i), {
       target: { value: 'Joe' },
     });
     fireEvent.change(screen.getByLabelText(/Candidate email/i), {
       target: { value: 'joe@example.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Create invite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send invite/i }));
 
     await waitFor(() => expect(mockedInviteCandidate).toHaveBeenCalled());
     expect(screen.getAllByText(/Invite failed/).length).toBeGreaterThanOrEqual(
@@ -531,6 +463,7 @@ describe('RecruiterDashboardPage', () => {
       candidateSessionId: 'cs_2',
       token: 'tok_456',
       inviteUrl: 'http://localhost:3000/candidate/session/tok_456',
+      outcome: 'created',
     });
 
     mockUseDashboardData.mockReturnValue({
@@ -556,13 +489,12 @@ describe('RecruiterDashboardPage', () => {
       name: 'Invite candidate',
     });
     await user.click(inviteBtn);
-    await waitForInviteLoad();
     await user.type(screen.getByLabelText(/Candidate name/i), 'Alex');
     await user.type(
       screen.getByLabelText(/Candidate email/i),
       'alex@example.com',
     );
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
     const copyBtn = await screen.findByRole('button', { name: /Copy/i });
     await user.click(copyBtn);
@@ -571,9 +503,7 @@ describe('RecruiterDashboardPage', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /Dismiss/i }));
-    expect(
-      screen.queryByText(/Invite created for Alex/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Invite sent for Alex/i)).not.toBeInTheDocument();
   });
 
   it('auto-dismisses success toast after timeout', async () => {
@@ -601,6 +531,7 @@ describe('RecruiterDashboardPage', () => {
       candidateSessionId: 'cs_3',
       token: 'tok_789',
       inviteUrl: 'http://localhost:3000/candidate/session/tok_789',
+      outcome: 'created',
     });
 
     render(<RecruiterDashboardPage />);
@@ -609,16 +540,15 @@ describe('RecruiterDashboardPage', () => {
       name: 'Invite candidate',
     });
     await user.click(inviteBtn);
-    await waitForInviteLoad();
     await user.type(screen.getByLabelText(/Candidate name/i), 'Jamie');
     await user.type(
       screen.getByLabelText(/Candidate email/i),
       'jamie@example.com',
     );
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
     expect(
-      await screen.findByText(/Invite created for Jamie/i),
+      await screen.findByText(/Invite sent for Jamie/i),
     ).toBeInTheDocument();
 
     act(() => {
@@ -626,7 +556,7 @@ describe('RecruiterDashboardPage', () => {
     });
 
     expect(
-      screen.queryByText(/Invite created for Jamie/i),
+      screen.queryByText(/Invite sent for Jamie/i),
     ).not.toBeInTheDocument();
   });
 
@@ -660,6 +590,7 @@ describe('RecruiterDashboardPage', () => {
       candidateSessionId: 'cs_4',
       token: 'tok_999',
       inviteUrl: 'http://localhost:3000/candidate/session/tok_999',
+      outcome: 'created',
     });
 
     render(<RecruiterDashboardPage />);
@@ -668,13 +599,12 @@ describe('RecruiterDashboardPage', () => {
       name: 'Invite candidate',
     });
     await user.click(inviteBtn);
-    await waitForInviteLoad();
     await user.type(screen.getByLabelText(/Candidate name/i), 'Chris');
     await user.type(
       screen.getByLabelText(/Candidate email/i),
       'chris@example.com',
     );
-    await user.click(screen.getByRole('button', { name: /Create invite/i }));
+    await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
     const copyBtn = await screen.findByRole('button', { name: /Copy/i });
     await user.click(copyBtn);
