@@ -237,6 +237,19 @@ describe('middleware', () => {
     expect(mockAuth0.middleware).toHaveBeenCalled();
   });
 
+  it('allows authenticated users without recruiter access to hit candidate routes', async () => {
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: [] },
+    });
+
+    const req = new NextRequest(
+      new URL('http://localhost/candidate/session/tok_123'),
+    );
+    const res = await middleware(req);
+
+    expect(res?.headers.get('location')).toBeNull();
+  });
+
   it('redirects candidates hitting recruiter pages to not authorized', async () => {
     getSessionNormalizedMock.mockResolvedValue({
       user: { permissions: ['candidate:access'] },
