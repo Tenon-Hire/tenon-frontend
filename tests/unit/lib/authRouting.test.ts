@@ -1,4 +1,4 @@
-import { sanitizeReturnTo } from '@/lib/auth/routing';
+import { buildLoginUrl, sanitizeReturnTo } from '@/lib/auth/routing';
 
 describe('sanitizeReturnTo', () => {
   it('allows safe relative paths', () => {
@@ -43,5 +43,15 @@ describe('sanitizeReturnTo', () => {
       '/',
     );
     expect(sanitizeReturnTo('/dashboard%0d%0aSet-Cookie: x=y')).toBe('/');
+  });
+
+  it('sanitizes unsafe returnTo in login redirect builder', () => {
+    const href = buildLoginUrl('recruiter', 'https://evil.com');
+    expect(href.startsWith('/auth/login')).toBe(true);
+    const url = new URL(href, 'http://test.local');
+    expect(url.pathname).toBe('/auth/login');
+    expect(url.searchParams.get('mode')).toBe('recruiter');
+    expect(url.searchParams.get('returnTo')).toBe('/');
+    expect(url.searchParams.get('returnTo')).not.toMatch(/^https?:/i);
   });
 });
