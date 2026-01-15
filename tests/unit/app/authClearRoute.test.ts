@@ -83,4 +83,19 @@ describe('/auth/clear route', () => {
     expect(deletedNames).toContain('__Host-appSession');
     expect(deletedNames).not.toContain('__Secure-analytics');
   });
+
+  it('sanitizes unsafe returnTo before redirecting', async () => {
+    const ReqCtor = NextRequest as unknown as new (
+      url: string,
+      init?: { cookies?: Array<{ name: string; value?: string }> },
+    ) => NextRequest;
+    const req = new ReqCtor(
+      'http://app.test/auth/clear?returnTo=https%3A%2F%2Fevil.com&mode=recruiter',
+    );
+    const res = await GET(req);
+    const location = String(res.headers.get('location') ?? '');
+    expect(location).toMatch(/^http:\/\/app\.test\/auth\/error\?/);
+    expect(location).toContain('returnTo=%2F');
+    expect(location).toContain('mode=recruiter');
+  });
 });

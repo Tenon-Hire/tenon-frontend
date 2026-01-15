@@ -250,4 +250,30 @@ describe('RunTestsPanel', () => {
       screen.queryByText(/Failed to start tests/i),
     ).not.toBeInTheDocument();
   });
+
+  it('clears polling timers on unmount', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'run-unmount' });
+    const onPoll = jest.fn().mockResolvedValue({ status: 'running' as const });
+
+    const { unmount } = render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await act(async () => Promise.resolve());
+
+    act(() => {
+      unmount();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+
+    expect(onPoll).toHaveBeenCalledTimes(0);
+  });
 });
