@@ -146,7 +146,11 @@ describe('middleware', () => {
   it('does not look up session for public non-root routes when logged out', async () => {
     getSessionNormalizedMock.mockResolvedValue(null);
     const req = new NextRequest(new URL('http://localhost/auth/logout'));
-    await middleware(req);
+    const res = await middleware(req);
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toBe(
+      'http://localhost/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
+    );
     expect(getSessionNormalizedMock).not.toHaveBeenCalled();
   });
 
@@ -162,6 +166,44 @@ describe('middleware', () => {
     expect(res?.headers.get('location')).toBe(
       'http://localhost/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
     );
+  });
+
+  it('normalizes relative logout returnTo to root-only', async () => {
+    getSessionNormalizedMock.mockResolvedValue(null);
+    const req = new NextRequest(
+      new URL('http://localhost/auth/logout?returnTo=%2Fdashboard'),
+    );
+    const res = await middleware(req);
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toBe(
+      'http://localhost/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
+    );
+  });
+
+  it('normalizes same-origin absolute logout returnTo to root-only', async () => {
+    getSessionNormalizedMock.mockResolvedValue(null);
+    const req = new NextRequest(
+      new URL(
+        'http://localhost/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
+      ),
+    );
+    const res = await middleware(req);
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toBe(
+      'http://localhost/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
+    );
+  });
+
+  it('does not redirect when logout returnTo is already root', async () => {
+    getSessionNormalizedMock.mockResolvedValue(null);
+    const req = new NextRequest(
+      new URL(
+        'http://localhost/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
+      ),
+    );
+    const res = await middleware(req);
+    expect(res?.status).toBe(200);
+    expect(res?.headers.get('location')).toBeNull();
   });
 
   it('allows auth login public route when logged out preserving query', async () => {

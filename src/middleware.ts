@@ -24,44 +24,9 @@ function isPublicPath(pathname: string) {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-function safeDecode(value: string): string | null {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return null;
-  }
-}
-
 function resolveLogoutReturnTo(request: NextRequest): string {
   const origin = request.nextUrl.origin;
-  const fallback = new URL('/', origin).toString();
-  const raw = request.nextUrl.searchParams.get('returnTo');
-  if (!raw) return fallback;
-
-  const candidates = [raw];
-  const decoded = safeDecode(raw);
-  if (decoded && decoded !== raw) candidates.push(decoded);
-
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    if (candidate.startsWith('/') && !candidate.startsWith('//')) {
-      const url = new URL(candidate, origin);
-      url.search = '';
-      url.hash = '';
-      return url.toString();
-    }
-    try {
-      const url = new URL(candidate);
-      if (url.origin !== origin) continue;
-      url.search = '';
-      url.hash = '';
-      return url.toString();
-    } catch {
-      continue;
-    }
-  }
-
-  return fallback;
+  return new URL('/', origin).toString();
 }
 
 function redirect(to: string, request: NextRequest) {
