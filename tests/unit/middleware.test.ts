@@ -150,6 +150,20 @@ describe('middleware', () => {
     expect(getSessionNormalizedMock).not.toHaveBeenCalled();
   });
 
+  it('normalizes logout returnTo to same-origin root', async () => {
+    getSessionNormalizedMock.mockResolvedValue(null);
+    const req = new NextRequest(
+      new URL(
+        'http://localhost/auth/logout?returnTo=https%3A%2F%2Fevil.com%2Fphish',
+      ),
+    );
+    const res = await middleware(req);
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toBe(
+      'http://localhost/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
+    );
+  });
+
   it('allows auth login public route when logged out preserving query', async () => {
     getSessionNormalizedMock.mockResolvedValue(null);
     const req = new NextRequest(
