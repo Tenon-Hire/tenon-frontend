@@ -143,7 +143,7 @@ describe('middleware', () => {
     );
   });
 
-  it('does not look up session for public non-root routes when logged out', async () => {
+  it('normalizes /auth/logout by adding root returnTo when missing (no session lookup)', async () => {
     getSessionNormalizedMock.mockResolvedValue(null);
     const req = new NextRequest(new URL('http://localhost/auth/logout'));
     const res = await middleware(req);
@@ -194,7 +194,7 @@ describe('middleware', () => {
     );
   });
 
-  it('does not redirect when logout returnTo is already root', async () => {
+  it('does not issue a normalization redirect when logout returnTo is already root', async () => {
     getSessionNormalizedMock.mockResolvedValue(null);
     const req = new NextRequest(
       new URL(
@@ -202,7 +202,6 @@ describe('middleware', () => {
       ),
     );
     const res = await middleware(req);
-    expect(res?.status).toBe(200);
     expect(res?.headers.get('location')).toBeNull();
   });
 

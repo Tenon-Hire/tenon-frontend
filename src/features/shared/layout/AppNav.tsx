@@ -24,7 +24,7 @@ export function AppNav({ isAuthed, permissions = [], navScope }: AppNavProps) {
   const showCandidate = allowCandidate;
 
   return (
-    <nav className="flex items-center gap-4 text-sm">
+    <nav className="flex items-center gap-4 pr-2 text-sm sm:pr-3">
       {showRecruiter ? (
         <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
           Recruiter Dashboard
@@ -38,7 +38,10 @@ export function AppNav({ isAuthed, permissions = [], navScope }: AppNavProps) {
           Candidate Portal
         </Link>
       ) : null}
-      <a href={buildLogoutHref()} className="text-gray-700 hover:text-gray-900">
+      <a
+        href={buildLogoutHref()}
+        className="inline-flex select-none items-center rounded-md px-2.5 py-1 text-gray-700 hover:text-gray-900"
+      >
         Logout
       </a>
     </nav>
