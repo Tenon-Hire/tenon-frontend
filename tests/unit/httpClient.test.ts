@@ -27,6 +27,11 @@ describe('httpClient', () => {
     expect(isSameOriginRequest('https://example.com/api')).toBe(false);
   });
 
+  it('falls back to relative check when URL parsing fails', () => {
+    expect(isSameOriginRequest('http://[::1')).toBe(false);
+    expect(isSameOriginRequest('/relative/path')).toBe(true);
+  });
+
   it('falls back to relative check on server without window', () => {
     const originalWindow = (global as unknown as { window?: unknown }).window;
     const globalWindow = global as unknown as { window?: unknown };

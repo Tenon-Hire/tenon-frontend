@@ -24,6 +24,11 @@ function isPublicPath(pathname: string) {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+function resolveLogoutReturnTo(request: NextRequest): string {
+  const origin = request.nextUrl.origin;
+  return new URL('/', origin).toString();
+}
+
 function redirect(to: string, request: NextRequest) {
   return NextResponse.redirect(new URL(to, request.url));
 }
@@ -90,6 +95,17 @@ function isNextResponse(value: unknown): value is NextResponse {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
+
+  if (pathname === '/auth/logout') {
+    const safeReturnTo = resolveLogoutReturnTo(request);
+    const currentReturnTo = request.nextUrl.searchParams.get('returnTo');
+    if (currentReturnTo !== safeReturnTo) {
+      const redirectUrl = new URL(request.url);
+      redirectUrl.searchParams.set('returnTo', safeReturnTo);
+      redirectUrl.hash = '';
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
 
   const perfStart = process.env.TENON_DEBUG_PERF ? Date.now() : null;
   const authResponse = await auth0.middleware(request);

@@ -170,6 +170,41 @@ describe('bff helpers', () => {
       }
     });
 
+    it('logs debug output when no session and debug enabled', async () => {
+      process.env.TENON_DEBUG_AUTH = 'true';
+      const debugSpy = jest
+        .spyOn(console, 'debug')
+        .mockImplementation(() => undefined);
+      getSessionNormalized.mockResolvedValue(null);
+
+      const res = await ensureAccessToken();
+      expect(res).toBeInstanceOf(NextResponse);
+      expect(debugSpy).toHaveBeenCalledWith('[auth] no session available');
+
+      debugSpy.mockRestore();
+      process.env.TENON_DEBUG_AUTH = undefined;
+    });
+
+    it('returns 403 when required permission is missing', async () => {
+      process.env.TENON_DEBUG_AUTH = 'true';
+      const debugSpy = jest
+        .spyOn(console, 'debug')
+        .mockImplementation(() => undefined);
+      getSessionNormalized.mockResolvedValue({
+        user: { sub: 'x', permissions: [] },
+      });
+
+      const res = await ensureAccessToken('recruiter:access');
+      expect(res).toBeInstanceOf(NextResponse);
+      if (res instanceof NextResponse) {
+        expect(res.status).toBe(403);
+      }
+      expect(debugSpy).toHaveBeenCalled();
+
+      debugSpy.mockRestore();
+      process.env.TENON_DEBUG_AUTH = undefined;
+    });
+
     it('returns access token payload when session and token available', async () => {
       getSessionNormalized.mockResolvedValue({ user: { sub: 'x' } });
       getAccessToken.mockResolvedValue('token-123');

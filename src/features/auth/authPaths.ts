@@ -10,6 +10,40 @@ function connectionForMode(mode?: LoginMode): string | null {
   return null;
 }
 
+function resolveLogoutOrigin(): string | null {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  const candidates = [
+    process.env.NEXT_PUBLIC_TENON_APP_BASE_URL,
+    process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : null,
+  ];
+
+  for (const raw of candidates) {
+    if (!raw) continue;
+    try {
+      return new URL(raw).origin;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+function buildAbsoluteReturnTo(returnTo?: string): string | null {
+  const origin = resolveLogoutOrigin();
+  if (!origin) return null;
+  const safePath = buildReturnTo(returnTo);
+  const url = new URL(safePath, origin);
+  url.search = '';
+  url.hash = '';
+  return url.toString();
+}
+
 export function buildLoginHref(returnTo?: string, mode?: LoginMode): string {
   return buildAuthHref({ returnTo, mode });
 }
@@ -41,8 +75,9 @@ function buildAuthHref({
 
 export function buildLogoutHref(returnTo?: string): string {
   const base = '/auth/logout';
-  if (!returnTo) return base;
-  return `${base}?returnTo=${encodeURIComponent(buildReturnTo(returnTo))}`;
+  const absoluteReturnTo = buildAbsoluteReturnTo(returnTo);
+  if (!absoluteReturnTo) return base;
+  return `${base}?returnTo=${encodeURIComponent(absoluteReturnTo)}`;
 }
 
 export function buildClearAuthHref(

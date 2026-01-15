@@ -423,6 +423,26 @@ async function safeParseResponse(res: Response): Promise<unknown> {
   }
 }
 
+export const __testables = {
+  formatDateTime,
+  inviteStatusLabel,
+  verificationStatusLabel,
+  formatDayProgress,
+  formatCooldown,
+  deriveStatus,
+  toTimestamp,
+  toStringOrNull,
+  toStringOrCsv,
+  toNumberOrNull,
+  toBooleanOrNull,
+  parseDayIndex,
+  normalizeRubric,
+  normalizeSimulationPlanDay,
+  extractDayTasks,
+  normalizeSimulationPlan,
+  safeParseResponse,
+};
+
 export default function RecruiterSimulationDetailPage() {
   const params = useParams<{ id: string }>();
   const simulationId = params.id;

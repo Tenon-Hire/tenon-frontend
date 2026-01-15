@@ -1,6 +1,7 @@
 import {
   buildClearAuthHref,
   buildLoginHref,
+  buildLogoutHref,
   buildSignupHref,
 } from '@/features/auth/authPaths';
 
@@ -50,5 +51,32 @@ describe('authPaths buildClearAuthHref', () => {
   it('defaults to returnTo when mode is missing', () => {
     const href = buildClearAuthHref('/candidate/dashboard');
     expect(href).toBe('/auth/clear?returnTo=%2Fcandidate%2Fdashboard');
+  });
+});
+
+describe('authPaths buildLogoutHref', () => {
+  it('uses an absolute returnTo for logout when a path is provided', () => {
+    const href = buildLogoutHref('/dashboard');
+    const url = new URL(href, window.location.origin);
+    const returnTo = url.searchParams.get('returnTo');
+    expect(returnTo).toBe(
+      new URL('/dashboard', window.location.origin).toString(),
+    );
+  });
+
+  it('defaults logout returnTo to the origin root', () => {
+    const href = buildLogoutHref();
+    const url = new URL(href, window.location.origin);
+    const returnTo = url.searchParams.get('returnTo');
+    expect(returnTo).toBe(new URL('/', window.location.origin).toString());
+  });
+
+  it('strips query and hash from returnTo', () => {
+    const href = buildLogoutHref('/dashboard?mode=recruiter#section');
+    const url = new URL(href, window.location.origin);
+    const returnTo = url.searchParams.get('returnTo');
+    expect(returnTo).toBe(
+      new URL('/dashboard', window.location.origin).toString(),
+    );
   });
 });

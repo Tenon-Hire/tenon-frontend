@@ -92,6 +92,13 @@ function parseRetryAfterMs(raw: string | null, nowMs: number, capMs = 2000) {
   return null;
 }
 
+export const __testables = {
+  getFetchDispatcher,
+  jitteredBackoffMs,
+  parseRetryAfterMs,
+  waitWithAbort,
+};
+
 export function generateRequestId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     const maybe = (crypto as { randomUUID?: () => string }).randomUUID;

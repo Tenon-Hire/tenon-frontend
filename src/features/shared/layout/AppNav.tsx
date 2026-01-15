@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { buildLogoutHref } from '@/features/auth/authPaths';
+import LogoutLink from '@/features/auth/LogoutLink';
 
 type AppNavProps = {
   isAuthed: boolean;
@@ -22,10 +22,9 @@ export function AppNav({ isAuthed, permissions = [], navScope }: AppNavProps) {
     isCandidateScope && (canCandidate || permissions.length === 0);
   const showRecruiter = allowRecruiter;
   const showCandidate = allowCandidate;
-  const logoutReturnTo = isCandidateScope ? '/' : '/dashboard';
 
   return (
-    <nav className="flex items-center gap-4 text-sm">
+    <nav className="flex items-center gap-4 pr-2 text-sm sm:pr-3">
       {showRecruiter ? (
         <Link href="/dashboard" className="text-gray-700 hover:text-gray-900">
           Recruiter Dashboard
@@ -39,12 +38,9 @@ export function AppNav({ isAuthed, permissions = [], navScope }: AppNavProps) {
           Candidate Portal
         </Link>
       ) : null}
-      <a
-        href={buildLogoutHref(logoutReturnTo)}
-        className="text-gray-700 hover:text-gray-900"
-      >
+      <LogoutLink className="inline-flex select-none items-center rounded-md px-2.5 py-1 text-gray-700 hover:text-gray-900 cursor-pointer touch-manipulation">
         Logout
-      </a>
+      </LogoutLink>
     </nav>
   );
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { buildLogoutHref } from '@/features/auth/authPaths';
+import LogoutLink from '@/features/auth/LogoutLink';
 import { ActionRow } from '../shared/ActionRow';
 import { primaryCtaClass, secondaryCtaClass } from '../shared/ctaClasses';
 
@@ -24,9 +24,11 @@ export function MarketingHomeSignedIn({ name }: { name?: string | null }) {
           Candidate portal
         </Link>
 
-        <a href={buildLogoutHref('/dashboard')} className={secondaryCtaClass}>
+        <LogoutLink
+          className={`${secondaryCtaClass} cursor-pointer touch-manipulation`}
+        >
           Logout
-        </a>
+        </LogoutLink>
       </ActionRow>
     </div>
   );

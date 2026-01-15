@@ -13,10 +13,8 @@ describe('PublicHomeContent', () => {
     expect(
       screen.getByRole('link', { name: 'Candidate portal' }),
     ).toHaveAttribute('href', '/candidate/dashboard');
-    expect(screen.getByRole('link', { name: 'Logout' })).toHaveAttribute(
-      'href',
-      '/auth/logout?returnTo=%2Fdashboard',
-    );
+    const logout = screen.getByRole('link', { name: 'Logout' });
+    expect(logout).toHaveAttribute('href', '/auth/logout');
   });
 
   it('shows signed-out state with auth entry points', () => {
