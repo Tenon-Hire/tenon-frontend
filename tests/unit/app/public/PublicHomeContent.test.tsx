@@ -14,13 +14,7 @@ describe('PublicHomeContent', () => {
       screen.getByRole('link', { name: 'Candidate portal' }),
     ).toHaveAttribute('href', '/candidate/dashboard');
     const logout = screen.getByRole('link', { name: 'Logout' });
-    const url = new URL(
-      logout.getAttribute('href') ?? '',
-      window.location.origin,
-    );
-    expect(url.searchParams.get('returnTo')).toBe(
-      new URL('/', window.location.origin).toString(),
-    );
+    expect(logout).toHaveAttribute('href', '/auth/logout');
   });
 
   it('shows signed-out state with auth entry points', () => {

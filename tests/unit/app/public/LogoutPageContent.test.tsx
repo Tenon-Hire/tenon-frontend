@@ -7,13 +7,7 @@ describe('LogoutPageContent', () => {
 
     expect(screen.getByText('Log out')).toBeInTheDocument();
     const logout = screen.getByRole('link', { name: 'Yes, log me out' });
-    const url = new URL(
-      logout.getAttribute('href') ?? '',
-      window.location.origin,
-    );
-    expect(url.searchParams.get('returnTo')).toBe(
-      new URL('/', window.location.origin).toString(),
-    );
+    expect(logout).toHaveAttribute('href', '/auth/logout');
     expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute(
       'href',
       '/dashboard',

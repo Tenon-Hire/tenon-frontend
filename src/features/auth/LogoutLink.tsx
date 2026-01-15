@@ -1,7 +1,6 @@
 'use client';
 
 import { ReactNode, useRef, type MouseEvent, type PointerEvent } from 'react';
-import { buildLogoutHref } from './authPaths';
 
 type LogoutLinkProps = {
   returnTo?: string;
@@ -20,12 +19,8 @@ const isPrimaryPlainClick = (event: LogoutEvent) =>
   !event.shiftKey &&
   !event.altKey;
 
-export default function LogoutLink({
-  returnTo,
-  className,
-  children,
-}: LogoutLinkProps) {
-  const href = buildLogoutHref(returnTo);
+export default function LogoutLink({ className, children }: LogoutLinkProps) {
+  const href = '/auth/logout';
   const handledPointerUp = useRef(false);
 
   const navigateOnUp = (event: LogoutEvent) => {
@@ -35,6 +30,7 @@ export default function LogoutLink({
   };
 
   const handlePointerUp = (event: PointerEvent<HTMLAnchorElement>) => {
+    if (!isPrimaryPlainClick(event)) return;
     handledPointerUp.current = true;
     navigateOnUp(event);
   };

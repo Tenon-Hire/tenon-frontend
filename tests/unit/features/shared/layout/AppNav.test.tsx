@@ -8,13 +8,7 @@ describe('auth navigation links', () => {
     render(<AppNav isAuthed permissions={['recruiter:access']} />);
     const logout = screen.getByText('Logout');
     expect(logout.tagName).toBe('A');
-    const url = new URL(
-      logout.getAttribute('href') ?? '',
-      window.location.origin,
-    );
-    expect(url.searchParams.get('returnTo')).toBe(
-      new URL('/', window.location.origin).toString(),
-    );
+    expect(logout).toHaveAttribute('href', '/auth/logout');
   });
 
   it('uses public returnTo for candidate logout', () => {
@@ -26,26 +20,14 @@ describe('auth navigation links', () => {
       />,
     );
     const logout = screen.getByText('Logout');
-    const url = new URL(
-      logout.getAttribute('href') ?? '',
-      window.location.origin,
-    );
-    expect(url.searchParams.get('returnTo')).toBe(
-      new URL('/', window.location.origin).toString(),
-    );
+    expect(logout).toHaveAttribute('href', '/auth/logout');
   });
 
   it('renders logout as an anchor in the marketing signed-in view', () => {
     render(<MarketingHomeSignedIn name="Tester" />);
     const logout = screen.getByText('Logout');
     expect(logout.tagName).toBe('A');
-    const url = new URL(
-      logout.getAttribute('href') ?? '',
-      window.location.origin,
-    );
-    expect(url.searchParams.get('returnTo')).toBe(
-      new URL('/', window.location.origin).toString(),
-    );
+    expect(logout).toHaveAttribute('href', '/auth/logout');
   });
 
   it('renders login CTA as an anchor in the marketing signed-out view', () => {
