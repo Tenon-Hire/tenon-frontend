@@ -380,6 +380,7 @@ describe('candidate api helpers', () => {
     expect(result).toEqual({
       repoUrl: 'https://github.com/acme/repo',
       repoName: 'acme/repo',
+      repoFullName: null,
       codespaceUrl: 'https://codespaces.new/acme/repo',
     });
   });
@@ -407,6 +408,7 @@ describe('candidate api helpers', () => {
     expect(result).toEqual({
       repoUrl: 'https://github.com/acme/repo2',
       repoName: 'acme/repo2',
+      repoFullName: null,
       codespaceUrl: null,
     });
   });
@@ -424,6 +426,7 @@ describe('candidate api helpers', () => {
     expect(result).toEqual({
       repoUrl: null,
       repoName: null,
+      repoFullName: null,
       codespaceUrl: null,
     });
   });
@@ -432,6 +435,7 @@ describe('candidate api helpers', () => {
     mockGet.mockResolvedValueOnce({
       repo_url: 'https://github.com/acme/repo3',
       repo_name: 'acme/repo3',
+      repo_full_name: 'acme/repo3',
       codespace_url: 'https://codespaces.new/acme/repo3',
     });
 
@@ -445,6 +449,7 @@ describe('candidate api helpers', () => {
     expect(result).toEqual({
       repoUrl: 'https://github.com/acme/repo3',
       repoName: 'acme/repo3',
+      repoFullName: 'acme/repo3',
       codespaceUrl: 'https://codespaces.new/acme/repo3',
     });
   });
