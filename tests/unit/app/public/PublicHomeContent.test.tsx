@@ -13,9 +13,13 @@ describe('PublicHomeContent', () => {
     expect(
       screen.getByRole('link', { name: 'Candidate portal' }),
     ).toHaveAttribute('href', '/candidate/dashboard');
-    expect(screen.getByRole('link', { name: 'Logout' })).toHaveAttribute(
-      'href',
-      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
+    const logout = screen.getByRole('link', { name: 'Logout' });
+    const url = new URL(
+      logout.getAttribute('href') ?? '',
+      window.location.origin,
+    );
+    expect(url.searchParams.get('returnTo')).toBe(
+      new URL('/', window.location.origin).toString(),
     );
   });
 

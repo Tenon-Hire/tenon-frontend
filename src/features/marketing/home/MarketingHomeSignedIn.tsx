@@ -24,7 +24,7 @@ export function MarketingHomeSignedIn({ name }: { name?: string | null }) {
           Candidate portal
         </Link>
 
-        <a href={buildLogoutHref('/dashboard')} className={secondaryCtaClass}>
+        <a href={buildLogoutHref()} className={secondaryCtaClass}>
           Logout
         </a>
       </ActionRow>

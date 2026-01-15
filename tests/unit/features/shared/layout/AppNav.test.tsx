@@ -8,9 +8,12 @@ describe('auth navigation links', () => {
     render(<AppNav isAuthed permissions={['recruiter:access']} />);
     const logout = screen.getByText('Logout');
     expect(logout.tagName).toBe('A');
-    expect(logout).toHaveAttribute(
-      'href',
-      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
+    const url = new URL(
+      logout.getAttribute('href') ?? '',
+      window.location.origin,
+    );
+    expect(url.searchParams.get('returnTo')).toBe(
+      new URL('/', window.location.origin).toString(),
     );
   });
 
@@ -22,9 +25,13 @@ describe('auth navigation links', () => {
         permissions={['candidate:access']}
       />,
     );
-    expect(screen.getByText('Logout')).toHaveAttribute(
-      'href',
-      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
+    const logout = screen.getByText('Logout');
+    const url = new URL(
+      logout.getAttribute('href') ?? '',
+      window.location.origin,
+    );
+    expect(url.searchParams.get('returnTo')).toBe(
+      new URL('/', window.location.origin).toString(),
     );
   });
 
@@ -32,9 +39,12 @@ describe('auth navigation links', () => {
     render(<MarketingHomeSignedIn name="Tester" />);
     const logout = screen.getByText('Logout');
     expect(logout.tagName).toBe('A');
-    expect(logout).toHaveAttribute(
-      'href',
-      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
+    const url = new URL(
+      logout.getAttribute('href') ?? '',
+      window.location.origin,
+    );
+    expect(url.searchParams.get('returnTo')).toBe(
+      new URL('/', window.location.origin).toString(),
     );
   });
 

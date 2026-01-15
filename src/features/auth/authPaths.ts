@@ -17,11 +17,9 @@ function resolveLogoutOrigin(): string | null {
 
   const candidates = [
     process.env.NEXT_PUBLIC_TENON_APP_BASE_URL,
-    process.env.TENON_APP_BASE_URL,
     process.env.NEXT_PUBLIC_VERCEL_URL
       ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
       : null,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
   ];
 
   for (const raw of candidates) {
@@ -36,11 +34,14 @@ function resolveLogoutOrigin(): string | null {
   return null;
 }
 
-function buildAbsoluteReturnTo(returnTo?: string): string {
-  const safePath = buildReturnTo(returnTo);
+function buildAbsoluteReturnTo(returnTo?: string): string | null {
   const origin = resolveLogoutOrigin();
-  if (!origin) return safePath;
-  return new URL(safePath, origin).toString();
+  if (!origin) return null;
+  const safePath = buildReturnTo(returnTo);
+  const url = new URL(safePath, origin);
+  url.search = '';
+  url.hash = '';
+  return url.toString();
 }
 
 export function buildLoginHref(returnTo?: string, mode?: LoginMode): string {
@@ -75,6 +76,7 @@ function buildAuthHref({
 export function buildLogoutHref(returnTo?: string): string {
   const base = '/auth/logout';
   const absoluteReturnTo = buildAbsoluteReturnTo(returnTo);
+  if (!absoluteReturnTo) return base;
   return `${base}?returnTo=${encodeURIComponent(absoluteReturnTo)}`;
 }
 
