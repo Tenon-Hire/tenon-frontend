@@ -48,9 +48,10 @@ describe('WorkspacePanel', () => {
     ).toHaveAttribute('href', 'https://codespaces.new/acme/repo');
     expect(screen.queryByRole('link', { name: /open repo/i })).toBeNull();
     expect(screen.getByText(/Repo: acme\/repo/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Repo URL: https:\/\/github.com\/acme\/repo/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('refreshes workspace status on demand', async () => {
@@ -87,9 +88,10 @@ describe('WorkspacePanel', () => {
       'href',
       'https://github.com/acme/repo',
     );
-    expect(
-      screen.getByText(/Repo URL: https:\/\/github.com\/acme\/repo/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
     await user.click(screen.getByRole('button', { name: /refresh/i }));
 
     await waitFor(() => {
@@ -126,9 +128,10 @@ describe('WorkspacePanel', () => {
     );
     expect(screen.queryByRole('link', { name: /open codespace/i })).toBeNull();
     expect(screen.getByText(/Repo: acme\/repo/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Repo URL: https:\/\/github.com\/acme\/repo/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('initializes when status is empty', async () => {
@@ -159,9 +162,10 @@ describe('WorkspacePanel', () => {
       'href',
       'https://github.com/acme/repo',
     );
-    expect(
-      screen.getByText(/Repo URL: https:\/\/github.com\/acme\/repo/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('initializes when status returns 404', async () => {
@@ -188,9 +192,10 @@ describe('WorkspacePanel', () => {
       'href',
       'https://github.com/acme/repo',
     );
-    expect(
-      screen.getByText(/Repo URL: https:\/\/github.com\/acme\/repo/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('shows a provisioning notice when repo is not ready yet', async () => {

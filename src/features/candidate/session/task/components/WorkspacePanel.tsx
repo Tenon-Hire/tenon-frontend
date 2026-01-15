@@ -133,8 +133,7 @@ export function WorkspacePanel({
     void loadWorkspace('init');
   }, [loadWorkspace]);
 
-  const repoLabel =
-    workspace?.repoFullName ?? workspace?.repoName ?? 'Repository';
+  const repoLabel = workspace?.repoFullName ?? workspace?.repoName;
   const workspaceMessage = buildWorkspaceMessage(workspace);
   const cta = workspace?.codespaceUrl
     ? { href: workspace.codespaceUrl, label: 'Open Codespace' }
@@ -176,12 +175,19 @@ export function WorkspacePanel({
             </div>
           ) : null}
           <div>{workspaceMessage}</div>
-          {workspace?.repoName || workspace?.repoFullName ? (
-            <div>Repo: {repoLabel}</div>
-          ) : null}
+          {repoLabel ? <div>Repo: {repoLabel}</div> : null}
           {workspace?.repoUrl ? (
-            <div className="text-xs text-gray-600">
-              Repo URL: {workspace.repoUrl}
+            <div className="text-xs text-gray-600 break-all">
+              Repo URL:{' '}
+              <a
+                aria-label="Repo URL"
+                className="text-blue-600 hover:underline"
+                href={workspace.repoUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                {workspace.repoUrl}
+              </a>
             </div>
           ) : null}
           {cta ? (
