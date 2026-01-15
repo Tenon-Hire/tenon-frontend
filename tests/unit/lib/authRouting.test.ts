@@ -1,4 +1,8 @@
-import { buildLoginUrl, sanitizeReturnTo } from '@/lib/auth/routing';
+import {
+  buildLoginUrl,
+  buildReturnTo,
+  sanitizeReturnTo,
+} from '@/lib/auth/routing';
 
 describe('sanitizeReturnTo', () => {
   it('allows safe relative paths', () => {
@@ -43,6 +47,29 @@ describe('sanitizeReturnTo', () => {
       '/',
     );
     expect(sanitizeReturnTo('/dashboard%0d%0aSet-Cookie: x=y')).toBe('/');
+  });
+
+  it('handles malformed encoding and double-decoding variants', () => {
+    expect(sanitizeReturnTo('/%E0%A4%A')).toBe('/%E0%A4%A');
+    expect(sanitizeReturnTo('/%252F%252Fevil.com')).toBe('/');
+  });
+
+  it('buildReturnTo supports URL and Location-like inputs', () => {
+    const url = new URL('http://test.local/candidate/home?x=1');
+    expect(buildReturnTo(url)).toBe('/candidate/home?x=1');
+
+    const loc = { pathname: '/dashboard', search: '?mode=dev' } as Location;
+    expect(buildReturnTo(loc)).toBe('/dashboard?mode=dev');
+  });
+
+  it('buildReturnTo falls back safely when no input and no window', () => {
+    const originalWindow = global.window;
+    delete (global as { window?: Window }).window;
+    try {
+      expect(buildReturnTo()).toBe('/');
+    } finally {
+      global.window = originalWindow;
+    }
   });
 
   it('sanitizes unsafe returnTo in login redirect builder', () => {
