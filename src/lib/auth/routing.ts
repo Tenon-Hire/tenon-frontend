@@ -4,29 +4,56 @@ export type LoginMode = 'candidate' | 'recruiter';
 
 const CANDIDATE_PREFIXES = ['/candidate-sessions', '/candidate'];
 const AUTH_PREFIXES = ['/auth', '/api/auth'];
-const DEFAULT_RETURN_TO = '/dashboard';
+const DEFAULT_RETURN_TO = '/';
 
 export function sanitizeReturnTo(value: string | null | undefined): string {
   if (!value || typeof value !== 'string') return DEFAULT_RETURN_TO;
   const trimmed = value.trim();
   if (!trimmed) return DEFAULT_RETURN_TO;
-  if (/[\u0000-\u001F\u007F]/.test(trimmed)) return DEFAULT_RETURN_TO;
-  if (trimmed.includes('\\')) return DEFAULT_RETURN_TO;
-  if (!trimmed.startsWith('/')) return DEFAULT_RETURN_TO;
-  if (trimmed.startsWith('//')) return DEFAULT_RETURN_TO;
-  if (trimmed.includes('://')) return DEFAULT_RETURN_TO;
-  const lower = trimmed.toLowerCase();
-  if (
-    AUTH_PREFIXES.some(
-      (prefix) =>
-        lower === prefix ||
-        lower.startsWith(`${prefix}/`) ||
-        lower.startsWith(`${prefix}?`) ||
-        lower.startsWith(`${prefix}#`),
-    )
-  ) {
-    return DEFAULT_RETURN_TO;
+
+  const decodeMaybe = (input: string): string | null => {
+    try {
+      return decodeURIComponent(input);
+    } catch {
+      return null;
+    }
+  };
+
+  const candidates = [trimmed];
+  const decodedOnce = decodeMaybe(trimmed);
+  if (decodedOnce && decodedOnce !== trimmed) {
+    candidates.push(decodedOnce);
+    const decodedTwice = decodeMaybe(decodedOnce);
+    if (decodedTwice && decodedTwice !== decodedOnce) {
+      candidates.push(decodedTwice);
+    }
   }
+
+  const isUnsafe = (candidate: string) => {
+    if (/[\u0000-\u001F\u007F]/.test(candidate)) return true;
+    if (candidate.includes('\\')) return true;
+    if (!candidate.startsWith('/')) return true;
+    if (candidate.startsWith('//')) return true;
+    if (candidate.includes('://')) return true;
+    const lower = candidate.toLowerCase();
+    if (lower.startsWith('javascript:') || lower.startsWith('/javascript:'))
+      return true;
+    if (
+      AUTH_PREFIXES.some(
+        (prefix) =>
+          lower === prefix ||
+          lower.startsWith(`${prefix}/`) ||
+          lower.startsWith(`${prefix}?`) ||
+          lower.startsWith(`${prefix}#`),
+      )
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  if (candidates.some(isUnsafe)) return DEFAULT_RETURN_TO;
+
   return trimmed;
 }
 

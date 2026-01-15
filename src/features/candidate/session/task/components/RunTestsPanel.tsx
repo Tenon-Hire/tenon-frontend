@@ -24,6 +24,7 @@ type RunTestsPanelProps = {
   onPoll: (runId: string) => Promise<PollResult>;
   pollIntervalMs?: number;
   maxAttempts?: number;
+  maxPollIntervalMs?: number;
 };
 
 function fallbackMessage(state: RunState, provided?: string) {
@@ -50,13 +51,17 @@ function fallbackMessage(state: RunState, provided?: string) {
 export function RunTestsPanel({
   onStart,
   onPoll,
-  pollIntervalMs = 600,
+  pollIntervalMs = 1500,
   maxAttempts = 6,
+  maxPollIntervalMs = 5000,
 }: RunTestsPanelProps) {
   const [state, setState] = useState<RunState>('idle');
   const [message, setMessage] = useState('');
 
   const pollTimerRef = useRef<number | null>(null);
+  const pendingPollRef = useRef<{ attempt: number; runId: string } | null>(
+    null,
+  );
 
   const clearTimer = useCallback(() => {
     if (pollTimerRef.current) {
@@ -70,10 +75,21 @@ export function RunTestsPanel({
   const endRun = useCallback(
     (next: RunState, msg?: string) => {
       clearTimer();
+      pendingPollRef.current = null;
       setState(next);
       setMessage(fallbackMessage(next, msg));
     },
     [clearTimer],
+  );
+
+  const resolvePollDelay = useCallback(
+    (attempt: number) => {
+      const baseInterval = Math.max(1000, pollIntervalMs);
+      const cappedMax = Math.max(maxPollIntervalMs, baseInterval);
+      const delay = Math.round(baseInterval * Math.pow(1.6, attempt));
+      return Math.min(delay, cappedMax);
+    },
+    [maxPollIntervalMs, pollIntervalMs],
   );
 
   const pollRun = useCallback(
@@ -86,9 +102,17 @@ export function RunTestsPanel({
       try {
         const res = await onPoll(id);
         if (res.status === 'running') {
+          if (typeof document !== 'undefined') {
+            if (document.visibilityState === 'hidden') {
+              pendingPollRef.current = { attempt: attempt + 1, runId: id };
+              return;
+            }
+          }
+          pendingPollRef.current = null;
+          clearTimer();
           pollTimerRef.current = window.setTimeout(
             () => void pollRun(attempt + 1, id),
-            pollIntervalMs,
+            resolvePollDelay(attempt + 1),
           );
           return;
         }
@@ -111,13 +135,33 @@ export function RunTestsPanel({
         endRun('error');
       }
     },
-    [endRun, maxAttempts, onPoll, pollIntervalMs],
+    [clearTimer, endRun, maxAttempts, onPoll, resolvePollDelay],
   );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      const pending = pendingPollRef.current;
+      if (!pending) return;
+      pendingPollRef.current = null;
+      clearTimer();
+      pollTimerRef.current = window.setTimeout(
+        () => void pollRun(pending.attempt, pending.runId),
+        resolvePollDelay(pending.attempt),
+      );
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [clearTimer, pollRun, resolvePollDelay]);
 
   const startRun = useCallback(async () => {
     if (state === 'starting' || state === 'running') return;
 
     clearTimer();
+    pendingPollRef.current = null;
     setMessage('');
     setState('starting');
 
@@ -126,14 +170,21 @@ export function RunTestsPanel({
       if (!res?.runId) throw new Error('Missing run id');
 
       setState('running');
+      if (typeof document !== 'undefined') {
+        if (document.visibilityState === 'hidden') {
+          pendingPollRef.current = { attempt: 0, runId: res.runId };
+          return;
+        }
+      }
+      pendingPollRef.current = null;
       pollTimerRef.current = window.setTimeout(
         () => void pollRun(0, res.runId),
-        pollIntervalMs,
+        resolvePollDelay(0),
       );
     } catch {
       endRun('error', 'Failed to start tests. Please try again.');
     }
-  }, [clearTimer, endRun, onStart, pollIntervalMs, pollRun, state]);
+  }, [clearTimer, endRun, onStart, pollRun, resolvePollDelay, state]);
 
   const ctaLabel = useMemo(() => {
     if (state === 'starting') return 'Starting…';

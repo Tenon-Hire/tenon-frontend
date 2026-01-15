@@ -3,9 +3,9 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
-const DEBUG_PERF =
-  process.env.NEXT_PUBLIC_TENON_DEBUG_PERF === '1' ||
-  process.env.NEXT_PUBLIC_TENON_DEBUG_PERF === 'true';
+const DEBUG_PERF = ['1', 'true'].includes(
+  (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase(),
+);
 
 export function NavigationPerfLogger() {
   const pathname = usePathname();

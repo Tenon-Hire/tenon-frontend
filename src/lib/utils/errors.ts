@@ -1,5 +1,31 @@
 type MaybeErrorLike = { message?: unknown; detail?: unknown; status?: unknown };
 
+export function errorDetailEnabled(): boolean {
+  const flag = (process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS ?? '').toLowerCase();
+  return flag === '1' || flag === 'true';
+}
+
+function redactTokens(value: string): string {
+  let next = value;
+  next = next.replace(
+    /\beyJ[a-zA-Z0-9_-]+?\.[a-zA-Z0-9_-]+?\.[a-zA-Z0-9_-]+\b/g,
+    '[redacted]',
+  );
+  next = next.replace(
+    /\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b/gi,
+    'Bearer [redacted]',
+  );
+  next = next.replace(
+    /([?&](?:access_token|id_token|refresh_token|token|auth_token)=)[^&\s]+/gi,
+    '$1[redacted]',
+  );
+  return next;
+}
+
+function sanitizeMessage(value: string): string {
+  return redactTokens(value).trim();
+}
+
 export function toStatus(err: unknown): number | null {
   if (!err || typeof err !== 'object') return null;
   const maybe = err as MaybeErrorLike;
@@ -11,22 +37,24 @@ export function toUserMessage(
   fallback: string,
   opts: { includeDetail?: boolean } = {},
 ): string {
-  if (err instanceof Error && err.message.trim()) return err.message;
+  const allowDetail = Boolean(opts.includeDetail && errorDetailEnabled());
+
+  if (err instanceof Error && err.message.trim()) {
+    return sanitizeMessage(err.message);
+  }
 
   if (err && typeof err === 'object') {
     const maybe = err as MaybeErrorLike;
     const detail =
-      opts.includeDetail && typeof maybe.detail === 'string'
-        ? maybe.detail
-        : null;
-    if (detail?.trim()) return detail.trim();
+      allowDetail && typeof maybe.detail === 'string' ? maybe.detail : null;
+    if (detail?.trim()) return sanitizeMessage(detail);
 
     const message =
       typeof maybe.message === 'string' ? maybe.message : undefined;
-    if (message?.trim()) return message.trim();
+    if (message?.trim()) return sanitizeMessage(message);
   }
 
-  return fallback;
+  return sanitizeMessage(fallback);
 }
 
 export function isNotFound(err: unknown): boolean {
