@@ -5,4 +5,5 @@ test('landing page loads', async ({ page }) => {
   expect(response).toBeTruthy();
   expect(response?.ok()).toBeTruthy();
   await expect(page.locator('body')).toBeVisible();
+  await expect(page.locator('meta[name="viewport"]')).toHaveCount(1);
 });
