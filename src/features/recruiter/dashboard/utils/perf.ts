@@ -1,7 +1,4 @@
-const rawFlag =
-  process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ??
-  process.env.TENON_DEBUG_PERF ??
-  '';
+const rawFlag = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '';
 
 export const dashboardPerfDebugEnabled =
   rawFlag === '1' || rawFlag.toLowerCase() === 'true';

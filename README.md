@@ -53,6 +53,8 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - Optional Auth0 connection hints for the login button intent routing:
   - `NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION`
   - `NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION`
+- Optional UI debugging flags (client-safe):
+  - `NEXT_PUBLIC_TENON_DEBUG_ERRORS` – surface backend error detail in the UI (default off).
 - Optional helper script: `./runFrontend.sh` echoes `TENON_BACKEND_BASE_URL` then runs `npm run dev`.
 - Optional upstream connection pooling: set `TENON_USE_FETCH_DISPATCHER=1` to enable an undici `Agent` (Node 18+); disabled by default for serverless safety.
 
@@ -63,6 +65,13 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - Tests/checks: `npm test`, `npm run test:coverage`, `npm run test:e2e`, `npm run typecheck`, `npm run lint`, `./precommit.sh`.
 - Point to local backend: set `TENON_BACKEND_BASE_URL` and `NEXT_PUBLIC_TENON_API_BASE_URL` in `.env.local`.
 - Load test `/api/dashboard` locally (optional): `npm run loadtest:dashboard` (override with `LOADTEST_URL`, `LOADTEST_CONN`, `LOADTEST_DURATION`, `LOADTEST_COOKIE`, `LOADTEST_AUTH_HEADER` for authenticated calls; without auth you will mostly hit 401/403).
+
+## Security Notes
+
+- Client bundles should only read `NEXT_PUBLIC_*` env vars; keep secrets in `TENON_*` server-only vars.
+- Security headers (CSP, HSTS in prod, X-Frame-Options, X-Content-Type-Options, Referrer-Policy) are set in `next.config.ts`.
+- `sanitizeReturnTo` enforces same-origin return paths to prevent open redirects.
+- Error messages are sanitized to avoid leaking access tokens in logs/toasts.
 
 ## Typical Flows
 

@@ -40,7 +40,7 @@ describe('RunTestsPanel', () => {
       });
 
     render(
-      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={200} />,
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));
@@ -52,13 +52,13 @@ describe('RunTestsPanel', () => {
     ).toBeDisabled();
 
     await act(async () => {
-      jest.advanceTimersByTime(200);
+      jest.advanceTimersByTime(1000);
       await Promise.resolve();
     });
     expect(onPoll).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      jest.advanceTimersByTime(200);
+      jest.advanceTimersByTime(1600);
       await Promise.resolve();
     });
     expect(onPoll).toHaveBeenCalledTimes(2);
@@ -77,7 +77,7 @@ describe('RunTestsPanel', () => {
       .mockResolvedValueOnce({ status: 'failed' as const, message: 'Red' });
 
     render(
-      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={100} />,
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
     const cta = screen.getByRole('button', { name: /run tests/i });
@@ -87,7 +87,7 @@ describe('RunTestsPanel', () => {
     expect(onStart).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      jest.advanceTimersByTime(100);
+      jest.advanceTimersByTime(1000);
       await Promise.resolve();
     });
 
@@ -109,7 +109,7 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel
         onStart={onStart}
         onPoll={onPoll}
-        pollIntervalMs={50}
+        pollIntervalMs={1000}
         maxAttempts={2}
       />,
     );
@@ -117,16 +117,21 @@ describe('RunTestsPanel', () => {
     await user.click(screen.getByRole('button', { name: /run tests/i }));
 
     await act(async () => {
-      jest.advanceTimersByTime(50);
+      jest.advanceTimersByTime(1000);
       await Promise.resolve();
     });
 
     await act(async () => {
-      jest.advanceTimersByTime(50);
+      jest.advanceTimersByTime(1600);
       await Promise.resolve();
     });
 
     expect(onPoll).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      jest.advanceTimersByTime(2600);
+      await Promise.resolve();
+    });
     expect(await screen.findByText(/Tests timed out/i)).toBeInTheDocument();
   });
 
@@ -145,14 +150,14 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel
         onStart={onStart}
         onPoll={onPoll}
-        pollIntervalMs={80}
+        pollIntervalMs={1000}
         maxAttempts={3}
       />,
     );
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));
     await act(async () => {
-      jest.advanceTimersByTime(80);
+      jest.advanceTimersByTime(1000);
       await Promise.resolve();
     });
     expect(
@@ -161,14 +166,14 @@ describe('RunTestsPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /re-run tests/i }));
     await act(async () => {
-      jest.advanceTimersByTime(80);
+      jest.advanceTimersByTime(1000);
       await Promise.resolve();
     });
     expect(await screen.findByText(/Tests timed out/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));
     await act(async () => {
-      jest.advanceTimersByTime(80);
+      jest.advanceTimersByTime(1000);
       await Promise.resolve();
     });
     expect(
@@ -184,7 +189,7 @@ describe('RunTestsPanel', () => {
     const onPoll = jest.fn().mockRejectedValue(new Error('poll failed'));
 
     const { rerender } = render(
-      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={40} />,
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));
@@ -197,14 +202,14 @@ describe('RunTestsPanel', () => {
     // Retry and hit polling error
     const nextStart = jest.fn().mockResolvedValue({ runId: 'r-err' });
     rerender(
-      <RunTestsPanel onStart={nextStart} onPoll={onPoll} pollIntervalMs={40} />,
+      <RunTestsPanel onStart={nextStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));
     await act(async () => Promise.resolve());
 
     await act(async () => {
-      jest.advanceTimersByTime(40);
+      jest.advanceTimersByTime(1000);
       await Promise.resolve();
     });
 
@@ -223,7 +228,7 @@ describe('RunTestsPanel', () => {
     const onPoll = jest.fn().mockResolvedValue({ status: 'running' as const });
 
     render(
-      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={40} />,
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));

@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import type { CandidateSession } from '@/types/recruiter';
-import { toUserMessage } from '@/lib/utils/errors';
+import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
 
 type SubmissionListItem = {
   submissionId: number;
@@ -96,7 +96,7 @@ export default function CandidateSubmissionsPage() {
   const simulationId = params.id;
   const candidateSessionIdParam = params.candidateSessionId ?? '';
   const candidateSessionKey = String(candidateSessionIdParam).trim();
-  const includeDetail = process.env.NODE_ENV !== 'production';
+  const includeDetail = errorDetailEnabled();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

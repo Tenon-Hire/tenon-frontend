@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import LoginPage from '@/features/auth/LoginPage';
 import { BRAND_NAME } from '@/lib/brand';
+import { sanitizeReturnTo } from '@/lib/auth/routing';
 
 export const metadata: Metadata = {
   title: `Recruiter login | ${BRAND_NAME}`,
@@ -17,7 +18,7 @@ export default async function LoginRoutePage({
   const resolved = searchParams ? await searchParams : undefined;
   const returnTo =
     resolved && typeof resolved.returnTo === 'string'
-      ? resolved.returnTo
+      ? sanitizeReturnTo(resolved.returnTo)
       : undefined;
   const rawMode = resolved?.mode;
   const mode =

@@ -1,11 +1,22 @@
 import {
   coerceError,
+  errorDetailEnabled,
   isNotFound,
   toStatus,
   toUserMessage,
 } from '@/lib/utils/errors';
 
 describe('lib/utils/errors', () => {
+  const originalDebugErrors = process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
+
+  afterEach(() => {
+    if (originalDebugErrors === undefined) {
+      delete process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
+    } else {
+      process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = originalDebugErrors;
+    }
+  });
+
   it('extracts numeric status when present', () => {
     expect(toStatus({ status: 404 })).toBe(404);
     expect(toStatus({ status: '404' })).toBeNull();
@@ -18,6 +29,8 @@ describe('lib/utils/errors', () => {
   });
 
   it('returns detail when includeDetail is set', () => {
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
+    expect(errorDetailEnabled()).toBe(true);
     const err = { detail: 'detail msg', message: 'msg' };
     expect(toUserMessage(err, 'fallback', { includeDetail: true })).toBe(
       'detail msg',
@@ -30,6 +43,7 @@ describe('lib/utils/errors', () => {
   });
 
   it('ignores detail when includeDetail is false', () => {
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
     const err = { detail: 'secret', message: 'shown' };
     expect(toUserMessage(err, 'fallback', { includeDetail: false })).toBe(
       'shown',
@@ -38,6 +52,24 @@ describe('lib/utils/errors', () => {
 
   it('returns fallback when nothing usable is present', () => {
     expect(toUserMessage({}, 'fallback')).toBe('fallback');
+  });
+
+  it('redacts bearer tokens and jwt-like strings', () => {
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
+    const err = new Error(
+      'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature',
+    );
+    expect(toUserMessage(err, 'fallback')).toBe('Bearer [redacted]');
+  });
+
+  it('redacts token params in messages', () => {
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
+    const err = {
+      message: 'Request failed: ?access_token=abc123&id_token=def456',
+    };
+    expect(toUserMessage(err, 'fallback')).toBe(
+      'Request failed: ?access_token=[redacted]&id_token=[redacted]',
+    );
   });
 
   it('detects not found via status', () => {

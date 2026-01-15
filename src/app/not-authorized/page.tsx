@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { BRAND_NAME } from '@/lib/brand';
+import { sanitizeReturnTo } from '@/lib/auth/routing';
 
 export const metadata: Metadata = {
   title: `Not authorized | ${BRAND_NAME}`,
@@ -18,7 +19,10 @@ export default async function NotAuthorizedPage({
   const rawMode = resolved?.mode;
   const mode =
     rawMode === 'candidate' || rawMode === 'recruiter' ? rawMode : undefined;
-  const returnTo = resolved?.returnTo;
+  const returnTo =
+    resolved && typeof resolved.returnTo === 'string'
+      ? sanitizeReturnTo(resolved.returnTo)
+      : null;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 p-6">

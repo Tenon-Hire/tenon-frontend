@@ -24,6 +24,7 @@ type RunTestsPanelProps = {
   onPoll: (runId: string) => Promise<PollResult>;
   pollIntervalMs?: number;
   maxAttempts?: number;
+  maxPollIntervalMs?: number;
 };
 
 function fallbackMessage(state: RunState, provided?: string) {
@@ -50,8 +51,9 @@ function fallbackMessage(state: RunState, provided?: string) {
 export function RunTestsPanel({
   onStart,
   onPoll,
-  pollIntervalMs = 600,
+  pollIntervalMs = 1500,
   maxAttempts = 6,
+  maxPollIntervalMs = 5000,
 }: RunTestsPanelProps) {
   const [state, setState] = useState<RunState>('idle');
   const [message, setMessage] = useState('');
@@ -76,6 +78,16 @@ export function RunTestsPanel({
     [clearTimer],
   );
 
+  const resolvePollDelay = useCallback(
+    (attempt: number) => {
+      const baseInterval = Math.max(1000, pollIntervalMs);
+      const cappedMax = Math.max(maxPollIntervalMs, baseInterval);
+      const delay = Math.round(baseInterval * Math.pow(1.6, attempt));
+      return Math.min(delay, cappedMax);
+    },
+    [maxPollIntervalMs, pollIntervalMs],
+  );
+
   const pollRun = useCallback(
     async (attempt: number, id: string) => {
       if (maxAttempts && attempt >= maxAttempts) {
@@ -88,7 +100,7 @@ export function RunTestsPanel({
         if (res.status === 'running') {
           pollTimerRef.current = window.setTimeout(
             () => void pollRun(attempt + 1, id),
-            pollIntervalMs,
+            resolvePollDelay(attempt + 1),
           );
           return;
         }
@@ -111,7 +123,7 @@ export function RunTestsPanel({
         endRun('error');
       }
     },
-    [endRun, maxAttempts, onPoll, pollIntervalMs],
+    [endRun, maxAttempts, onPoll, resolvePollDelay],
   );
 
   const startRun = useCallback(async () => {
@@ -128,12 +140,12 @@ export function RunTestsPanel({
       setState('running');
       pollTimerRef.current = window.setTimeout(
         () => void pollRun(0, res.runId),
-        pollIntervalMs,
+        resolvePollDelay(0),
       );
     } catch {
       endRun('error', 'Failed to start tests. Please try again.');
     }
-  }, [clearTimer, endRun, onStart, pollIntervalMs, pollRun, state]);
+  }, [clearTimer, endRun, onStart, pollRun, resolvePollDelay, state]);
 
   const ctaLabel = useMemo(() => {
     if (state === 'starting') return 'Starting…';
