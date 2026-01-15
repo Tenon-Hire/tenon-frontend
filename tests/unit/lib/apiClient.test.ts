@@ -166,6 +166,28 @@ describe('apiClient request helpers', () => {
     );
   });
 
+  it('supports put and patch helpers', async () => {
+    fetchMock.mockResolvedValue(responseHelpers.jsonResponse({ ok: true }));
+
+    await apiClient.put('/items/1', { name: 'Item' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/items/1',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ name: 'Item' }),
+      }),
+    );
+
+    await apiClient.patch('/items/1', { name: 'Patch' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/items/1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Patch' }),
+      }),
+    );
+  });
+
   it('passes through provided authToken to request helper', async () => {
     fetchMock.mockResolvedValue(responseHelpers.jsonResponse({}, 200));
 

@@ -86,6 +86,36 @@ describe('candidate api helpers', () => {
     });
   });
 
+  it('maps resolveCandidateInviteToken email claim errors', async () => {
+    mockGet.mockRejectedValueOnce({
+      status: 403,
+      details: { message: 'email claim missing' },
+    });
+    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+
+    await expect(
+      resolveCandidateInviteToken('tok', 'auth'),
+    ).rejects.toMatchObject({
+      status: 403,
+      message: 'We could not confirm your email. Please sign in again.',
+    });
+  });
+
+  it('maps resolveCandidateInviteToken generic 403 errors', async () => {
+    mockGet.mockRejectedValueOnce({
+      status: 403,
+      details: { message: 'other' },
+    });
+    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+
+    await expect(
+      resolveCandidateInviteToken('tok', 'auth'),
+    ).rejects.toMatchObject({
+      status: 403,
+      message: 'You do not have access to this invite.',
+    });
+  });
+
   it('maps current task network errors to HttpError', async () => {
     mockGet.mockRejectedValueOnce(new TypeError('network'));
     const { getCandidateCurrentTask } = await import('@/lib/api/candidate');
@@ -381,6 +411,23 @@ describe('candidate api helpers', () => {
     });
   });
 
+  it('handles empty workspace status payloads', async () => {
+    mockGet.mockResolvedValueOnce(null);
+
+    const { getCandidateWorkspaceStatus } = await import('@/lib/api/candidate');
+    const result = await getCandidateWorkspaceStatus({
+      taskId: 15,
+      token: 'auth',
+      candidateSessionId: 66,
+    });
+
+    expect(result).toEqual({
+      repoUrl: null,
+      repoName: null,
+      codespaceUrl: null,
+    });
+  });
+
   it('normalizes snake_case workspace fields', async () => {
     mockGet.mockResolvedValueOnce({
       repo_url: 'https://github.com/acme/repo3',
@@ -482,7 +529,10 @@ describe('candidate api helpers', () => {
       .mockResolvedValueOnce({ conclusion: 'timed_out' })
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ status: 'failed', message: 'Red' })
-      .mockResolvedValueOnce({ status: 'completed', conclusion: 'failure' });
+      .mockResolvedValueOnce({ status: 'completed', conclusion: 'failure' })
+      .mockResolvedValueOnce({ status: 'completed', conclusion: 'success' })
+      .mockResolvedValueOnce({ status: 'completed', conclusion: 'timed_out' })
+      .mockResolvedValueOnce({ status: 'completed', conclusion: 'unknown' });
 
     const { pollCandidateTestRun } = await import('@/lib/api/candidate');
 
@@ -526,6 +576,39 @@ describe('candidate api helpers', () => {
     });
     expect(completedFailure).toEqual({
       status: 'failed',
+      message: undefined,
+    });
+
+    const completedSuccess = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-f',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(completedSuccess).toEqual({
+      status: 'passed',
+      message: undefined,
+    });
+
+    const completedTimeout = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-g',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(completedTimeout).toEqual({
+      status: 'timeout',
+      message: undefined,
+    });
+
+    const completedUnknown = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-h',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(completedUnknown).toEqual({
+      status: 'error',
       message: undefined,
     });
   });

@@ -7,8 +7,8 @@ jest.mock('@/lib/api/recruiter', () => ({
   listSimulations: jest.fn(),
 }));
 
-function ProfileHarness() {
-  const { profile, error, loading } = useRecruiterProfile();
+function ProfileHarness({ fetchOnMount }: { fetchOnMount?: boolean }) {
+  const { profile, error, loading } = useRecruiterProfile({ fetchOnMount });
   return (
     <div>
       <div data-testid="profile-loading">{String(loading)}</div>
@@ -31,6 +31,14 @@ function SimulationsHarness() {
 
 describe('recruiter hooks', () => {
   const realFetch = global.fetch;
+  const originalLocation = window.location;
+  const setLocation = (value: Location) => {
+    Object.defineProperty(window, 'location', {
+      value,
+      writable: true,
+      configurable: true,
+    });
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -38,6 +46,7 @@ describe('recruiter hooks', () => {
 
   afterEach(() => {
     global.fetch = realFetch;
+    setLocation(originalLocation);
   });
 
   it('loads recruiter profile successfully', async () => {
@@ -92,5 +101,74 @@ describe('recruiter hooks', () => {
       expect(getByTestId('sims-error').textContent).toContain('sim-fail'),
     );
     expect(getByTestId('sims-loading').textContent).toBe('false');
+  });
+
+  it('redirects to login when profile fetch is unauthorized', async () => {
+    const assignMock = jest.fn();
+    setLocation({
+      assign: assignMock,
+      origin: 'http://app.test',
+    } as unknown as Location);
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({ detail: 'unauthorized' }),
+    }) as unknown as typeof fetch;
+
+    render(<ProfileHarness />);
+
+    await waitFor(() => expect(assignMock).toHaveBeenCalled());
+    expect(assignMock.mock.calls[0]?.[0]).toContain('/auth/login?');
+  });
+
+  it('redirects to not authorized when profile fetch is forbidden', async () => {
+    const assignMock = jest.fn();
+    setLocation({
+      assign: assignMock,
+      origin: 'http://app.test',
+    } as unknown as Location);
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ detail: 'forbidden' }),
+    }) as unknown as typeof fetch;
+
+    render(<ProfileHarness />);
+
+    await waitFor(() => expect(assignMock).toHaveBeenCalled());
+    expect(assignMock.mock.calls[0]?.[0]).toContain('/not-authorized?');
+  });
+
+  it('skips fetch on mount when disabled', async () => {
+    global.fetch = jest.fn() as unknown as typeof fetch;
+    const { getByTestId } = render(<ProfileHarness fetchOnMount={false} />);
+    expect(getByTestId('profile-loading').textContent).toBe('false');
+    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(0);
+  });
+
+  it('handles non-array simulation responses', async () => {
+    (listSimulations as jest.Mock).mockResolvedValueOnce(null);
+
+    const { getByTestId } = render(<SimulationsHarness />);
+
+    await waitFor(() =>
+      expect(getByTestId('sims-count').textContent).toBe('0'),
+    );
+    expect(getByTestId('sims-error').textContent).toBe('');
+  });
+
+  it('ignores abort errors when loading simulations', async () => {
+    (listSimulations as jest.Mock).mockRejectedValueOnce(
+      new DOMException('Aborted', 'AbortError'),
+    );
+
+    const { getByTestId } = render(<SimulationsHarness />);
+
+    await waitFor(() =>
+      expect(getByTestId('sims-loading').textContent).toBe('false'),
+    );
+    expect(getByTestId('sims-error').textContent).toBe('');
   });
 });

@@ -47,6 +47,14 @@ function TestDashboard({ fetchOnMount = true }: { fetchOnMount?: boolean }) {
 
 describe('useDashboardData', () => {
   const realFetch = global.fetch;
+  const originalLocation = window.location;
+  const setLocation = (value: Location) => {
+    Object.defineProperty(window, 'location', {
+      value,
+      writable: true,
+      configurable: true,
+    });
+  };
 
   beforeEach(() => {
     global.fetch = jest.fn() as unknown as typeof fetch;
@@ -54,6 +62,7 @@ describe('useDashboardData', () => {
 
   afterEach(() => {
     global.fetch = realFetch;
+    setLocation(originalLocation);
   });
 
   it('fetches profile and simulations and surfaces results', async () => {
@@ -125,5 +134,84 @@ describe('useDashboardData', () => {
     );
     expect(screen.getByTestId('profile-loading').textContent).toBe('false');
     expect(screen.getByTestId('sim-loading').textContent).toBe('false');
+  });
+
+  it('redirects to login on 401 responses', async () => {
+    const assignMock = jest.fn();
+    setLocation({
+      assign: assignMock,
+      origin: 'http://app.test',
+    } as unknown as Location);
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      responseHelpers.jsonResponse(
+        { message: 'nope' },
+        401,
+      ) as unknown as Response,
+    );
+
+    render(<TestDashboard />);
+
+    await waitFor(() => expect(assignMock).toHaveBeenCalled());
+    expect(assignMock.mock.calls[0]?.[0]).toContain('/auth/login?');
+  });
+
+  it('redirects to not authorized on 403 responses', async () => {
+    const assignMock = jest.fn();
+    setLocation({
+      assign: assignMock,
+      origin: 'http://app.test',
+    } as unknown as Location);
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      responseHelpers.jsonResponse(
+        { message: 'nope' },
+        403,
+      ) as unknown as Response,
+    );
+
+    render(<TestDashboard />);
+
+    await waitFor(() => expect(assignMock).toHaveBeenCalled());
+    expect(assignMock.mock.calls[0]?.[0]).toContain('/not-authorized?');
+  });
+
+  it('surfaces errors for non-auth failures', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      responseHelpers.jsonResponse(
+        { detail: 'fail' },
+        500,
+      ) as unknown as Response,
+    );
+
+    render(<TestDashboard />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('profile-error').textContent).toBe(
+        'Unable to load your dashboard right now.',
+      ),
+    );
+    expect(screen.getByTestId('sim-error').textContent).toBe(
+      'Unable to load your dashboard right now.',
+    );
+  });
+
+  it('ignores abort errors without setting error state', async () => {
+    (global.fetch as jest.Mock).mockRejectedValueOnce(
+      new DOMException('Aborted', 'AbortError'),
+    );
+
+    render(<TestDashboard />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('profile-loading').textContent).toBe('false'),
+    );
+    expect(screen.getByTestId('profile-error').textContent).toBe('');
+    expect(screen.getByTestId('sim-error').textContent).toBe('');
+  });
+
+  it('skips fetch on mount when fetchOnMount is false', async () => {
+    render(<TestDashboard fetchOnMount={false} />);
+    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(0);
   });
 });

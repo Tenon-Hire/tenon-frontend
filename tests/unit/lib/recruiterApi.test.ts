@@ -16,6 +16,7 @@ jest.mock('@/lib/api/httpClient', () => ({
     get: jest.fn(),
     post: jest.fn(),
   },
+  safeRequest: jest.fn(),
 }));
 
 type MockGet = (path: string, options?: unknown) => Promise<unknown>;
@@ -33,6 +34,10 @@ const mockedBffGet =
   recruiterBffClient.get as unknown as jest.MockedFunction<MockGet>;
 const mockedBffPost =
   recruiterBffClient.post as unknown as jest.MockedFunction<MockPost>;
+const mockedSafeRequest = jest.requireMock('@/lib/api/httpClient')
+  .safeRequest as jest.MockedFunction<
+  (path: string, options?: unknown, clientOptions?: unknown) => Promise<unknown>
+>;
 
 describe('recruiterApi', () => {
   beforeEach(() => {
@@ -131,6 +136,21 @@ describe('recruiterApi', () => {
 
       expect(mockedBffGet).toHaveBeenCalledWith('/simulations', undefined);
       expect(mockedApiGet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listSimulationsSafe', () => {
+    it('calls safeRequest with BFF base and skipAuth', async () => {
+      mockedSafeRequest.mockResolvedValueOnce({ data: [], error: null });
+
+      const { listSimulationsSafe } = await import('@/lib/api/recruiter');
+      await listSimulationsSafe();
+
+      expect(mockedSafeRequest).toHaveBeenCalledWith(
+        '/simulations',
+        undefined,
+        { basePath: '/api', skipAuth: true },
+      );
     });
   });
 
@@ -283,6 +303,28 @@ describe('recruiterApi', () => {
       resolveFetch([]);
       await first;
     });
+
+    it('returns cached data within TTL window', async () => {
+      mockedBffGet.mockResolvedValueOnce([
+        { candidate_session_id: 1, status: 'not_started' },
+      ]);
+
+      const first = await listSimulationCandidates('sim_2');
+      const second = await listSimulationCandidates('sim_2');
+
+      expect(first).toHaveLength(1);
+      expect(second).toHaveLength(1);
+      expect(mockedBffGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears cache on errors and retries', async () => {
+      mockedBffGet.mockRejectedValueOnce(new Error('fail'));
+      await expect(listSimulationCandidates('sim_3')).rejects.toThrow('fail');
+
+      mockedBffGet.mockResolvedValueOnce([]);
+      await listSimulationCandidates('sim_3');
+      expect(mockedBffGet).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('normalizeCandidateSession', () => {
@@ -313,6 +355,48 @@ describe('recruiterApi', () => {
       if (originalWindow) {
         globalAny.window = originalWindow;
       }
+    });
+
+    it('builds inviteUrl with window origin and normalizes verification', () => {
+      const globalAny = globalThis as Record<string, unknown>;
+      const originalWindow = globalAny.window as Window | undefined;
+      globalAny.window = {
+        location: { origin: 'https://app.test' },
+      } as Window;
+
+      const result = normalizeCandidateSession({
+        candidateSessionId: '7',
+        inviteEmail: 'test@example.com',
+        candidateName: 'Test User',
+        sessionStatus: 'in_progress',
+        inviteToken: 'tok_7',
+        inviteUrl: '',
+        email_verified: true,
+        progress: { current: '1', total: '3' },
+      });
+
+      expect(result.inviteUrl).toBe('https://app.test/candidate/session/tok_7');
+      expect(result.verified).toBe(true);
+      expect(result.dayProgress).toEqual({ current: 1, total: 3 });
+
+      if (originalWindow) {
+        globalAny.window = originalWindow;
+      } else {
+        delete globalAny.window;
+      }
+    });
+
+    it('handles empty and invalid candidate session payloads', () => {
+      const empty = normalizeCandidateSession(null);
+      expect(empty.candidateSessionId).toBe(0);
+      expect(empty.status).toBe('not_started');
+
+      const invalid = normalizeCandidateSession({
+        id: 'NaN',
+        progress: { current: 'x', total: 'y' },
+      });
+      expect(invalid.candidateSessionId).toBe(0);
+      expect(invalid.dayProgress).toBeNull();
     });
   });
 
@@ -452,6 +536,46 @@ describe('recruiterApi', () => {
         message: 'Missing title',
         id: '',
       });
+    });
+
+    it('normalizes explicit error responses from backend payloads', async () => {
+      mockedBffPost.mockResolvedValueOnce({
+        status: 409,
+        detail: 'Conflict',
+        simulation_id: null,
+      });
+
+      const result = await createSimulation({
+        title: 'Sim',
+        role: 'Backend',
+        techStack: 'Node',
+        seniority: 'Junior',
+        templateKey: 'python-fastapi',
+      });
+
+      expect(result).toEqual({
+        id: '',
+        ok: false,
+        status: 409,
+        message: 'Conflict',
+      });
+    });
+  });
+
+  describe('resendInvite', () => {
+    it('returns null when identifiers are missing', async () => {
+      const { resendInvite } = await import('@/lib/api/recruiter');
+      await expect(resendInvite('', NaN)).resolves.toBeNull();
+    });
+
+    it('posts resend invite when identifiers are valid', async () => {
+      mockedBffPost.mockResolvedValueOnce({ ok: true });
+      const { resendInvite } = await import('@/lib/api/recruiter');
+      await resendInvite('sim_9', 42);
+
+      expect(mockedBffPost).toHaveBeenCalledWith(
+        '/simulations/sim_9/candidates/42/invite/resend',
+      );
     });
   });
 
