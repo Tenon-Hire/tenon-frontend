@@ -10,7 +10,7 @@ describe('auth navigation links', () => {
     expect(logout.tagName).toBe('A');
     expect(logout).toHaveAttribute(
       'href',
-      '/auth/logout?returnTo=%2Fdashboard',
+      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
     );
   });
 
@@ -24,7 +24,7 @@ describe('auth navigation links', () => {
     );
     expect(screen.getByText('Logout')).toHaveAttribute(
       'href',
-      '/auth/logout?returnTo=%2F',
+      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F',
     );
   });
 
@@ -34,7 +34,7 @@ describe('auth navigation links', () => {
     expect(logout.tagName).toBe('A');
     expect(logout).toHaveAttribute(
       'href',
-      '/auth/logout?returnTo=%2Fdashboard',
+      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
     );
   });
 

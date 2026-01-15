@@ -1,6 +1,7 @@
 import {
   buildClearAuthHref,
   buildLoginHref,
+  buildLogoutHref,
   buildSignupHref,
 } from '@/features/auth/authPaths';
 
@@ -50,5 +51,19 @@ describe('authPaths buildClearAuthHref', () => {
   it('defaults to returnTo when mode is missing', () => {
     const href = buildClearAuthHref('/candidate/dashboard');
     expect(href).toBe('/auth/clear?returnTo=%2Fcandidate%2Fdashboard');
+  });
+});
+
+describe('authPaths buildLogoutHref', () => {
+  it('uses an absolute returnTo for logout when a path is provided', () => {
+    const href = buildLogoutHref('/dashboard');
+    expect(href).toBe(
+      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
+    );
+  });
+
+  it('defaults logout returnTo to the origin root', () => {
+    const href = buildLogoutHref();
+    expect(href).toBe('/auth/logout?returnTo=http%3A%2F%2Flocalhost%2F');
   });
 });

@@ -15,7 +15,7 @@ describe('PublicHomeContent', () => {
     ).toHaveAttribute('href', '/candidate/dashboard');
     expect(screen.getByRole('link', { name: 'Logout' })).toHaveAttribute(
       'href',
-      '/auth/logout?returnTo=%2Fdashboard',
+      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fdashboard',
     );
   });
 

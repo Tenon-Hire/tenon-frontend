@@ -64,6 +64,7 @@ Client-safe:
 - Optional Auth0 connection hints: `NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION`, `NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION`.
 - Optional UI debug flags: `NEXT_PUBLIC_TENON_DEBUG_ERRORS`, `NEXT_PUBLIC_TENON_DEBUG_PERF`.
 - Optional base URL helpers: `NEXT_PUBLIC_TENON_APP_BASE_URL`, `NEXT_PUBLIC_VERCEL_URL`.
+- Auth0 Application config: Allowed Logout URLs must include absolute origins for every environment (local/staging/prod), including `${ORIGIN}/`, `${ORIGIN}/dashboard`, and `${ORIGIN}/candidate/dashboard`.
 
 - Optional helper script: `./runFrontend.sh` echoes `TENON_BACKEND_BASE_URL` then runs `npm run dev`.
 
