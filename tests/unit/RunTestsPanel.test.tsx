@@ -202,7 +202,11 @@ describe('RunTestsPanel', () => {
     // Retry and hit polling error
     const nextStart = jest.fn().mockResolvedValue({ runId: 'r-err' });
     rerender(
-      <RunTestsPanel onStart={nextStart} onPoll={onPoll} pollIntervalMs={1000} />,
+      <RunTestsPanel
+        onStart={nextStart}
+        onPoll={onPoll}
+        pollIntervalMs={1000}
+      />,
     );
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));

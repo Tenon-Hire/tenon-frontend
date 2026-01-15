@@ -1,7 +1,6 @@
-const rawFlag = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '';
+const rawFlag = (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase();
 
-export const dashboardPerfDebugEnabled =
-  rawFlag === '1' || rawFlag.toLowerCase() === 'true';
+export const dashboardPerfDebugEnabled = rawFlag === '1' || rawFlag === 'true';
 
 export function nowMs(): number | null {
   if (typeof performance === 'undefined') return null;

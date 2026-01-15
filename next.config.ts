@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next';
 
 const isProd = process.env.NODE_ENV === 'production';
+const isDeployProd =
+  process.env.VERCEL_ENV === 'production' ||
+  process.env.TENON_DEPLOY_ENV === 'production';
 
 function safeCspOrigin(value?: string | null): string | null {
   if (!value) return null;
@@ -19,9 +22,7 @@ function buildCspHeader() {
   const auth0Domain = process.env.TENON_AUTH0_DOMAIN;
   if (auth0Domain) {
     const auth0Origin = safeCspOrigin(
-      auth0Domain.startsWith('http')
-        ? auth0Domain
-        : `https://${auth0Domain}`,
+      auth0Domain.startsWith('http') ? auth0Domain : `https://${auth0Domain}`,
     );
     if (auth0Origin) connectSrc.add(auth0Origin);
   }
@@ -33,9 +34,11 @@ function buildCspHeader() {
     "default-src 'self'",
     `script-src ${scriptSrc.join(' ')}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     `connect-src ${Array.from(connectSrc).join(' ')}`,
+    "object-src 'none'",
+    "frame-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -47,16 +50,19 @@ function buildCspHeader() {
 }
 
 const securityHeaders = [
-  { key: 'Content-Security-Policy', value: buildCspHeader() },
+  { key: 'Content-Security-Policy-Report-Only', value: buildCspHeader() },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  ...(isProd
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=()',
+  },
+  ...(isDeployProd
     ? [
         {
           key: 'Strict-Transport-Security',
-          value: 'max-age=63072000; includeSubDomains; preload',
+          value: 'max-age=63072000; includeSubDomains',
         },
       ]
     : []),
@@ -71,7 +77,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source:
+          '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
         headers: securityHeaders,
       },
     ];

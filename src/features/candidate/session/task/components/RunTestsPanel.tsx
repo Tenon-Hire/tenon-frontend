@@ -59,6 +59,9 @@ export function RunTestsPanel({
   const [message, setMessage] = useState('');
 
   const pollTimerRef = useRef<number | null>(null);
+  const pendingPollRef = useRef<{ attempt: number; runId: string } | null>(
+    null,
+  );
 
   const clearTimer = useCallback(() => {
     if (pollTimerRef.current) {
@@ -72,6 +75,7 @@ export function RunTestsPanel({
   const endRun = useCallback(
     (next: RunState, msg?: string) => {
       clearTimer();
+      pendingPollRef.current = null;
       setState(next);
       setMessage(fallbackMessage(next, msg));
     },
@@ -98,6 +102,14 @@ export function RunTestsPanel({
       try {
         const res = await onPoll(id);
         if (res.status === 'running') {
+          if (typeof document !== 'undefined') {
+            if (document.visibilityState === 'hidden') {
+              pendingPollRef.current = { attempt: attempt + 1, runId: id };
+              return;
+            }
+          }
+          pendingPollRef.current = null;
+          clearTimer();
           pollTimerRef.current = window.setTimeout(
             () => void pollRun(attempt + 1, id),
             resolvePollDelay(attempt + 1),
@@ -123,13 +135,33 @@ export function RunTestsPanel({
         endRun('error');
       }
     },
-    [endRun, maxAttempts, onPoll, resolvePollDelay],
+    [clearTimer, endRun, maxAttempts, onPoll, resolvePollDelay],
   );
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      const pending = pendingPollRef.current;
+      if (!pending) return;
+      pendingPollRef.current = null;
+      clearTimer();
+      pollTimerRef.current = window.setTimeout(
+        () => void pollRun(pending.attempt, pending.runId),
+        resolvePollDelay(pending.attempt),
+      );
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [clearTimer, pollRun, resolvePollDelay]);
 
   const startRun = useCallback(async () => {
     if (state === 'starting' || state === 'running') return;
 
     clearTimer();
+    pendingPollRef.current = null;
     setMessage('');
     setState('starting');
 
@@ -138,6 +170,13 @@ export function RunTestsPanel({
       if (!res?.runId) throw new Error('Missing run id');
 
       setState('running');
+      if (typeof document !== 'undefined') {
+        if (document.visibilityState === 'hidden') {
+          pendingPollRef.current = { attempt: 0, runId: res.runId };
+          return;
+        }
+      }
+      pendingPollRef.current = null;
       pollTimerRef.current = window.setTimeout(
         () => void pollRun(0, res.runId),
         resolvePollDelay(0),

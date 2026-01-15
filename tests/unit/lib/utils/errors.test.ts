@@ -29,7 +29,7 @@ describe('lib/utils/errors', () => {
   });
 
   it('returns detail when includeDetail is set', () => {
-    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'TRUE';
     expect(errorDetailEnabled()).toBe(true);
     const err = { detail: 'detail msg', message: 'msg' };
     expect(toUserMessage(err, 'fallback', { includeDetail: true })).toBe(
@@ -43,7 +43,7 @@ describe('lib/utils/errors', () => {
   });
 
   it('ignores detail when includeDetail is false', () => {
-    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'TRUE';
     const err = { detail: 'secret', message: 'shown' };
     expect(toUserMessage(err, 'fallback', { includeDetail: false })).toBe(
       'shown',
@@ -55,7 +55,7 @@ describe('lib/utils/errors', () => {
   });
 
   it('redacts bearer tokens and jwt-like strings', () => {
-    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'TRUE';
     const err = new Error(
       'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature',
     );
@@ -63,7 +63,7 @@ describe('lib/utils/errors', () => {
   });
 
   it('redacts token params in messages', () => {
-    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'TRUE';
     const err = {
       message: 'Request failed: ?access_token=abc123&id_token=def456',
     };

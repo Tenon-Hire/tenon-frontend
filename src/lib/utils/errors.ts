@@ -1,10 +1,8 @@
 type MaybeErrorLike = { message?: unknown; detail?: unknown; status?: unknown };
 
 export function errorDetailEnabled(): boolean {
-  return (
-    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS === '1' ||
-    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS === 'true'
-  );
+  const flag = (process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS ?? '').toLowerCase();
+  return flag === '1' || flag === 'true';
 }
 
 function redactTokens(value: string): string {
@@ -48,9 +46,7 @@ export function toUserMessage(
   if (err && typeof err === 'object') {
     const maybe = err as MaybeErrorLike;
     const detail =
-      allowDetail && typeof maybe.detail === 'string'
-        ? maybe.detail
-        : null;
+      allowDetail && typeof maybe.detail === 'string' ? maybe.detail : null;
     if (detail?.trim()) return sanitizeMessage(detail);
 
     const message =

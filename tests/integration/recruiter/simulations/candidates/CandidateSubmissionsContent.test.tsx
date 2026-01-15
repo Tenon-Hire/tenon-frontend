@@ -26,6 +26,7 @@ jest.mock('next/link', () => ({
 }));
 
 let anchorClickSpy: jest.SpyInstance | null = null;
+const originalDebugErrors = process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
 
 describe('CandidateSubmissionsPage', () => {
   beforeAll(() => {
@@ -36,6 +37,11 @@ describe('CandidateSubmissionsPage', () => {
 
   afterEach(() => {
     jest.resetAllMocks();
+    if (originalDebugErrors === undefined) {
+      delete process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
+    } else {
+      process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = originalDebugErrors;
+    }
   });
 
   afterAll(() => {
@@ -271,6 +277,7 @@ describe('CandidateSubmissionsPage', () => {
   });
 
   it('renders error state when submissions list request fails', async () => {
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
     setMockParams({ id: '1', candidateSessionId: '2' });
 
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {

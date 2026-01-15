@@ -55,6 +55,8 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
   - `NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION`
 - Optional UI debugging flags (client-safe):
   - `NEXT_PUBLIC_TENON_DEBUG_ERRORS` – surface backend error detail in the UI (default off).
+- Optional deploy environment flag:
+  - `TENON_DEPLOY_ENV` – set to `production` to enable HSTS outside Vercel.
 - Optional helper script: `./runFrontend.sh` echoes `TENON_BACKEND_BASE_URL` then runs `npm run dev`.
 - Optional upstream connection pooling: set `TENON_USE_FETCH_DISPATCHER=1` to enable an undici `Agent` (Node 18+); disabled by default for serverless safety.
 
@@ -69,9 +71,11 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 ## Security Notes
 
 - Client bundles should only read `NEXT_PUBLIC_*` env vars; keep secrets in `TENON_*` server-only vars.
-- Security headers (CSP, HSTS in prod, X-Frame-Options, X-Content-Type-Options, Referrer-Policy) are set in `next.config.ts`.
-- `sanitizeReturnTo` enforces same-origin return paths to prevent open redirects.
+- CSP ships in Report-Only mode initially (`Content-Security-Policy-Report-Only`) to avoid unexpected breakage.
+- Security headers are set in `next.config.ts`; HSTS is enabled only when `VERCEL_ENV=production` or `TENON_DEPLOY_ENV=production`.
+- `sanitizeReturnTo` is enforced in auth redirect URL builders and callback handling to prevent open redirects.
 - Error messages are sanitized to avoid leaking access tokens in logs/toasts.
+- If external images are needed, allow-list their origins in CSP (current `img-src` is `self` + `https:` + `data:` + `blob:`).
 
 ## Typical Flows
 
@@ -98,3 +102,4 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 - API sanity: `/api/*` returns JSON (401/403 on auth failures) with no `Location` redirects; `/api/backend/*` stays same-origin; recruiter dashboard makes a single `/api/dashboard` call (tagged with `x-tenon-bff`/`x-tenon-upstream-status`/`x-tenon-request-id`).
 - API responses expose `Server-Timing` (total + retry count) and never leak `Location` headers; oversized request/response bodies are rejected with JSON and a request-id for correlation.
 - Network hygiene (Vercel): recruiter flows hit `/api/**` only (no calls to absolute `NEXT_PUBLIC_TENON_API_BASE_URL`); login navigations are document requests only (no XHR/prefetch to `/authorize`); create simulation first attempt returns 201 JSON with id.
+- Security headers (manual): verify `/` responds with `Content-Security-Policy-Report-Only` and HSTS only when `VERCEL_ENV=production` or `TENON_DEPLOY_ENV=production`.

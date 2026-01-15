@@ -32,9 +32,9 @@ import { extractFirstUrl } from './utils/extractUrl';
 
 type ViewState = 'loading' | 'auth' | 'starting' | 'error' | 'running';
 
-const debugSession =
-  process.env.NEXT_PUBLIC_TENON_DEBUG_PERF === '1' ||
-  process.env.NEXT_PUBLIC_TENON_DEBUG_PERF === 'true';
+const debugSession = ['1', 'true'].includes(
+  (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase(),
+);
 function devDebug(message: string, ...args: unknown[]) {
   if (debugSession) {
     // eslint-disable-next-line no-console

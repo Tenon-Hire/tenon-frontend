@@ -5,6 +5,7 @@ import {
 } from '@/features/recruiter/utils/formatters';
 
 const originalExecCommand = document.execCommand;
+const originalDebugErrors = process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
 
 describe('RecruiterDashboardContent helpers', () => {
   afterEach(() => {
@@ -15,6 +16,11 @@ describe('RecruiterDashboardContent helpers', () => {
     (
       document as unknown as { execCommand?: typeof document.execCommand }
     ).execCommand = originalExecCommand;
+    if (originalDebugErrors === undefined) {
+      delete process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
+    } else {
+      process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = originalDebugErrors;
+    }
   });
 
   it('formats created date safely', () => {
@@ -24,6 +30,7 @@ describe('RecruiterDashboardContent helpers', () => {
   });
 
   it('derives error message from object, detail, or fallback', () => {
+    process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
     expect(errorToMessage({ message: 'Boom' }, 'fallback')).toBe('Boom');
     expect(errorToMessage({ detail: 'Nope' }, 'fallback')).toBe('Nope');
     expect(errorToMessage(new Error('Err'), 'fallback')).toBe('Err');
