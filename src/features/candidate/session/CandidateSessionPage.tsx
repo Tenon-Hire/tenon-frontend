@@ -42,6 +42,11 @@ function devDebug(message: string, ...args: unknown[]) {
   }
 }
 
+function statusFromError(err: unknown): number | null {
+  const status = (err as { status?: unknown })?.status;
+  return typeof status === 'number' ? status : null;
+}
+
 export default function CandidateSessionPage({ token }: { token: string }) {
   const {
     state,
@@ -66,6 +71,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   const [view, setView] = useState<ViewState>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const lastTokenRef = useRef<string | null>(null);
   const initRef = useRef<{
@@ -138,6 +144,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     }
     initRef.current = { token: null, inFlight: false, done: false };
     setErrorMessage(null);
+    setErrorStatus(null);
     setAuthMessage(null);
     setView('loading');
     clearTaskError();
@@ -154,6 +161,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     ) => {
       if (!initToken) {
         setErrorMessage('Missing invite token.');
+        setErrorStatus(null);
         setView('error');
         return;
       }
@@ -183,6 +191,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       initRef.current = { token: initToken, inFlight: true, done: false };
       setView('loading');
       setErrorMessage(null);
+      setErrorStatus(null);
       setAuthMessage(null);
       devDebug('init start', { token: initToken });
 
@@ -204,15 +213,18 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           devDebug('token invalid', err);
           setToken(null);
           setAuthMessage('Please sign in again.');
+          setErrorStatus(typeof status === 'number' ? status : null);
           setView('auth');
           return;
         }
         if (status === 403) {
           setToken(null);
           setAuthMessage(friendlyBootstrapError(err));
+          setErrorStatus(typeof status === 'number' ? status : null);
           setView('auth');
           return;
         }
+        setErrorStatus(typeof status === 'number' ? status : null);
         setErrorMessage(friendlyBootstrapError(err));
         setView('error');
         initRef.current.done = true;
@@ -327,11 +339,17 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     initRef.current = { token: null, inFlight: false, done: false };
     setView('loading');
     setErrorMessage(null);
+    setErrorStatus(null);
     void runInit(token, true);
   }, [runInit, token]);
 
   const errorCopy =
     errorMessage ?? 'Something went wrong loading your simulation.';
+  const inviteLinkError = errorStatus === 404 || errorStatus === 410;
+
+  const goToCandidateDashboard = useCallback(() => {
+    router.push('/candidate/dashboard');
+  }, [router]);
 
   if (view === 'loading' || state.authStatus === 'loading') {
     return (
@@ -343,15 +361,25 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   }
 
   if (view === 'error') {
+    const errorTitle = inviteLinkError
+      ? 'Invite link unavailable'
+      : 'Unable to load simulation';
+    const errorAction = inviteLinkError ? (
+      <div className="flex gap-3">
+        <Button onClick={goToCandidateDashboard}>
+          Go to Candidate Dashboard
+        </Button>
+      </div>
+    ) : (
+      <div className="flex gap-3">
+        <Button onClick={retryInit}>Retry</Button>
+      </div>
+    );
     return (
       <StateMessage
-        title="Unable to load simulation"
+        title={errorTitle}
         description={errorCopy}
-        action={
-          <div className="flex gap-3">
-            <Button onClick={retryInit}>Retry</Button>
-          </div>
-        }
+        action={errorAction}
       />
     );
   }

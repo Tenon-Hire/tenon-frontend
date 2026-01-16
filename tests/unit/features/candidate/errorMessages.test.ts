@@ -9,7 +9,7 @@ import { HttpError } from '@/lib/api/candidate';
 describe('candidate error messages', () => {
   it('maps bootstrap statuses to friendly messages', () => {
     expect(friendlyBootstrapError(new HttpError(404, 'x'))).toContain(
-      'invalid',
+      'no longer valid',
     );
     expect(friendlyBootstrapError(new HttpError(401, 'x'))).toContain(
       'sign in',
@@ -18,7 +18,7 @@ describe('candidate error messages', () => {
       'sign in',
     );
     expect(friendlyBootstrapError(new HttpError(410, 'x'))).toContain(
-      'expired',
+      'expired or was already used',
     );
     expect(friendlyBootstrapError(new Error('Backend fail'))).toContain(
       'Network error',

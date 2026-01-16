@@ -152,4 +152,21 @@ describe('CandidateSessionPage unit flow', () => {
       expect(screen.getByText('Unable to load simulation')).toBeInTheDocument(),
     );
   });
+
+  it('shows guidance when invite link is invalid or expired', async () => {
+    mockUseCandidateSession.mockReturnValue(buildSession());
+    mockResolveInvite.mockRejectedValueOnce({ status: 404 });
+
+    render(<CandidateSessionPage token="invite-token" />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Invite link unavailable')).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/contact your recruiter to request a new invitation/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Go to Candidate Dashboard' }),
+    ).toBeInTheDocument();
+  });
 });
