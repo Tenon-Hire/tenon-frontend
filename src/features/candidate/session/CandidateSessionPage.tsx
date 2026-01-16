@@ -109,6 +109,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         });
         devDebug('task fetch success', { sessionId });
       } catch (err) {
+        setErrorStatus(statusFromError(err));
         setTaskError(friendlyTaskError(err));
         devDebug('task fetch failed', err);
         throw err;
@@ -208,23 +209,23 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         setView('starting');
         initRef.current.done = true;
       } catch (err) {
-        const status = (err as { status?: unknown }).status;
+        const status = statusFromError(err);
         if (status === 401) {
           devDebug('token invalid', err);
           setToken(null);
           setAuthMessage('Please sign in again.');
-          setErrorStatus(typeof status === 'number' ? status : null);
+          setErrorStatus(status);
           setView('auth');
           return;
         }
         if (status === 403) {
           setToken(null);
           setAuthMessage(friendlyBootstrapError(err));
-          setErrorStatus(typeof status === 'number' ? status : null);
+          setErrorStatus(status);
           setView('auth');
           return;
         }
-        setErrorStatus(typeof status === 'number' ? status : null);
+        setErrorStatus(status);
         setErrorMessage(friendlyBootstrapError(err));
         setView('error');
         initRef.current.done = true;
