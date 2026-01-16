@@ -324,6 +324,8 @@ export function RunTestsPanel({
     expanded: boolean,
     onToggle: () => void,
   ) => {
+    const canCopy =
+      typeof navigator !== 'undefined' && !!navigator.clipboard?.writeText;
     const trimmed = content?.trim() ?? '';
     if (!trimmed) {
       return (
@@ -348,13 +350,15 @@ export function RunTestsPanel({
         <div className="flex items-center justify-between text-[11px] text-gray-600">
           <span>{label}</span>
           <div className="flex items-center gap-2">
-            <button
-              className="text-blue-600 hover:underline"
-              type="button"
-              onClick={handleCopy}
-            >
-              Copy
-            </button>
+            {canCopy ? (
+              <button
+                className="text-blue-600 hover:underline"
+                type="button"
+                onClick={handleCopy}
+              >
+                Copy
+              </button>
+            ) : null}
             {needsTruncate ? (
               <button
                 className="text-blue-600 hover:underline"
@@ -390,11 +394,15 @@ export function RunTestsPanel({
       }
     }
     pendingPollRef.current = null;
+    clearTimer();
     pollTimerRef.current = window.setTimeout(
       () => void pollRun(0, storedId),
       resolvePollDelay(0),
     );
-  }, [pollRun, resolvePollDelay, state, storageKey]);
+    return () => {
+      clearTimer();
+    };
+  }, [clearTimer, pollRun, resolvePollDelay, state, storageKey]);
 
   return (
     <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
