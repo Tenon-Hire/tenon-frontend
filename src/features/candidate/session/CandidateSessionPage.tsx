@@ -454,7 +454,11 @@ export default function CandidateSessionPage({ token }: { token: string }) {
             token={state.token}
             dayIndex={currentTask.dayIndex}
           />
-          <RunTestsPanel onStart={handleStartTests} onPoll={handlePollTests} />
+          <RunTestsPanel
+            onStart={handleStartTests}
+            onPoll={handlePollTests}
+            storageKey={`tenon:taskRun:${currentTask.id}`}
+          />
         </div>
       ) : null}
 

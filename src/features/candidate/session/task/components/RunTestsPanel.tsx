@@ -31,9 +31,11 @@ type RunState =
 type RunTestsPanelProps = {
   onStart: () => Promise<{ runId: string }>;
   onPoll: (runId: string) => Promise<PollResult>;
+  storageKey?: string;
   pollIntervalMs?: number;
   maxAttempts?: number;
   maxPollIntervalMs?: number;
+  maxDurationMs?: number;
 };
 
 function fallbackMessage(state: RunState, provided?: string) {
@@ -60,9 +62,11 @@ function fallbackMessage(state: RunState, provided?: string) {
 export function RunTestsPanel({
   onStart,
   onPoll,
+  storageKey,
   pollIntervalMs = 1500,
   maxAttempts = 0,
   maxPollIntervalMs = 5000,
+  maxDurationMs = 10 * 60 * 1000,
 }: RunTestsPanelProps) {
   const [state, setState] = useState<RunState>('idle');
   const [message, setMessage] = useState('');
@@ -71,6 +75,7 @@ export function RunTestsPanel({
     stdout: false,
     stderr: false,
   });
+  const runStartRef = useRef<number | null>(null);
 
   const pollTimerRef = useRef<number | null>(null);
   const pendingPollRef = useRef<{ attempt: number; runId: string } | null>(
@@ -90,17 +95,23 @@ export function RunTestsPanel({
     (next: RunState, msg?: string) => {
       clearTimer();
       pendingPollRef.current = null;
+      runStartRef.current = null;
       setState(next);
       setMessage(fallbackMessage(next, msg));
+      if (storageKey) {
+        try {
+          sessionStorage.removeItem(storageKey);
+        } catch {}
+      }
     },
-    [clearTimer],
+    [clearTimer, storageKey],
   );
 
   const resolvePollDelay = useCallback(
     (attempt: number) => {
       const baseInterval = Math.max(1000, pollIntervalMs);
       const cappedMax = Math.max(maxPollIntervalMs, baseInterval);
-      const delay = Math.round(baseInterval * Math.pow(1.6, attempt));
+      const delay = Math.round(baseInterval * Math.pow(1.4, attempt));
       return Math.min(delay, cappedMax);
     },
     [maxPollIntervalMs, pollIntervalMs],
@@ -109,11 +120,25 @@ export function RunTestsPanel({
   const pollRun = useCallback(
     async (attempt: number, id: string) => {
       if (maxAttempts && attempt >= maxAttempts) {
-        endRun('timeout');
+        endRun(
+          'error',
+          'Still running. Open the workflow link to see progress, then check back.',
+        );
         return;
       }
 
       try {
+        if (
+          maxDurationMs > 0 &&
+          runStartRef.current !== null &&
+          Date.now() - runStartRef.current > maxDurationMs
+        ) {
+          endRun(
+            'error',
+            'This is taking longer than expected. Open the workflow link to track progress, then try polling again.',
+          );
+          return;
+        }
         const res = await onPoll(id);
         setResult(res);
         if (res.status === 'running') {
@@ -160,7 +185,7 @@ export function RunTestsPanel({
         endRun('error', errMessage);
       }
     },
-    [clearTimer, endRun, maxAttempts, onPoll, resolvePollDelay],
+    [clearTimer, endRun, maxAttempts, maxDurationMs, onPoll, resolvePollDelay],
   );
 
   useEffect(() => {
@@ -191,12 +216,18 @@ export function RunTestsPanel({
     setResult(null);
     setExpandedOutput({ stdout: false, stderr: false });
     setState('starting');
+    runStartRef.current = Date.now();
 
     try {
       const res = await onStart();
       if (!res?.runId) throw new Error('Missing run id');
 
       setState('running');
+      if (storageKey) {
+        try {
+          sessionStorage.setItem(storageKey, res.runId);
+        } catch {}
+      }
       if (typeof document !== 'undefined') {
         if (document.visibilityState === 'hidden') {
           pendingPollRef.current = { attempt: 0, runId: res.runId };
@@ -216,7 +247,15 @@ export function RunTestsPanel({
           : toUserMessage(err, 'Failed to start tests. Please try again.');
       endRun('error', errMessage);
     }
-  }, [clearTimer, endRun, onStart, pollRun, resolvePollDelay, state]);
+  }, [
+    clearTimer,
+    endRun,
+    onStart,
+    pollRun,
+    resolvePollDelay,
+    state,
+    storageKey,
+  ]);
 
   const ctaLabel = useMemo(() => {
     if (state === 'starting') return 'Starting…';
@@ -250,7 +289,9 @@ export function RunTestsPanel({
       case 'success':
         return 'success';
       case 'failed':
+        return 'warning';
       case 'timeout':
+        return 'warning';
       case 'error':
         return 'warning';
       case 'starting':
@@ -291,24 +332,39 @@ export function RunTestsPanel({
         </div>
       );
     }
-    const maxChars = 400;
+    const maxChars = 8000;
     const needsTruncate = trimmed.length > maxChars;
     const displayText =
       !needsTruncate || expanded ? trimmed : `${trimmed.slice(0, maxChars)}…`;
+    const handleCopy = async () => {
+      if (!navigator?.clipboard?.writeText) return;
+      try {
+        await navigator.clipboard.writeText(trimmed);
+      } catch {}
+    };
 
     return (
       <div className="rounded border border-gray-200 bg-gray-50 p-2 text-xs text-gray-800">
         <div className="flex items-center justify-between text-[11px] text-gray-600">
           <span>{label}</span>
-          {needsTruncate ? (
+          <div className="flex items-center gap-2">
             <button
               className="text-blue-600 hover:underline"
               type="button"
-              onClick={onToggle}
+              onClick={handleCopy}
             >
-              {expanded ? 'Collapse' : `Show full ${label.toLowerCase()}`}
+              Copy
             </button>
-          ) : null}
+            {needsTruncate ? (
+              <button
+                className="text-blue-600 hover:underline"
+                type="button"
+                onClick={onToggle}
+              >
+                {expanded ? 'Collapse' : `Show full ${label.toLowerCase()}`}
+              </button>
+            ) : null}
+          </div>
         </div>
         <pre className="mt-1 whitespace-pre-wrap break-words font-mono">
           {displayText}
@@ -316,6 +372,29 @@ export function RunTestsPanel({
       </div>
     );
   };
+
+  useEffect(() => {
+    if (!storageKey || state !== 'idle') return;
+    let storedId: string | null = null;
+    try {
+      storedId = sessionStorage.getItem(storageKey);
+    } catch {}
+    if (!storedId) return;
+    setState('running');
+    setMessage(fallbackMessage('running'));
+    runStartRef.current = Date.now();
+    if (typeof document !== 'undefined') {
+      if (document.visibilityState === 'hidden') {
+        pendingPollRef.current = { attempt: 0, runId: storedId };
+        return;
+      }
+    }
+    pendingPollRef.current = null;
+    pollTimerRef.current = window.setTimeout(
+      () => void pollRun(0, storedId),
+      resolvePollDelay(0),
+    );
+  }, [pollRun, resolvePollDelay, state, storageKey]);
 
   return (
     <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">

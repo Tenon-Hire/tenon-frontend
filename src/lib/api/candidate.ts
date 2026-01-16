@@ -137,11 +137,7 @@ function normalizeRunDetails(
   const summary =
     resolveRecord(rec.summary) ??
     resolveRecord(rec.testSummary) ??
-    resolveRecord(rec.test_summary) ??
-    resolveRecord(rec.results) ??
-    resolveRecord(rec.result) ??
-    resolveRecord(rec.testResults) ??
-    resolveRecord(rec.test_results);
+    resolveRecord(rec.test_summary);
   const sources = [rec, summary].filter(Boolean) as Record<string, unknown>[];
 
   const pickValue = (keys: string[]) => {

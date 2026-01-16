@@ -549,6 +549,7 @@ describe('candidate api helpers', () => {
     mockGet
       .mockResolvedValueOnce({ status: 'running' })
       .mockResolvedValueOnce({ conclusion: 'timed_out' })
+      .mockResolvedValueOnce({ timeout: true, status: 'completed' })
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ status: 'failed', message: 'Red' })
       .mockResolvedValueOnce({ status: 'completed', conclusion: 'failure' })
@@ -594,9 +595,27 @@ describe('candidate api helpers', () => {
       commitSha: null,
     });
 
-    const error = await pollCandidateTestRun({
+    const timeoutFlag = await pollCandidateTestRun({
       taskId: 14,
       runId: 'run-c',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(timeoutFlag).toEqual({
+      status: 'timeout',
+      message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
+
+    const error = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-d',
       token: 'auth',
       candidateSessionId: 1,
     });
@@ -613,7 +632,7 @@ describe('candidate api helpers', () => {
 
     const failed = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-d',
+      runId: 'run-e',
       token: 'auth',
       candidateSessionId: 1,
     });
@@ -631,7 +650,7 @@ describe('candidate api helpers', () => {
 
     const completedFailure = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-e',
+      runId: 'run-f',
       token: 'auth',
       candidateSessionId: 1,
     });
@@ -649,7 +668,7 @@ describe('candidate api helpers', () => {
 
     const completedSuccess = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-f',
+      runId: 'run-g',
       token: 'auth',
       candidateSessionId: 1,
     });
@@ -667,7 +686,7 @@ describe('candidate api helpers', () => {
 
     const completedTimeout = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-g',
+      runId: 'run-h',
       token: 'auth',
       candidateSessionId: 1,
     });
@@ -685,7 +704,7 @@ describe('candidate api helpers', () => {
 
     const completedUnknown = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-h',
+      runId: 'run-i',
       token: 'auth',
       candidateSessionId: 1,
     });

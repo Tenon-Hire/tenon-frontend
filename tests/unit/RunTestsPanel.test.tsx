@@ -160,7 +160,10 @@ describe('RunTestsPanel', () => {
       jest.advanceTimersByTime(2600);
       await Promise.resolve();
     });
-    expect(await screen.findByText(/Tests timed out/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Still running\. Open the workflow link/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tests timed out/i)).not.toBeInTheDocument();
   });
 
   it('uses default messages for passed, timeout, and error statuses', async () => {
@@ -306,7 +309,7 @@ describe('RunTestsPanel', () => {
   it('truncates stdout and expands on demand', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    const longStdout = 'a'.repeat(450);
+    const longStdout = 'a'.repeat(9001);
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'run-output' });
     const onPoll = jest.fn().mockResolvedValueOnce({
@@ -330,6 +333,9 @@ describe('RunTestsPanel', () => {
     });
 
     expect(screen.queryByText(longStdout)).not.toBeInTheDocument();
+    expect(
+      await screen.findAllByRole('button', { name: /copy/i }),
+    ).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: /show full stdout/i }));
     expect(await screen.findByText(longStdout)).toBeInTheDocument();
   });
