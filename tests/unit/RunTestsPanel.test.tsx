@@ -3,6 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { RunTestsPanel } from '@/features/candidate/session/task/components/RunTestsPanel';
 
 const realConsoleError = console.error;
+const baseResult = {
+  passed: null,
+  failed: null,
+  total: null,
+  stdout: null,
+  stderr: null,
+  workflowUrl: null,
+  commitSha: null,
+};
 
 beforeAll(() => {
   jest.spyOn(console, 'error').mockImplementation((message, ...args) => {
@@ -33,10 +42,18 @@ describe('RunTestsPanel', () => {
     const onStart = jest.fn().mockResolvedValue({ runId: 'run-1' });
     const onPoll = jest
       .fn()
-      .mockResolvedValueOnce({ status: 'running' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'running' as const })
       .mockResolvedValueOnce({
+        ...baseResult,
         status: 'passed' as const,
         message: 'Checks green',
+        passed: 4,
+        failed: 0,
+        total: 4,
+        stdout: 'ok',
+        stderr: '',
+        workflowUrl: 'https://github.com/acme/repo/actions/runs/1',
+        commitSha: 'abc123def',
       });
 
     render(
@@ -64,6 +81,11 @@ describe('RunTestsPanel', () => {
     expect(onPoll).toHaveBeenCalledTimes(2);
 
     expect(await screen.findByText(/Checks green/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Passed/i)).length).toBeGreaterThan(0);
+    expect(
+      await screen.findByRole('link', { name: /workflow run/i }),
+    ).toHaveAttribute('href', 'https://github.com/acme/repo/actions/runs/1');
+    expect(await screen.findByText(/Commit/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /re-run tests/i })).toBeEnabled();
   });
 
@@ -72,9 +94,13 @@ describe('RunTestsPanel', () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'r-2' });
-    const onPoll = jest
-      .fn()
-      .mockResolvedValueOnce({ status: 'failed' as const, message: 'Red' });
+    const onPoll = jest.fn().mockResolvedValueOnce({
+      ...baseResult,
+      status: 'failed' as const,
+      message: 'Red',
+      failed: 2,
+      total: 2,
+    });
 
     render(
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
@@ -103,7 +129,9 @@ describe('RunTestsPanel', () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'stuck' });
-    const onPoll = jest.fn().mockResolvedValue({ status: 'running' as const });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValue({ ...baseResult, status: 'running' as const });
 
     render(
       <RunTestsPanel
@@ -142,9 +170,9 @@ describe('RunTestsPanel', () => {
     const onStart = jest.fn().mockResolvedValue({ runId: 'run-defaults' });
     const onPoll = jest
       .fn()
-      .mockResolvedValueOnce({ status: 'passed' as const })
-      .mockResolvedValueOnce({ status: 'timeout' as const })
-      .mockResolvedValueOnce({ status: 'error' as const });
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'timeout' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'error' as const });
 
     render(
       <RunTestsPanel
@@ -195,9 +223,7 @@ describe('RunTestsPanel', () => {
     await user.click(screen.getByRole('button', { name: /run tests/i }));
     await act(async () => Promise.resolve());
 
-    expect(
-      await screen.findByText(/Failed to start tests/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/fail to start/i)).toBeInTheDocument();
 
     // Retry and hit polling error
     const nextStart = jest.fn().mockResolvedValue({ runId: 'r-err' });
@@ -218,7 +244,7 @@ describe('RunTestsPanel', () => {
     });
 
     expect(nextStart).toHaveBeenCalledTimes(1);
-    expect(await screen.findByText(/Unable to run tests/i)).toBeInTheDocument();
+    expect(await screen.findByText(/poll failed/i)).toBeInTheDocument();
   });
 
   it('clears start errors after a successful run start', async () => {
@@ -229,7 +255,9 @@ describe('RunTestsPanel', () => {
       .fn()
       .mockRejectedValueOnce(new Error('fail to start'))
       .mockResolvedValueOnce({ runId: 'r-ok' });
-    const onPoll = jest.fn().mockResolvedValue({ status: 'running' as const });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValue({ ...baseResult, status: 'running' as const });
 
     render(
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
@@ -238,17 +266,13 @@ describe('RunTestsPanel', () => {
     await user.click(screen.getByRole('button', { name: /run tests/i }));
     await act(async () => Promise.resolve());
 
-    expect(
-      await screen.findByText(/Failed to start tests/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/fail to start/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /run tests/i }));
     expect(onStart).toHaveBeenCalledTimes(2);
 
     expect(await screen.findByText(/Tests are running/i)).toBeInTheDocument();
-    expect(
-      screen.queryByText(/Failed to start tests/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/fail to start/i)).not.toBeInTheDocument();
   });
 
   it('clears polling timers on unmount', async () => {
@@ -256,7 +280,9 @@ describe('RunTestsPanel', () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'run-unmount' });
-    const onPoll = jest.fn().mockResolvedValue({ status: 'running' as const });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValue({ ...baseResult, status: 'running' as const });
 
     const { unmount } = render(
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
@@ -275,5 +301,36 @@ describe('RunTestsPanel', () => {
     });
 
     expect(onPoll).toHaveBeenCalledTimes(0);
+  });
+
+  it('truncates stdout and expands on demand', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const longStdout = 'a'.repeat(450);
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'run-output' });
+    const onPoll = jest.fn().mockResolvedValueOnce({
+      ...baseResult,
+      status: 'failed' as const,
+      stdout: longStdout,
+      stderr: 'err',
+      failed: 1,
+      total: 1,
+    });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /run tests/i }));
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(longStdout)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /show full stdout/i }));
+    expect(await screen.findByText(longStdout)).toBeInTheDocument();
   });
 });

@@ -460,6 +460,13 @@ describe('candidate api helpers', () => {
       status: 'completed',
       conclusion: 'success',
       message: 'All green',
+      passed: 3,
+      failed: 1,
+      total: 4,
+      stdout: 'ok',
+      stderr: '',
+      workflowUrl: 'https://github.com/acme/repo/actions/runs/44',
+      commitSha: 'abc123',
     });
 
     const { startCandidateTestRun, pollCandidateTestRun } =
@@ -486,7 +493,17 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 99,
     });
-    expect(polled).toEqual({ status: 'passed', message: 'All green' });
+    expect(polled).toEqual({
+      status: 'passed',
+      message: 'All green',
+      passed: 3,
+      failed: 1,
+      total: 4,
+      stdout: 'ok',
+      stderr: null,
+      workflowUrl: 'https://github.com/acme/repo/actions/runs/44',
+      commitSha: 'abc123',
+    });
   });
 
   it('accepts numeric run ids from startCandidateTestRun', async () => {
@@ -547,7 +564,17 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(running).toEqual({ status: 'running', message: undefined });
+    expect(running).toEqual({
+      status: 'running',
+      message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
     const timeout = await pollCandidateTestRun({
       taskId: 14,
@@ -555,7 +582,17 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(timeout).toEqual({ status: 'timeout', message: undefined });
+    expect(timeout).toEqual({
+      status: 'timeout',
+      message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
     const error = await pollCandidateTestRun({
       taskId: 14,
@@ -563,7 +600,16 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(error).toEqual({ status: 'error' });
+    expect(error).toEqual({
+      status: 'error',
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
     const failed = await pollCandidateTestRun({
       taskId: 14,
@@ -571,7 +617,17 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(failed).toEqual({ status: 'failed', message: 'Red' });
+    expect(failed).toEqual({
+      status: 'failed',
+      message: 'Red',
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
     const completedFailure = await pollCandidateTestRun({
       taskId: 14,
@@ -582,6 +638,13 @@ describe('candidate api helpers', () => {
     expect(completedFailure).toEqual({
       status: 'failed',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
 
     const completedSuccess = await pollCandidateTestRun({
@@ -593,6 +656,13 @@ describe('candidate api helpers', () => {
     expect(completedSuccess).toEqual({
       status: 'passed',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
 
     const completedTimeout = await pollCandidateTestRun({
@@ -604,6 +674,13 @@ describe('candidate api helpers', () => {
     expect(completedTimeout).toEqual({
       status: 'timeout',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
 
     const completedUnknown = await pollCandidateTestRun({
@@ -615,6 +692,13 @@ describe('candidate api helpers', () => {
     expect(completedUnknown).toEqual({
       status: 'error',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
   });
 

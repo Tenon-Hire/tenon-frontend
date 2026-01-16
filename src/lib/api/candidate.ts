@@ -73,6 +73,13 @@ export type CandidateTestRunStartResponse = {
 export type CandidateTestRunStatusResponse = {
   status: 'running' | 'passed' | 'failed' | 'timeout' | 'error';
   message?: string;
+  passed: number | null;
+  failed: number | null;
+  total: number | null;
+  stdout: string | null;
+  stderr: string | null;
+  workflowUrl: string | null;
+  commitSha: string | null;
 };
 
 function toClientOptions(authToken: string): ApiClientOptions {
@@ -97,6 +104,131 @@ function toCandidateSessionId(value: unknown): number {
 function toStringOrNull(value: unknown): string | null {
   if (typeof value === 'string' && value.trim()) return value;
   return null;
+}
+
+function toNumberOrNull(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+type CandidateTestRunDetails = Pick<
+  CandidateTestRunStatusResponse,
+  | 'passed'
+  | 'failed'
+  | 'total'
+  | 'stdout'
+  | 'stderr'
+  | 'workflowUrl'
+  | 'commitSha'
+>;
+
+function resolveRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object') return null;
+  return value as Record<string, unknown>;
+}
+
+function normalizeRunDetails(
+  rec: Record<string, unknown>,
+): CandidateTestRunDetails {
+  const summary =
+    resolveRecord(rec.summary) ??
+    resolveRecord(rec.testSummary) ??
+    resolveRecord(rec.test_summary) ??
+    resolveRecord(rec.results) ??
+    resolveRecord(rec.result) ??
+    resolveRecord(rec.testResults) ??
+    resolveRecord(rec.test_results);
+  const sources = [rec, summary].filter(Boolean) as Record<string, unknown>[];
+
+  const pickValue = (keys: string[]) => {
+    for (const source of sources) {
+      for (const key of keys) {
+        if (key in source) return source[key];
+      }
+    }
+    return undefined;
+  };
+
+  const passed = toNumberOrNull(
+    pickValue([
+      'passed',
+      'passedTests',
+      'passed_tests',
+      'testsPassed',
+      'tests_passed',
+    ]),
+  );
+  const failed = toNumberOrNull(
+    pickValue([
+      'failed',
+      'failedTests',
+      'failed_tests',
+      'testsFailed',
+      'tests_failed',
+    ]),
+  );
+  let total = toNumberOrNull(
+    pickValue([
+      'total',
+      'totalTests',
+      'total_tests',
+      'testsTotal',
+      'tests_total',
+    ]),
+  );
+
+  if (total === null && passed !== null && failed !== null) {
+    total = passed + failed;
+  }
+
+  const stdout = toStringOrNull(
+    pickValue([
+      'stdout',
+      'std_out',
+      'testStdout',
+      'test_stdout',
+      'output',
+      'logs',
+    ]),
+  );
+  const stderr = toStringOrNull(
+    pickValue([
+      'stderr',
+      'std_err',
+      'testStderr',
+      'test_stderr',
+      'error_output',
+      'errorOutput',
+    ]),
+  );
+  const workflowUrl = toStringOrNull(
+    pickValue([
+      'workflowUrl',
+      'workflow_url',
+      'workflowRunUrl',
+      'workflow_run_url',
+      'runUrl',
+      'run_url',
+      'actionsUrl',
+      'actions_url',
+    ]),
+  );
+  const commitSha = toStringOrNull(
+    pickValue([
+      'commitSha',
+      'commit_sha',
+      'sha',
+      'commit',
+      'commitId',
+      'commit_id',
+    ]),
+  );
+
+  return { passed, failed, total, stdout, stderr, workflowUrl, commitSha };
 }
 
 function toIdString(value: unknown): string | null {
@@ -133,9 +265,19 @@ function normalizeWorkspaceStatus(data: unknown): CandidateWorkspaceStatus {
 
 function normalizeRunStatus(data: unknown): CandidateTestRunStatusResponse {
   if (!data || typeof data !== 'object') {
-    return { status: 'error' };
+    return {
+      status: 'error',
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    };
   }
   const rec = data as Record<string, unknown>;
+  const details = normalizeRunDetails(rec);
   const rawStatus = rec.status ?? '';
   const rawConclusion = rec.conclusion ?? '';
   const status = String(rawStatus).toLowerCase();
@@ -149,24 +291,28 @@ function normalizeRunStatus(data: unknown): CandidateTestRunStatusResponse {
     return {
       status: 'timeout',
       message: toStringOrNull(rec.message) ?? undefined,
+      ...details,
     };
   }
   if (status === 'running' || status === 'in_progress' || status === 'queued') {
     return {
       status: 'running',
       message: toStringOrNull(rec.message) ?? undefined,
+      ...details,
     };
   }
   if (conclusion === 'success' || status === 'passed' || status === 'success') {
     return {
       status: 'passed',
       message: toStringOrNull(rec.message) ?? undefined,
+      ...details,
     };
   }
   if (conclusion === 'failure' || status === 'failed' || status === 'failure') {
     return {
       status: 'failed',
       message: toStringOrNull(rec.message) ?? undefined,
+      ...details,
     };
   }
   if (status === 'completed') {
@@ -174,20 +320,27 @@ function normalizeRunStatus(data: unknown): CandidateTestRunStatusResponse {
       return {
         status: 'passed',
         message: toStringOrNull(rec.message) ?? undefined,
+        ...details,
       };
     if (conclusion === 'failure')
       return {
         status: 'failed',
         message: toStringOrNull(rec.message) ?? undefined,
+        ...details,
       };
     if (conclusion === 'timed_out')
       return {
         status: 'timeout',
         message: toStringOrNull(rec.message) ?? undefined,
+        ...details,
       };
   }
 
-  return { status: 'error', message: toStringOrNull(rec.message) ?? undefined };
+  return {
+    status: 'error',
+    message: toStringOrNull(rec.message) ?? undefined,
+    ...details,
+  };
 }
 
 export type CandidateInvite = {
