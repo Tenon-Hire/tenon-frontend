@@ -147,6 +147,20 @@ describe('bff helpers', () => {
   });
 
   describe('ensureAccessToken', () => {
+    const originalDebugAuth = process.env.TENON_DEBUG_AUTH;
+
+    beforeEach(() => {
+      delete process.env.TENON_DEBUG_AUTH;
+    });
+
+    afterEach(() => {
+      if (originalDebugAuth === undefined) {
+        delete process.env.TENON_DEBUG_AUTH;
+      } else {
+        process.env.TENON_DEBUG_AUTH = originalDebugAuth;
+      }
+    });
+
     it('returns 401 NextResponse when no session', async () => {
       getSessionNormalized.mockResolvedValue(null);
 
@@ -182,7 +196,6 @@ describe('bff helpers', () => {
       expect(debugSpy).toHaveBeenCalledWith('[auth] no session available');
 
       debugSpy.mockRestore();
-      process.env.TENON_DEBUG_AUTH = undefined;
     });
 
     it('returns 403 when required permission is missing', async () => {
@@ -202,7 +215,6 @@ describe('bff helpers', () => {
       expect(debugSpy).toHaveBeenCalled();
 
       debugSpy.mockRestore();
-      process.env.TENON_DEBUG_AUTH = undefined;
     });
 
     it('returns access token payload when session and token available', async () => {

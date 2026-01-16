@@ -47,7 +47,11 @@ describe('WorkspacePanel', () => {
       screen.getByRole('link', { name: /open codespace/i }),
     ).toHaveAttribute('href', 'https://codespaces.new/acme/repo');
     expect(screen.queryByRole('link', { name: /open repo/i })).toBeNull();
-    expect(screen.getByText('acme/repo')).toBeInTheDocument();
+    expect(screen.getByText(/Repo: acme\/repo/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('refreshes workspace status on demand', async () => {
@@ -81,6 +85,10 @@ describe('WorkspacePanel', () => {
     expect(statusMock).toHaveBeenCalledTimes(1);
     expect(initMock).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('link', { name: /open repo/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
       'href',
       'https://github.com/acme/repo',
     );
@@ -119,7 +127,11 @@ describe('WorkspacePanel', () => {
       'https://github.com/acme/repo',
     );
     expect(screen.queryByRole('link', { name: /open codespace/i })).toBeNull();
-    expect(screen.getByText('acme/repo')).toBeInTheDocument();
+    expect(screen.getByText(/Repo: acme\/repo/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('initializes when status is empty', async () => {
@@ -150,6 +162,10 @@ describe('WorkspacePanel', () => {
       'href',
       'https://github.com/acme/repo',
     );
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
   });
 
   it('initializes when status returns 404', async () => {
@@ -173,6 +189,10 @@ describe('WorkspacePanel', () => {
     expect(statusMock).toHaveBeenCalledTimes(1);
     expect(initMock).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('link', { name: /open repo/i })).toHaveAttribute(
+      'href',
+      'https://github.com/acme/repo',
+    );
+    expect(screen.getByRole('link', { name: /repo url/i })).toHaveAttribute(
       'href',
       'https://github.com/acme/repo',
     );
