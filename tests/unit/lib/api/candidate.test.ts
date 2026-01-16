@@ -460,6 +460,13 @@ describe('candidate api helpers', () => {
       status: 'completed',
       conclusion: 'success',
       message: 'All green',
+      passed: 3,
+      failed: 1,
+      total: 4,
+      stdout: 'ok',
+      stderr: '',
+      workflowUrl: 'https://github.com/acme/repo/actions/runs/44',
+      commitSha: 'abc123',
     });
 
     const { startCandidateTestRun, pollCandidateTestRun } =
@@ -486,7 +493,17 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 99,
     });
-    expect(polled).toEqual({ status: 'passed', message: 'All green' });
+    expect(polled).toEqual({
+      status: 'passed',
+      message: 'All green',
+      passed: 3,
+      failed: 1,
+      total: 4,
+      stdout: 'ok',
+      stderr: null,
+      workflowUrl: 'https://github.com/acme/repo/actions/runs/44',
+      commitSha: 'abc123',
+    });
   });
 
   it('accepts numeric run ids from startCandidateTestRun', async () => {
@@ -532,6 +549,7 @@ describe('candidate api helpers', () => {
     mockGet
       .mockResolvedValueOnce({ status: 'running' })
       .mockResolvedValueOnce({ conclusion: 'timed_out' })
+      .mockResolvedValueOnce({ timeout: true, status: 'completed' })
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ status: 'failed', message: 'Red' })
       .mockResolvedValueOnce({ status: 'completed', conclusion: 'failure' })
@@ -547,7 +565,17 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(running).toEqual({ status: 'running', message: undefined });
+    expect(running).toEqual({
+      status: 'running',
+      message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
     const timeout = await pollCandidateTestRun({
       taskId: 14,
@@ -555,66 +583,141 @@ describe('candidate api helpers', () => {
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(timeout).toEqual({ status: 'timeout', message: undefined });
+    expect(timeout).toEqual({
+      status: 'timeout',
+      message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
-    const error = await pollCandidateTestRun({
+    const timeoutFlag = await pollCandidateTestRun({
       taskId: 14,
       runId: 'run-c',
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(error).toEqual({ status: 'error' });
+    expect(timeoutFlag).toEqual({
+      status: 'timeout',
+      message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
-    const failed = await pollCandidateTestRun({
+    const error = await pollCandidateTestRun({
       taskId: 14,
       runId: 'run-d',
       token: 'auth',
       candidateSessionId: 1,
     });
-    expect(failed).toEqual({ status: 'failed', message: 'Red' });
+    expect(error).toEqual({
+      status: 'error',
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
+
+    const failed = await pollCandidateTestRun({
+      taskId: 14,
+      runId: 'run-e',
+      token: 'auth',
+      candidateSessionId: 1,
+    });
+    expect(failed).toEqual({
+      status: 'failed',
+      message: 'Red',
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
+    });
 
     const completedFailure = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-e',
+      runId: 'run-f',
       token: 'auth',
       candidateSessionId: 1,
     });
     expect(completedFailure).toEqual({
       status: 'failed',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
 
     const completedSuccess = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-f',
+      runId: 'run-g',
       token: 'auth',
       candidateSessionId: 1,
     });
     expect(completedSuccess).toEqual({
       status: 'passed',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
 
     const completedTimeout = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-g',
+      runId: 'run-h',
       token: 'auth',
       candidateSessionId: 1,
     });
     expect(completedTimeout).toEqual({
       status: 'timeout',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
 
     const completedUnknown = await pollCandidateTestRun({
       taskId: 14,
-      runId: 'run-h',
+      runId: 'run-i',
       token: 'auth',
       candidateSessionId: 1,
     });
     expect(completedUnknown).toEqual({
       status: 'error',
       message: undefined,
+      passed: null,
+      failed: null,
+      total: null,
+      stdout: null,
+      stderr: null,
+      workflowUrl: null,
+      commitSha: null,
     });
   });
 
