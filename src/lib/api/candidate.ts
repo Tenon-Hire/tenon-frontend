@@ -1,7 +1,7 @@
 import {
   INVITE_EXPIRED_MESSAGE,
   INVITE_UNAVAILABLE_MESSAGE,
-} from '../copy/invite';
+} from '@/lib/copy/invite';
 import { apiClient, type ApiClientOptions } from './httpClient';
 import {
   HttpError,
