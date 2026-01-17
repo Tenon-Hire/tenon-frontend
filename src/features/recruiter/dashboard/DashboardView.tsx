@@ -78,8 +78,9 @@ export default function DashboardView({
   }, [modal.simulationTitle]);
 
   const submitInvite = async (candidateName: string, inviteEmail: string) => {
-    const res = await inviteFlow.submit(candidateName, inviteEmail);
-    if (!res) return;
+    const resResult = await inviteFlow.submit(candidateName, inviteEmail);
+    if (!resResult) return;
+    const res = resResult;
 
     setModal({ open: false, simulationId: '', simulationTitle: '' });
 
