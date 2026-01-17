@@ -160,8 +160,6 @@ describe('RunTestsPanel', () => {
     await act(async () => Promise.resolve());
 
     expect(onStart).toHaveBeenCalledTimes(1);
-
-    restoreRealTimers();
   });
 
   it('times out after max polling attempts when runs never finish', async () => {
