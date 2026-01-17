@@ -48,6 +48,7 @@ export function WorkspacePanel({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const initAttemptedRef = useRef(false);
+  const initErrorNotifiedRef = useRef(false);
 
   const loadWorkspace = useCallback(
     async (mode: 'init' | 'refresh') => {
@@ -101,27 +102,20 @@ export function WorkspacePanel({
             candidateSessionId,
           });
           setWorkspace(initialized);
-          if (mode === 'refresh') {
-            const msg = buildWorkspaceMessage(initialized);
-            notify({
-              id: `workspace-${taskId}-refresh`,
-              tone: 'success',
-              title: 'Workspace updated',
-              description: msg,
-            });
-          }
         } else {
           setWorkspace(status);
-          if (mode === 'refresh') {
-            const msg = buildWorkspaceMessage(status);
-            notify({
-              id: `workspace-${taskId}-refresh`,
-              tone: 'success',
-              title: 'Workspace updated',
-              description: msg,
-            });
-          }
         }
+
+        if (mode === 'refresh') {
+          const msg = buildWorkspaceMessage(status);
+          notify({
+            id: `workspace-${taskId}-refresh`,
+            tone: 'success',
+            title: 'Workspace updated',
+            description: msg,
+          });
+        }
+        initErrorNotifiedRef.current = false;
       } catch (err) {
         const normalized = normalizeApiError(
           err,
@@ -140,16 +134,30 @@ export function WorkspacePanel({
         } else {
           setError(normalized.message);
         }
-        if (mode === 'refresh') {
+        const tone = status === 409 ? 'warning' : 'error';
+        const title =
+          mode === 'refresh'
+            ? 'Workspace couldn’t refresh'
+            : 'Workspace not available';
+        const description =
+          status === 409
+            ? 'Workspace repo not provisioned yet. Please try again shortly.'
+            : normalized.action === 'signin'
+              ? 'Sign in again, then refresh your workspace.'
+              : `${normalized.message} Use Refresh to try again.`;
+        if (
+          mode === 'refresh' ||
+          (mode === 'init' && !initErrorNotifiedRef.current)
+        ) {
           notify({
             id: `workspace-${taskId}-error`,
-            tone: status === 409 ? 'warning' : 'error',
-            title: normalized.message,
-            description:
-              normalized.action === 'signin'
-                ? 'Open sign in again, then refresh your workspace.'
-                : 'Use the refresh button to try again.',
+            tone,
+            title,
+            description,
           });
+          if (mode === 'init') {
+            initErrorNotifiedRef.current = true;
+          }
         }
       } finally {
         if (mode === 'init') {

@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -139,6 +140,15 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }),
     [dismiss, notify],
   );
+
+  useEffect(() => {
+    return () => {
+      Object.values(timersRef.current).forEach((timerId) => {
+        window.clearTimeout(timerId);
+      });
+      timersRef.current = {};
+    };
+  }, []);
 
   return (
     <NotificationsContext.Provider value={value}>

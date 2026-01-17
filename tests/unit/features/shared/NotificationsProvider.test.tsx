@@ -9,10 +9,12 @@ function TriggerButton({
   id,
   title,
   actionLabel,
+  onAction,
 }: {
   id: string;
   title: string;
   actionLabel?: string;
+  onAction?: () => void;
 }) {
   const { notify } = useNotifications();
   return (
@@ -27,7 +29,7 @@ function TriggerButton({
             ? [
                 {
                   label: actionLabel,
-                  onClick: jest.fn(),
+                  onClick: onAction,
                 },
               ]
             : undefined,
@@ -40,7 +42,7 @@ function TriggerButton({
 }
 
 describe('NotificationsProvider', () => {
-  it('dedupes toasts by id', async () => {
+  it('dedupes toasts by id and state', async () => {
     const user = userEvent.setup();
     render(
       <NotificationsProvider>
@@ -56,7 +58,7 @@ describe('NotificationsProvider', () => {
     expect(toasts[0]).toHaveTextContent('First toast');
   });
 
-  it('supports actions and auto dismiss', async () => {
+  it('supports actions and auto dismiss cleanup', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     const actionSpy = jest.fn();
