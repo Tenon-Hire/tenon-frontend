@@ -11,12 +11,14 @@ import { ResourcePanel } from '@/features/candidate/session/task/components/Reso
 import {
   type CandidateSessionBootstrapResponse,
   getCandidateCurrentTask,
-  INVITE_EXPIRED_MESSAGE,
-  INVITE_UNAVAILABLE_MESSAGE,
   pollCandidateTestRun,
   resolveCandidateInviteToken,
   startCandidateTestRun,
 } from '@/lib/api/candidate';
+import {
+  INVITE_EXPIRED_MESSAGE,
+  INVITE_UNAVAILABLE_MESSAGE,
+} from '@/lib/copy/invite';
 import { buildLoginHref } from '@/features/auth/authPaths';
 import { useCandidateSession } from './CandidateSessionProvider';
 import { useTaskSubmission } from './hooks/useTaskSubmission';

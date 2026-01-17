@@ -13,21 +13,11 @@ jest.mock('@/features/candidate/session/hooks/useTaskSubmission', () => ({
 }));
 
 jest.mock('@/lib/api/candidate', () => ({
+  ...jest.requireActual('@/lib/api/candidate'),
   resolveCandidateInviteToken: jest.fn(),
   getCandidateCurrentTask: jest.fn(),
   pollCandidateTestRun: jest.fn(),
   startCandidateTestRun: jest.fn(),
-  INVITE_UNAVAILABLE_MESSAGE:
-    'This invite link is no longer valid. Please contact your recruiter to request a new invitation.',
-  INVITE_EXPIRED_MESSAGE:
-    'This invite link has expired or was already used. Please contact your recruiter to request a new invitation.',
-  HttpError: class HttpError extends Error {
-    status: number;
-    constructor(status: number, message: string) {
-      super(message);
-      this.status = status;
-    }
-  },
 }));
 
 const routerMock = {

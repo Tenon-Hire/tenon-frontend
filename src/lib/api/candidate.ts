@@ -1,3 +1,7 @@
+import {
+  INVITE_EXPIRED_MESSAGE,
+  INVITE_UNAVAILABLE_MESSAGE,
+} from '../copy/invite';
 import { apiClient, type ApiClientOptions } from './httpClient';
 import {
   HttpError,
@@ -7,11 +11,6 @@ import {
 } from './utils/errors';
 
 export { HttpError };
-
-export const INVITE_UNAVAILABLE_MESSAGE =
-  'This invite link is no longer valid. Please contact your recruiter to request a new invitation.';
-export const INVITE_EXPIRED_MESSAGE =
-  'This invite link has expired or was already used. Please contact your recruiter to request a new invitation.';
 
 const RAW_API_BASE =
   process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api/backend';
