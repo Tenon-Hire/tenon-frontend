@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   getCandidateWorkspaceStatus,
   initCandidateWorkspace,
@@ -213,9 +214,9 @@ export function WorkspacePanel({
 
       {loading ? (
         <div className="mt-4 space-y-2 text-sm text-gray-600">
-          <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-56 animate-pulse rounded bg-gray-100" />
-          <div className="h-3 w-48 animate-pulse rounded bg-gray-100" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-56 bg-gray-100" />
+          <Skeleton className="h-3 w-48 bg-gray-100" />
         </div>
       ) : error ? (
         <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">

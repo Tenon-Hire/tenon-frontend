@@ -21,6 +21,7 @@ import {
   buildNotAuthorizedUrl,
   buildReturnTo,
 } from '@/lib/auth/routing';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { toUserMessage } from '@/lib/utils/errors';
 import type { CandidateSession } from '@/types/recruiter';
 
@@ -1308,10 +1309,7 @@ export default function RecruiterSimulationDetailPage() {
         <div className="overflow-hidden rounded border border-gray-200 bg-white">
           <div className="grid grid-cols-9 gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">
             {Array.from({ length: 9 }).map((_, idx) => (
-              <div
-                key={idx}
-                className="h-3 w-20 animate-pulse rounded bg-gray-200"
-              />
+              <Skeleton key={idx} className="h-3 w-20" />
             ))}
           </div>
           {Array.from({ length: 3 }).map((_, idx) => (
@@ -1319,18 +1317,18 @@ export default function RecruiterSimulationDetailPage() {
               key={idx}
               className="grid grid-cols-9 items-center gap-3 border-b border-gray-200 px-4 py-3 last:border-b-0"
             >
-              <div className="col-span-2">
-                <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                <div className="mt-1 h-3 w-24 animate-pulse rounded bg-gray-100" />
+              <div className="col-span-2 space-y-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-24 bg-gray-100" />
               </div>
-              <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
-              <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-20" />
               <div className="flex justify-end">
-                <div className="h-8 w-28 animate-pulse rounded bg-gray-200" />
+                <Skeleton className="h-8 w-28" />
               </div>
             </div>
           ))}
@@ -1359,7 +1357,7 @@ export default function RecruiterSimulationDetailPage() {
           </div>
           <div className="mt-3">
             <Button onClick={() => setInviteModalOpen(true)}>
-              Invite candidate
+              Invite your first candidate
             </Button>
           </div>
         </div>

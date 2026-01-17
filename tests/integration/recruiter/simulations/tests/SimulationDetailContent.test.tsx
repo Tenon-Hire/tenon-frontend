@@ -512,10 +512,9 @@ describe('RecruiterSimulationDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText(/No candidates yet/i)).toBeInTheDocument();
     });
-    const inviteButtons = screen.getAllByRole('button', {
-      name: /Invite candidate/i,
-    });
-    expect(inviteButtons.length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('button', { name: /Invite your first candidate/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders error state when candidates request fails', async () => {

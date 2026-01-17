@@ -4,3 +4,4 @@ export { default as PageHeader } from './PageHeader';
 export { StatusPill } from './StatusPill';
 export { Card } from './Card';
 export { cn } from './classnames';
+export { Skeleton } from './Skeleton';

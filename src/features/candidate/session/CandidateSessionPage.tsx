@@ -537,11 +537,12 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       ) : (
         <div className="space-y-3 rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-sm">
           <div className="text-base font-semibold text-gray-900">
-            Unable to load your current task
+            Unable to load your session
           </div>
           <div className="text-sm text-gray-600">
-            Something interrupted the task fetch. Retry to pull the latest day,
-            or return to your dashboard to reopen the invite.
+            We couldn’t fetch your current task. Retry to refresh your
+            workspace, or head back to the candidate dashboard to reopen your
+            invite.
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => void fetchCurrentTask()}>Retry</Button>

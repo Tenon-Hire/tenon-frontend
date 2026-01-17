@@ -225,7 +225,7 @@ describe('RecruiterSimulationDetailPage', () => {
 
     await screen.findByText(/No candidates yet/i);
     await user.click(
-      screen.getAllByRole('button', { name: /Invite candidate/i })[0],
+      screen.getByRole('button', { name: /Invite your first candidate/i }),
     );
 
     await user.type(screen.getByLabelText(/Candidate name/i), 'New Person');
@@ -271,7 +271,7 @@ describe('RecruiterSimulationDetailPage', () => {
     ).length;
 
     await user.click(
-      screen.getAllByRole('button', { name: /Invite candidate/i })[0],
+      screen.getByRole('button', { name: /Invite your first candidate/i }),
     );
     await waitFor(() => {
       const candidateCallsAfterOpen = fetchMock.mock.calls.filter(
@@ -331,9 +331,7 @@ describe('RecruiterSimulationDetailPage', () => {
 
     renderPage();
 
-    await user.click(
-      screen.getAllByRole('button', { name: /Invite candidate/i })[0],
-    );
+    await user.click(screen.getByRole('button', { name: /Invite candidate/i }));
     await user.type(screen.getByLabelText(/Candidate name/i), 'Alex');
     await user.type(
       screen.getByLabelText(/Candidate email/i),

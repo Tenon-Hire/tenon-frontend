@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { CandidateSession } from '@/types/recruiter';
 import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
 
@@ -109,7 +110,7 @@ export default function CandidateSubmissionsPage() {
   >({});
   const statusDisplay = candidate?.status ?? null;
 
-  const loadSubmissions = useCallback(() => {
+  const loadSubmissions = useCallback((): (() => void) => {
     let cancelled = false;
 
     async function run() {
@@ -270,9 +271,9 @@ export default function CandidateSubmissionsPage() {
 
       {loading ? (
         <div className="space-y-3 rounded border border-gray-200 bg-white p-4">
-          <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
-          <div className="h-3 w-60 animate-pulse rounded bg-gray-100" />
-          <div className="h-24 w-full animate-pulse rounded bg-gray-50" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-60 bg-gray-100" />
+          <Skeleton className="h-24 w-full bg-gray-50" />
         </div>
       ) : error ? (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
