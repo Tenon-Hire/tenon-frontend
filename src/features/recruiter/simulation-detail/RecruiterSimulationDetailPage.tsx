@@ -463,7 +463,8 @@ export default function RecruiterSimulationDetailPage() {
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [cooldownTick, setCooldownTick] = useState(0);
-  const { notify } = useNotifications();
+  const { notify, update } = useNotifications();
+  const copyTimersRef = useRef<Record<string, number>>({});
 
   const mountedRef = useRef(true);
   const cooldownTimersRef = useRef<Record<string, number>>({});
@@ -491,6 +492,10 @@ export default function RecruiterSimulationDetailPage() {
         window.clearInterval(cooldownIntervalRef.current);
         cooldownIntervalRef.current = null;
       }
+      Object.values(copyTimersRef.current).forEach((timerId) =>
+        window.clearTimeout(timerId),
+      );
+      copyTimersRef.current = {};
     };
   }, []);
 
@@ -997,8 +1002,50 @@ export default function RecruiterSimulationDetailPage() {
         : res.candidateEmail;
 
       const actionLabel = res.outcome === 'resent' ? 'resent' : 'sent';
+      const toastId = `invite-${res.simulationId}-${res.candidateEmail}`;
+      function resetLabel() {
+        update(toastId, {
+          actions:
+            res.inviteUrl && res.inviteUrl.trim()
+              ? [
+                  {
+                    label: 'Copy invite link',
+                    onClick: handleCopy,
+                  },
+                ]
+              : undefined,
+        });
+        if (copyTimersRef.current[toastId]) {
+          window.clearTimeout(copyTimersRef.current[toastId]);
+          delete copyTimersRef.current[toastId];
+        }
+      }
+
+      async function handleCopy() {
+        if (!res.inviteUrl) return;
+        if (copyTimersRef.current[toastId]) {
+          window.clearTimeout(copyTimersRef.current[toastId]);
+          delete copyTimersRef.current[toastId];
+        }
+        const ok = await copyToClipboard(res.inviteUrl);
+        if (!ok) {
+          notify({
+            id: `invite-copy-${res.simulationId}-${res.candidateEmail}`,
+            tone: 'error',
+            title: 'Copy failed',
+            description: 'Copy the link manually from the table.',
+          });
+          resetLabel();
+          return;
+        }
+        update(toastId, { actions: [{ label: 'Copied', disabled: true }] });
+        copyTimersRef.current[toastId] = window.setTimeout(() => {
+          resetLabel();
+        }, 1800);
+      }
+
       notify({
-        id: `invite-${res.simulationId}-${res.candidateEmail}`,
+        id: toastId,
         tone: 'success',
         title: `Invite ${actionLabel} for ${who}.`,
         description: res.inviteUrl
@@ -1009,17 +1056,7 @@ export default function RecruiterSimulationDetailPage() {
             ? [
                 {
                   label: 'Copy invite link',
-                  onClick: async () => {
-                    const ok = await copyToClipboard(res.inviteUrl);
-                    if (!ok) {
-                      notify({
-                        id: `invite-copy-${res.simulationId}-${res.candidateEmail}`,
-                        tone: 'error',
-                        title: 'Copy failed',
-                        description: 'Copy the link manually from the table.',
-                      });
-                    }
-                  },
+                  onClick: handleCopy,
                 },
               ]
             : undefined,
@@ -1027,7 +1064,7 @@ export default function RecruiterSimulationDetailPage() {
 
       void loadCandidates();
     },
-    [inviteFlow, loadCandidates, notify],
+    [inviteFlow, loadCandidates, notify, update],
   );
 
   return (

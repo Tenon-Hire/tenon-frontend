@@ -58,28 +58,40 @@ describe('NotificationsProvider', () => {
     expect(toasts[0]).toHaveTextContent('First toast');
   });
 
-  it('supports actions and auto dismiss cleanup', async () => {
+  it('supports actions, updates, and auto dismiss cleanup', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     const actionSpy = jest.fn();
 
     function ActionTrigger() {
-      const { notify } = useNotifications();
+      const { notify, update } = useNotifications();
       return (
-        <button
-          type="button"
-          onClick={() =>
-            notify({
-              id: 'with-action',
-              tone: 'info',
-              title: 'Toast with action',
-              actions: [{ label: 'Do it', onClick: actionSpy }],
-              durationMs: 10,
-            })
-          }
-        >
-          launch
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              notify({
+                id: 'with-action',
+                tone: 'info',
+                title: 'Toast with action',
+                actions: [{ label: 'Do it', onClick: actionSpy }],
+                durationMs: 10,
+              })
+            }
+          >
+            launch
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              update('with-action', {
+                actions: [{ label: 'Updated', disabled: true }],
+              })
+            }
+          >
+            update
+          </button>
+        </>
       );
     }
 
@@ -93,10 +105,77 @@ describe('NotificationsProvider', () => {
     await user.click(screen.getByRole('button', { name: /Do it/i }));
     expect(actionSpy).toHaveBeenCalled();
 
+    await user.click(screen.getByRole('button', { name: /update/i }));
+    expect(screen.getByRole('button', { name: /Updated/i })).toBeDisabled();
+
     act(() => {
       jest.advanceTimersByTime(15);
     });
     expect(screen.queryByRole('status')).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it('allows action label to flip to Copied and revert', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    function CopyTrigger() {
+      const { notify, update } = useNotifications();
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              notify({
+                id: 'copy-toast',
+                tone: 'success',
+                title: 'Invite sent',
+                actions: [
+                  {
+                    label: 'Copy invite link',
+                    onClick: () => {
+                      update('copy-toast', {
+                        actions: [{ label: 'Copied', disabled: true }],
+                      });
+                      setTimeout(() => {
+                        update('copy-toast', {
+                          actions: [
+                            {
+                              label: 'Copy invite link',
+                              onClick: () => {},
+                            },
+                          ],
+                        });
+                      }, 1800);
+                    },
+                  },
+                ],
+              })
+            }
+          >
+            make
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <NotificationsProvider>
+        <CopyTrigger />
+      </NotificationsProvider>,
+    );
+
+    await user.click(screen.getByText('make'));
+    await user.click(screen.getByRole('button', { name: /Copy invite link/i }));
+    expect(screen.getByRole('button', { name: /Copied/i })).toBeDisabled();
+
+    act(() => {
+      jest.advanceTimersByTime(1850);
+    });
+    expect(
+      screen.getByRole('button', { name: /Copy invite link/i }),
+    ).toBeEnabled();
+
     jest.useRealTimers();
   });
 });

@@ -613,7 +613,12 @@ describe('RecruiterDashboardPage', () => {
       name: /Copy invite link/i,
     });
     await user.click(copyBtn);
-    await user.click(copyBtn);
+
+    act(() => {
+      jest.advanceTimersByTime(1900);
+    });
+
+    await user.click(screen.getByRole('button', { name: /Copy invite link/i }));
 
     expect(writeText).toHaveBeenCalledTimes(2);
 

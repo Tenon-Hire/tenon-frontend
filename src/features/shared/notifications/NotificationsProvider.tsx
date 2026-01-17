@@ -16,6 +16,7 @@ type ToastTone = 'success' | 'error' | 'info' | 'warning';
 type ToastAction = {
   label: string;
   onClick?: () => void;
+  disabled?: boolean;
 };
 
 type ToastInput = {
@@ -38,6 +39,7 @@ type ToastState = ToastInput & {
 type NotificationsContextValue = {
   notify: (toast: ToastInput) => void;
   dismiss: (id: string) => void;
+  update: (id: string, patch: Partial<ToastInput>) => void;
 };
 
 const DEFAULT_DURATION = 5200;
@@ -45,6 +47,7 @@ const DEFAULT_DURATION = 5200;
 const NotificationsContext = createContext<NotificationsContextValue>({
   notify: () => {},
   dismiss: () => {},
+  update: () => {},
 });
 
 function toneClasses(tone: ToastTone): string {
@@ -133,12 +136,37 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [scheduleDismiss],
   );
 
+  const update = useCallback((id: string, patch: Partial<ToastInput>) => {
+    setToasts((prev) => {
+      const idx = prev.findIndex((t) => t.id === id);
+      if (idx === -1) return prev;
+      const existing = prev[idx];
+      const next: ToastState = {
+        ...existing,
+        ...patch,
+        id: existing.id,
+        actions: patch.actions ?? existing.actions,
+        createdAt: existing.createdAt,
+        durationMs:
+          patch.durationMs !== undefined
+            ? patch.durationMs
+            : existing.durationMs,
+        sticky:
+          patch.sticky !== undefined ? Boolean(patch.sticky) : existing.sticky,
+      };
+      const nextList = [...prev];
+      nextList[idx] = next;
+      return nextList;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       notify,
       dismiss,
+      update,
     }),
-    [dismiss, notify],
+    [dismiss, notify, update],
   );
 
   useEffect(() => {
@@ -178,8 +206,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                         <button
                           key={`${toast.id}-action-${idx}`}
                           type="button"
-                          className="rounded border border-current px-2 py-1 text-[11px] font-medium leading-tight hover:bg-white/40"
+                          className={`rounded border border-current px-2 py-1 text-[11px] font-medium leading-tight hover:bg-white/40 ${action.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                          disabled={action.disabled}
+                          aria-disabled={action.disabled ? 'true' : undefined}
                           onClick={() => {
+                            if (action.disabled) return;
                             action.onClick?.();
                           }}
                         >

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNotifications } from '@/features/shared/notifications';
 import { copyToClipboard } from '../utils/formatters';
 import { ProfileCard } from './components/ProfileCard';
@@ -48,12 +48,22 @@ export default function DashboardView({
   simulationsLoading,
   onRefresh,
 }: DashboardViewProps) {
-  const { notify } = useNotifications();
+  const { notify, update } = useNotifications();
   const [modal, setModal] = useState<InviteModalState>({
     open: false,
     simulationId: '',
     simulationTitle: '',
   });
+  const copyTimersRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(copyTimersRef.current).forEach((timerId) =>
+        window.clearTimeout(timerId),
+      );
+      copyTimersRef.current = {};
+    };
+  }, []);
 
   const inviteFlow = useInviteCandidateFlow(modal.open ? modal : null);
 
@@ -78,8 +88,52 @@ export default function DashboardView({
       : res.candidateEmail;
 
     const actionLabel = res.outcome === 'resent' ? 'resent' : 'sent';
+    const toastId = `invite-${res.simulationId}-${res.candidateEmail}`;
+    function resetLabel() {
+      update(toastId, {
+        actions:
+          res.inviteUrl && res.inviteUrl.trim()
+            ? [
+                {
+                  label: 'Copy invite link',
+                  onClick: handleCopy,
+                },
+              ]
+            : undefined,
+      });
+      if (copyTimersRef.current[toastId]) {
+        window.clearTimeout(copyTimersRef.current[toastId]);
+        delete copyTimersRef.current[toastId];
+      }
+    }
+
+    async function handleCopy() {
+      if (!res.inviteUrl) return;
+      if (copyTimersRef.current[toastId]) {
+        window.clearTimeout(copyTimersRef.current[toastId]);
+        delete copyTimersRef.current[toastId];
+      }
+      const ok = await copyToClipboard(res.inviteUrl);
+      if (!ok) {
+        notify({
+          id: `invite-copy-${res.simulationId}-${res.candidateEmail}`,
+          tone: 'error',
+          title: 'Copy failed',
+          description: 'Copy manually from the simulation detail.',
+        });
+        resetLabel();
+        return;
+      }
+      update(toastId, {
+        actions: [{ label: 'Copied', disabled: true }],
+      });
+      copyTimersRef.current[toastId] = window.setTimeout(() => {
+        resetLabel();
+      }, 1800);
+    }
+
     notify({
-      id: `invite-${res.simulationId}-${res.candidateEmail}`,
+      id: toastId,
       tone: 'success',
       title: `Invite ${actionLabel} for ${who}.`,
       description: res.inviteUrl
@@ -90,17 +144,7 @@ export default function DashboardView({
           ? [
               {
                 label: 'Copy invite link',
-                onClick: async () => {
-                  const ok = await copyToClipboard(res.inviteUrl);
-                  if (!ok) {
-                    notify({
-                      id: `invite-copy-${res.simulationId}-${res.candidateEmail}`,
-                      tone: 'error',
-                      title: 'Copy failed',
-                      description: 'Copy manually from the simulation detail.',
-                    });
-                  }
-                },
+                onClick: handleCopy,
               },
             ]
           : undefined,
