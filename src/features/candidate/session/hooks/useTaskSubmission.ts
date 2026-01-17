@@ -3,6 +3,8 @@ import {
   submitCandidateTask,
   type CandidateTaskSubmitResponse,
 } from '@/lib/api/candidate';
+import { useNotifications } from '@/features/shared/notifications';
+import { normalizeApiError } from '@/lib/utils/errors';
 import { friendlySubmitError } from '../utils/errorMessages';
 import {
   isCodeTask,
@@ -29,6 +31,7 @@ export function useTaskSubmission({
   setTaskError,
   refreshTask,
 }: Params) {
+  const { notify } = useNotifications();
   const [submitting, setSubmitting] = useState(false);
   const refreshTimerRef = useRef<number | null>(null);
 
@@ -76,10 +79,26 @@ export function useTaskSubmission({
         refreshTimerRef.current = window.setTimeout(() => {
           void refreshTask();
         }, 900);
+        notify({
+          id: `submit-${currentTask.id}`,
+          tone: 'success',
+          title: 'Submission received',
+          description: 'We are refreshing your progress.',
+        });
 
         return resp;
       } catch (err) {
-        setTaskError(friendlySubmitError(err));
+        const normalized = normalizeApiError(
+          err,
+          friendlySubmitError(err) ?? 'Submission failed.',
+        );
+        setTaskError(normalized.message);
+        notify({
+          id: `submit-${currentTask?.id ?? 'unknown'}`,
+          tone: 'error',
+          title: 'Submission failed',
+          description: normalized.message,
+        });
         throw err;
       } finally {
         setSubmitting(false);
@@ -89,6 +108,7 @@ export function useTaskSubmission({
       candidateSessionId,
       clearTaskError,
       currentTask,
+      notify,
       refreshTask,
       setTaskError,
       token,

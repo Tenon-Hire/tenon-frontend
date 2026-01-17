@@ -7,7 +7,8 @@ import {
   initCandidateWorkspace,
   type CandidateWorkspaceStatus,
 } from '@/lib/api/candidate';
-import { toStatus, toUserMessage } from '@/lib/utils/errors';
+import { useNotifications } from '@/features/shared/notifications';
+import { normalizeApiError, toStatus, toUserMessage } from '@/lib/utils/errors';
 
 type WorkspacePanelProps = {
   taskId: number;
@@ -38,6 +39,7 @@ export function WorkspacePanel({
   token,
   dayIndex,
 }: WorkspacePanelProps) {
+  const { notify } = useNotifications();
   const [workspace, setWorkspace] = useState<CandidateWorkspaceStatus | null>(
     null,
   );
@@ -99,10 +101,32 @@ export function WorkspacePanel({
             candidateSessionId,
           });
           setWorkspace(initialized);
+          if (mode === 'refresh') {
+            const msg = buildWorkspaceMessage(initialized);
+            notify({
+              id: `workspace-${taskId}-refresh`,
+              tone: 'success',
+              title: 'Workspace updated',
+              description: msg,
+            });
+          }
         } else {
           setWorkspace(status);
+          if (mode === 'refresh') {
+            const msg = buildWorkspaceMessage(status);
+            notify({
+              id: `workspace-${taskId}-refresh`,
+              tone: 'success',
+              title: 'Workspace updated',
+              description: msg,
+            });
+          }
         }
       } catch (err) {
+        const normalized = normalizeApiError(
+          err,
+          'Unable to load your workspace right now.',
+        );
         const status = toStatus(err);
         if (status === 401 || status === 403) {
           setError('Session expired. Please sign in again.');
@@ -114,9 +138,18 @@ export function WorkspacePanel({
             ),
           );
         } else {
-          setError(
-            toUserMessage(err, 'Unable to load your workspace right now.'),
-          );
+          setError(normalized.message);
+        }
+        if (mode === 'refresh') {
+          notify({
+            id: `workspace-${taskId}-error`,
+            tone: status === 409 ? 'warning' : 'error',
+            title: normalized.message,
+            description:
+              normalized.action === 'signin'
+                ? 'Open sign in again, then refresh your workspace.'
+                : 'Use the refresh button to try again.',
+          });
         }
       } finally {
         if (mode === 'init') {
@@ -126,7 +159,7 @@ export function WorkspacePanel({
         }
       }
     },
-    [candidateSessionId, taskId, token],
+    [candidateSessionId, notify, taskId, token],
   );
 
   useEffect(() => {

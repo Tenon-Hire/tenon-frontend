@@ -1,7 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useNotifications } from '@/features/shared/notifications';
+import { copyToClipboard } from '../utils/formatters';
 import { ProfileCard } from './components/ProfileCard';
 import { useInviteCandidateFlow } from './hooks/useInviteCandidateFlow';
 import type { InviteModalState, RecruiterProfile } from './types';
@@ -27,14 +29,6 @@ const InviteCandidateModal = dynamic(
   },
 );
 
-const InviteToast = dynamic(
-  () =>
-    import('@/features/recruiter/invitations/InviteToast').then(
-      (mod) => mod.InviteToast,
-    ),
-  { ssr: false, loading: () => null },
-);
-
 type DashboardViewProps = {
   profile: RecruiterProfile | null;
   error: string | null;
@@ -54,6 +48,7 @@ export default function DashboardView({
   simulationsLoading,
   onRefresh,
 }: DashboardViewProps) {
+  const { notify } = useNotifications();
   const [modal, setModal] = useState<InviteModalState>({
     open: false,
     simulationId: '',
@@ -61,20 +56,6 @@ export default function DashboardView({
   });
 
   const inviteFlow = useInviteCandidateFlow(modal.open ? modal : null);
-
-  const [toast, setToast] = useState<
-    | { open: false }
-    | { open: true; kind: 'success'; message: string; inviteUrl?: string }
-  >({ open: false });
-  const [copied, setCopied] = useState(false);
-
-  const toastTimerRef = useRef<number | null>(null);
-  const copiedTimerRef = useRef<number | null>(null);
-
-  function dismissToast() {
-    setToast({ open: false });
-    setCopied(false);
-  }
 
   function openInvite(simId: string, simTitle: string) {
     inviteFlow.reset();
@@ -97,18 +78,33 @@ export default function DashboardView({
       : res.candidateEmail;
 
     const actionLabel = res.outcome === 'resent' ? 'resent' : 'sent';
-    setToast({
-      open: true,
-      kind: 'success',
-      message: `Invite ${actionLabel} for ${who}.`,
-      inviteUrl: res.inviteUrl,
+    notify({
+      id: `invite-${res.simulationId}-${res.candidateEmail}`,
+      tone: 'success',
+      title: `Invite ${actionLabel} for ${who}.`,
+      description: res.inviteUrl
+        ? 'Share this link with the candidate.'
+        : undefined,
+      actions:
+        res.inviteUrl && res.inviteUrl.trim()
+          ? [
+              {
+                label: 'Copy invite link',
+                onClick: async () => {
+                  const ok = await copyToClipboard(res.inviteUrl);
+                  if (!ok) {
+                    notify({
+                      id: `invite-copy-${res.simulationId}-${res.candidateEmail}`,
+                      tone: 'error',
+                      title: 'Copy failed',
+                      description: 'Copy manually from the simulation detail.',
+                    });
+                  }
+                },
+              },
+            ]
+          : undefined,
     });
-
-    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = window.setTimeout(() => {
-      dismissToast();
-      toastTimerRef.current = null;
-    }, 6500);
 
     void onRefresh();
   };
@@ -121,25 +117,6 @@ export default function DashboardView({
   return (
     <main className="flex flex-col gap-4 py-8">
       <DashboardHeader />
-
-      {toast.open ? (
-        <InviteToast
-          toast={toast}
-          copied={copied}
-          onDismiss={dismissToast}
-          onCopyStateChange={(next) => {
-            setCopied(next);
-            if (copiedTimerRef.current)
-              window.clearTimeout(copiedTimerRef.current);
-            if (next) {
-              copiedTimerRef.current = window.setTimeout(() => {
-                setCopied(false);
-                copiedTimerRef.current = null;
-              }, 1800);
-            }
-          }}
-        />
-      ) : null}
 
       {profile ? (
         <ProfileCard

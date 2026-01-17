@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterDashboardPage from '@/features/recruiter/dashboard/RecruiterDashboardPage';
+import { NotificationsProvider } from '@/features/shared/notifications';
 import type { RecruiterProfile } from '@/types/recruiter';
 import { inviteCandidate, listSimulationCandidates } from '@/lib/api/recruiter';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
@@ -36,6 +37,10 @@ const mockedListSimulationCandidates =
 const mockUseDashboardData = useDashboardData as jest.MockedFunction<
   typeof useDashboardData
 >;
+
+function renderWithNotifications(ui: React.ReactElement) {
+  return render(<NotificationsProvider>{ui}</NotificationsProvider>);
+}
 
 describe('RecruiterDashboardPage', () => {
   const profile: RecruiterProfile = {
@@ -89,7 +94,7 @@ describe('RecruiterDashboardPage', () => {
       outcome: 'created',
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     await user.click(
       await screen.findByRole('button', { name: 'Invite candidate' }),
@@ -123,7 +128,7 @@ describe('RecruiterDashboardPage', () => {
       refresh: jest.fn(),
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Jordan Doe')).toBeInTheDocument();
@@ -144,14 +149,14 @@ describe('RecruiterDashboardPage', () => {
       refresh: jest.fn(),
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     expect(screen.getByText('Unable to fetch profile')).toBeInTheDocument();
     expect(screen.getByText('No simulations yet.')).toBeInTheDocument();
   });
 
   it('shows empty state when recruiter has no simulations', async () => {
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     expect(screen.getByText('No simulations yet.')).toBeInTheDocument();
   });
@@ -175,7 +180,7 @@ describe('RecruiterDashboardPage', () => {
       refresh: jest.fn(),
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     expect(
       await screen.findByText('Backend Engineer - Node'),
@@ -198,7 +203,7 @@ describe('RecruiterDashboardPage', () => {
       refresh: jest.fn(),
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     expect(screen.getByText('Couldn’t load simulations')).toBeInTheDocument();
     expect(screen.getByText('Unauthorized')).toBeInTheDocument();
@@ -231,7 +236,7 @@ describe('RecruiterDashboardPage', () => {
       outcome: 'created',
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -287,7 +292,7 @@ describe('RecruiterDashboardPage', () => {
       outcome: 'resent',
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     await user.click(
       await screen.findByRole('button', { name: 'Invite candidate' }),
@@ -337,7 +342,7 @@ describe('RecruiterDashboardPage', () => {
       outcome: 'created',
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -350,27 +355,21 @@ describe('RecruiterDashboardPage', () => {
     );
     await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
-    const copyBtn = await screen.findByRole('button', { name: /Copy/i });
+    const copyBtn = await screen.findByRole('button', {
+      name: /Copy invite link/i,
+    });
     await user.click(copyBtn);
 
     expect(writeText).toHaveBeenCalledWith(
       'http://localhost:3000/candidate/session/tok_123',
     );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /Copied/i }),
-      ).toBeInTheDocument(),
+    expect(
+      await screen.findByText(/Invite sent for Jane Doe/i),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: /Dismiss notification/i }),
     );
-
-    act(() => {
-      jest.advanceTimersByTime(2000);
-    });
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Copy/i })).toBeInTheDocument(),
-    );
-
-    await user.click(screen.getByRole('button', { name: /Dismiss/i }));
     expect(
       screen.queryByText(/Invite sent for Jane Doe/i),
     ).not.toBeInTheDocument();
@@ -396,7 +395,7 @@ describe('RecruiterDashboardPage', () => {
 
     mockedInviteCandidate.mockRejectedValueOnce({ message: 'Invite failed' });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -427,7 +426,7 @@ describe('RecruiterDashboardPage', () => {
       refresh: jest.fn(),
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     expect(screen.getByText('Couldn’t load simulations')).toBeInTheDocument();
     expect(screen.getByText('Auth failed')).toBeInTheDocument();
@@ -483,7 +482,7 @@ describe('RecruiterDashboardPage', () => {
       refresh: jest.fn(),
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -496,13 +495,17 @@ describe('RecruiterDashboardPage', () => {
     );
     await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
-    const copyBtn = await screen.findByRole('button', { name: /Copy/i });
+    const copyBtn = await screen.findByRole('button', {
+      name: /Copy invite link/i,
+    });
     await user.click(copyBtn);
     expect(writeText).toHaveBeenCalledWith(
       'http://localhost:3000/candidate/session/tok_456',
     );
 
-    await user.click(screen.getByRole('button', { name: /Dismiss/i }));
+    await user.click(
+      screen.getByRole('button', { name: /Dismiss notification/i }),
+    );
     expect(screen.queryByText(/Invite sent for Alex/i)).not.toBeInTheDocument();
   });
 
@@ -534,7 +537,7 @@ describe('RecruiterDashboardPage', () => {
       outcome: 'created',
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -593,7 +596,7 @@ describe('RecruiterDashboardPage', () => {
       outcome: 'created',
     });
 
-    render(<RecruiterDashboardPage />);
+    renderWithNotifications(<RecruiterDashboardPage />);
 
     const inviteBtn = await screen.findByRole('button', {
       name: 'Invite candidate',
@@ -606,7 +609,9 @@ describe('RecruiterDashboardPage', () => {
     );
     await user.click(screen.getByRole('button', { name: /Send invite/i }));
 
-    const copyBtn = await screen.findByRole('button', { name: /Copy/i });
+    const copyBtn = await screen.findByRole('button', {
+      name: /Copy invite link/i,
+    });
     await user.click(copyBtn);
     await user.click(copyBtn);
 
@@ -616,6 +621,8 @@ describe('RecruiterDashboardPage', () => {
       jest.advanceTimersByTime(1800);
     });
 
-    expect(screen.getByRole('button', { name: /Copy/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Copy invite link/i }),
+    ).toBeInTheDocument();
   });
 });
