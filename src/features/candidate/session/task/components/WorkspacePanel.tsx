@@ -8,7 +8,7 @@ import {
   type CandidateWorkspaceStatus,
 } from '@/lib/api/candidate';
 import { useNotifications } from '@/features/shared/notifications';
-import { normalizeApiError, toStatus, toUserMessage } from '@/lib/utils/errors';
+import { normalizeApiError, toStatus } from '@/lib/utils/errors';
 
 type WorkspacePanelProps = {
   taskId: number;
@@ -66,7 +66,8 @@ export function WorkspacePanel({
         }
         setError(null);
         setNotice(null);
-        let status: CandidateWorkspaceStatus;
+        let status: CandidateWorkspaceStatus | null = null;
+        let nextWorkspace: CandidateWorkspaceStatus | null = null;
         try {
           status = await getCandidateWorkspaceStatus({
             taskId,
@@ -86,13 +87,13 @@ export function WorkspacePanel({
               token,
               candidateSessionId,
             });
-            setWorkspace(initialized);
-            return;
+            nextWorkspace = initialized;
+          } else {
+            throw err;
           }
-          throw err;
         }
         const needsInit =
-          !status.repoUrl && !status.repoName && !status.codespaceUrl;
+          !status?.repoUrl && !status?.repoName && !status?.codespaceUrl;
 
         if (mode === 'init' && needsInit && !initAttemptedRef.current) {
           initAttemptedRef.current = true;
@@ -101,13 +102,16 @@ export function WorkspacePanel({
             token,
             candidateSessionId,
           });
-          setWorkspace(initialized);
-        } else {
-          setWorkspace(status);
+          nextWorkspace = initialized;
+        } else if (!nextWorkspace) {
+          nextWorkspace = status;
         }
 
+        if (nextWorkspace) {
+          setWorkspace(nextWorkspace);
+        }
         if (mode === 'refresh') {
-          const msg = buildWorkspaceMessage(status);
+          const msg = buildWorkspaceMessage(nextWorkspace);
           notify({
             id: `workspace-${taskId}-refresh`,
             tone: 'success',
@@ -122,29 +126,34 @@ export function WorkspacePanel({
           'Unable to load your workspace right now.',
         );
         const status = toStatus(err);
-        if (status === 401 || status === 403) {
+        const isSignin =
+          status === 401 || status === 403 || normalized.action === 'signin';
+        if (isSignin) {
           setError('Session expired. Please sign in again.');
         } else if (status === 409) {
           setNotice(
-            toUserMessage(
-              err,
-              'Workspace repo not provisioned yet. Please try again.',
-            ),
+            'Workspace repo not provisioned yet. Please try again shortly.',
           );
         } else {
           setError(normalized.message);
         }
-        const tone = status === 409 ? 'warning' : 'error';
-        const title =
-          mode === 'refresh'
+        const tone = status === 409 ? 'warning' : isSignin ? 'error' : 'error';
+        const title = (() => {
+          if (isSignin) return 'Session expired';
+          if (status === 409) return 'Workspace still provisioning';
+          return mode === 'refresh'
             ? 'Workspace couldn’t refresh'
             : 'Workspace not available';
-        const description =
-          status === 409
-            ? 'Workspace repo not provisioned yet. Please try again shortly.'
-            : normalized.action === 'signin'
-              ? 'Sign in again, then refresh your workspace.'
-              : `${normalized.message} Use Refresh to try again.`;
+        })();
+        const description = (() => {
+          if (status === 409) {
+            return 'Repo/Codespace may take a moment. Hit Refresh in ~15–30s.';
+          }
+          if (isSignin) {
+            return 'Sign in again, then press Refresh.';
+          }
+          return `${normalized.message} Use Refresh to try again.`;
+        })();
         if (
           mode === 'refresh' ||
           (mode === 'init' && !initErrorNotifiedRef.current)
