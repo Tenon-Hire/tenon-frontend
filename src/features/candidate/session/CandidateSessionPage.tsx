@@ -437,7 +437,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     return (
       <div className="mx-auto max-w-4xl space-y-5 p-6">
         <div className="space-y-1">
-          <div className="text-lg font-semibold text-gray-900">{title}</div>
+          <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
           <div className="text-sm text-gray-600">Role: {role}</div>
           <div className="text-xs text-gray-500">
             5-day simulation. Complete each day in order; you can pause and
