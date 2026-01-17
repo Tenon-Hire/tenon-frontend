@@ -446,12 +446,12 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         </div>
 
         <div className="rounded-md border border-blue-100 bg-blue-50 p-4">
-          <div className="text-sm font-semibold text-blue-900">
+          <h2 className="text-sm font-semibold text-blue-900">
             What to expect
-          </div>
+          </h2>
           <ul className="mt-2 space-y-1 text-sm text-blue-900">
             <li>Day 1: written kickoff. Days 2–3: GitHub-native code tasks.</li>
-            <li>Day 4: quick recording. Day 5: documentation + wrap-up.</li>
+            <li>Day 4–5: coming next; you’ll see them once unlocked.</li>
             <li>
               Plan ~60–90 minutes for each code task; test results live here.
             </li>
@@ -460,13 +460,13 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-gray-900">
+            <h2 className="text-sm font-semibold text-gray-900">
               How code tasks work
-            </div>
+            </h2>
             <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-gray-700">
               <li>
-                Tenon provisions a GitHub repo from a template. If access is
-                locked, we’ll ask for your GitHub username to grant you access.
+                Tenon provisions a GitHub repo from a template. You may be asked
+                for your GitHub username to grant repo/Codespaces access.
               </li>
               <li>
                 Open the repo in Codespaces (VS Code in the browser) from the
@@ -484,15 +484,15 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           </div>
 
           <div className="rounded-md border border-amber-200 bg-amber-50 p-4 shadow-sm">
-            <div className="text-sm font-semibold text-amber-900">
+            <h2 className="text-sm font-semibold text-amber-900">
               Safety + setup
-            </div>
+            </h2>
             <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-amber-900">
               <li>Do not paste tokens or secrets into the UI or repo.</li>
               <li>Use the repo link provided; do not create your own repo.</li>
               <li>
-                Have your GitHub username ready and accept the Codespaces prompt
-                so we can open your workspace.
+                Use the Codespace link in the workspace card to open your editor
+                and terminal.
               </li>
             </ul>
             <div className="mt-3 text-xs text-amber-900">
