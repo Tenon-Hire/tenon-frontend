@@ -472,6 +472,13 @@ export function RunTestsPanel({
         </Button>
       </div>
 
+      {state === 'idle' ? (
+        <div className="mt-3 rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+          No test runs yet. Use Run tests to trigger GitHub Actions and see pass
+          / fail details here.
+        </div>
+      ) : null}
+
       {state !== 'idle' ? (
         <div className="mt-3 space-y-3 text-sm text-gray-700">
           <div role="status">{displayMessage}</div>

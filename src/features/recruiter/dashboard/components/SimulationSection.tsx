@@ -6,6 +6,7 @@ type SimulationSectionProps = {
   loading: boolean;
   error: string | null;
   onInvite: (sim: SimulationListItem) => void;
+  onRetry?: () => void;
 };
 
 export function SimulationSection({
@@ -13,6 +14,7 @@ export function SimulationSection({
   loading,
   error,
   onInvite,
+  onRetry,
 }: SimulationSectionProps) {
   const hasSimulations = simulations.length > 0;
 
@@ -59,6 +61,17 @@ export function SimulationSection({
             Couldn’t load simulations
           </p>
           <p className="text-sm text-red-700">{error}</p>
+          {onRetry ? (
+            <div className="mt-2">
+              <button
+                className="text-sm font-medium text-blue-700 underline"
+                type="button"
+                onClick={onRetry}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

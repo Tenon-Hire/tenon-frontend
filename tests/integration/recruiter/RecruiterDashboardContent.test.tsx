@@ -135,7 +135,7 @@ describe('RecruiterDashboardPage', () => {
     expect(screen.getByText('jordan@example.com')).toBeInTheDocument();
     expect(screen.getByText(/Role:/)).toHaveTextContent('Role: recruiter');
 
-    expect(await screen.findByText('No simulations yet.')).toBeInTheDocument();
+    expect(await screen.findByText(/No simulations yet/i)).toBeInTheDocument();
   });
 
   it('shows an error message when provided', async () => {
@@ -152,13 +152,13 @@ describe('RecruiterDashboardPage', () => {
     renderWithNotifications(<RecruiterDashboardPage />);
 
     expect(screen.getByText('Unable to fetch profile')).toBeInTheDocument();
-    expect(screen.getByText('No simulations yet.')).toBeInTheDocument();
+    expect(screen.getByText(/No simulations yet/i)).toBeInTheDocument();
   });
 
   it('shows empty state when recruiter has no simulations', async () => {
     renderWithNotifications(<RecruiterDashboardPage />);
 
-    expect(screen.getByText('No simulations yet.')).toBeInTheDocument();
+    expect(screen.getByText(/No simulations yet/i)).toBeInTheDocument();
   });
 
   it('renders simulations list with metadata', async () => {

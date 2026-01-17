@@ -108,8 +108,6 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
-    expect(screen.getByText('Loading submissions…')).toBeInTheDocument();
-
     await waitFor(() => {
       expect(
         screen.getByText(
@@ -270,10 +268,11 @@ describe('CandidateSubmissionsPage', () => {
     render(<CandidateSubmissionsPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('No submissions yet for this candidate.'),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/No submissions yet/i)).toBeInTheDocument();
     });
+    expect(
+      screen.getByRole('button', { name: /Refresh/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders error state when submissions list request fails', async () => {

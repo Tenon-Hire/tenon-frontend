@@ -33,6 +33,7 @@ import {
   friendlyTaskError,
 } from './utils/errorMessages';
 import { extractFirstUrl } from './utils/extractUrl';
+import { CandidateSessionSkeleton } from './components/CandidateSessionSkeleton';
 
 type ViewState = 'loading' | 'auth' | 'starting' | 'error' | 'running';
 
@@ -367,10 +368,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   if (view === 'loading' || state.authStatus === 'loading') {
     return (
-      <StateMessage
-        title="Loading simulation…"
-        description="Checking your session and invite link."
-      />
+      <CandidateSessionSkeleton message="Checking your invite and signing you in." />
     );
   }
 
@@ -422,10 +420,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   if (view === 'starting') {
     return (
-      <StateMessage
-        title={title || 'Preparing your simulation…'}
-        description="Loading your tasks and workspace."
-      />
+      <CandidateSessionSkeleton message="Loading your tasks and workspace." />
     );
   }
 
@@ -540,8 +535,23 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           Session not ready. Please refresh.
         </div>
       ) : (
-        <div className="border rounded-md p-4 text-sm text-gray-700">
-          No current task available.
+        <div className="space-y-3 rounded-md border border-gray-200 bg-white p-4 text-sm text-gray-700 shadow-sm">
+          <div className="text-base font-semibold text-gray-900">
+            Unable to load your current task
+          </div>
+          <div className="text-sm text-gray-600">
+            Something interrupted the task fetch. Retry to pull the latest day,
+            or return to your dashboard to reopen the invite.
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => void fetchCurrentTask()}>Retry</Button>
+            <Button
+              variant="secondary"
+              onClick={() => router.push('/candidate/dashboard')}
+            >
+              Back to dashboard
+            </Button>
+          </div>
         </div>
       )}
     </div>

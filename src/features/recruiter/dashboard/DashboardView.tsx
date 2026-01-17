@@ -187,6 +187,7 @@ export default function DashboardView({
         loading={simulationsLoading}
         error={simulationsError}
         onInvite={(sim) => openInvite(sim.id, sim.title)}
+        onRetry={onRefresh}
       />
 
       {modal.open ? (
