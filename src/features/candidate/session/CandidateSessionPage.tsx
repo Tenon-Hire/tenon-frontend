@@ -11,6 +11,8 @@ import { ResourcePanel } from '@/features/candidate/session/task/components/Reso
 import {
   type CandidateSessionBootstrapResponse,
   getCandidateCurrentTask,
+  INVITE_EXPIRED_MESSAGE,
+  INVITE_UNAVAILABLE_MESSAGE,
   pollCandidateTestRun,
   resolveCandidateInviteToken,
   startCandidateTestRun,
@@ -161,8 +163,8 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       authTokenOverride?: string | null,
     ) => {
       if (!initToken) {
-        setErrorMessage('Missing invite token.');
-        setErrorStatus(null);
+        setErrorMessage(INVITE_UNAVAILABLE_MESSAGE);
+        setErrorStatus(400);
         setView('error');
         return;
       }
@@ -344,13 +346,22 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     void runInit(token, true);
   }, [runInit, token]);
 
-  const errorCopy =
-    errorMessage ?? 'Something went wrong loading your simulation.';
-  const inviteLinkError = errorStatus === 404 || errorStatus === 410;
-
-  const goToCandidateDashboard = useCallback(() => {
-    router.push('/candidate/dashboard');
+  const goHome = useCallback(() => {
+    router.push('/');
   }, [router]);
+
+  const inviteLinkError =
+    errorStatus === 400 ||
+    errorStatus === 404 ||
+    errorStatus === 409 ||
+    errorStatus === 410;
+
+  const inviteErrorCopy =
+    errorMessage ??
+    (errorStatus === 410 ? INVITE_EXPIRED_MESSAGE : INVITE_UNAVAILABLE_MESSAGE);
+  const errorCopy = inviteLinkError
+    ? inviteErrorCopy
+    : (errorMessage ?? 'Something went wrong loading your simulation.');
 
   if (view === 'loading' || state.authStatus === 'loading') {
     return (
@@ -367,9 +378,13 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       : 'Unable to load simulation';
     const errorAction = inviteLinkError ? (
       <div className="flex gap-3">
-        <Button onClick={goToCandidateDashboard}>
-          Go to Candidate Dashboard
-        </Button>
+        {state.authStatus === 'unauthenticated' ? (
+          <a href={buildLoginHref('/', 'candidate')}>
+            <Button>Go to sign in</Button>
+          </a>
+        ) : (
+          <Button onClick={goHome}>Go to Home</Button>
+        )}
       </div>
     ) : (
       <div className="flex gap-3">

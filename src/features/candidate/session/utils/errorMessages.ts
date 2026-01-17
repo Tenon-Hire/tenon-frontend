@@ -1,10 +1,9 @@
-import { HttpError } from '@/lib/api/candidate';
+import {
+  HttpError,
+  INVITE_EXPIRED_MESSAGE,
+  INVITE_UNAVAILABLE_MESSAGE,
+} from '@/lib/api/candidate';
 import { toUserMessage } from '@/lib/utils/errors';
-
-const inviteUnavailableMessage =
-  'This invite link is no longer valid. Please contact your recruiter to request a new invitation.';
-const inviteExpiredMessage =
-  'This invite link has expired or was already used. Please contact your recruiter to request a new invitation.';
 
 function statusFromUnknown(err: unknown): number | undefined {
   if (err instanceof HttpError) return err.status;
@@ -21,12 +20,13 @@ function messageFromUnknown(err: unknown): string | undefined {
 export function friendlyBootstrapError(err: unknown): string {
   const status = statusFromUnknown(err);
 
-  if (status === 404 || status === 409) return inviteUnavailableMessage;
+  if (status === 400 || status === 404 || status === 409)
+    return INVITE_UNAVAILABLE_MESSAGE;
   if (status === 401) return 'Please sign in again.';
   if (status === 403) {
     return 'We could not confirm your email. Please sign in again.';
   }
-  if (status === 410) return inviteExpiredMessage;
+  if (status === 410) return INVITE_EXPIRED_MESSAGE;
   if (!status || status === 0)
     return 'Network error. Please check your connection and try again.';
 
@@ -39,8 +39,9 @@ export function friendlyBootstrapError(err: unknown): string {
 export function friendlyTaskError(err: unknown): string {
   const status = statusFromUnknown(err);
 
-  if (status === 404 || status === 409) return inviteUnavailableMessage;
-  if (status === 410) return inviteExpiredMessage;
+  if (status === 400 || status === 404 || status === 409)
+    return INVITE_UNAVAILABLE_MESSAGE;
+  if (status === 410) return INVITE_EXPIRED_MESSAGE;
   if (!status || status === 0)
     return 'Network error. Please check your connection and try again.';
 
@@ -53,8 +54,9 @@ export function friendlyTaskError(err: unknown): string {
 export function friendlyClaimError(err: unknown): string {
   const status = statusFromUnknown(err);
 
-  if (status === 404 || status === 409) return inviteUnavailableMessage;
-  if (status === 410) return inviteExpiredMessage;
+  if (status === 400 || status === 404 || status === 409)
+    return INVITE_UNAVAILABLE_MESSAGE;
+  if (status === 410) return INVITE_EXPIRED_MESSAGE;
   if (status === 401) return 'Please sign in again.';
   if (status === 403) {
     return 'We could not confirm your email. Please sign in again.';

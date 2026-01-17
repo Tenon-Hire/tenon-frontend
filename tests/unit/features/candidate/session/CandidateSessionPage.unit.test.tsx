@@ -17,6 +17,10 @@ jest.mock('@/lib/api/candidate', () => ({
   getCandidateCurrentTask: jest.fn(),
   pollCandidateTestRun: jest.fn(),
   startCandidateTestRun: jest.fn(),
+  INVITE_UNAVAILABLE_MESSAGE:
+    'This invite link is no longer valid. Please contact your recruiter to request a new invitation.',
+  INVITE_EXPIRED_MESSAGE:
+    'This invite link has expired or was already used. Please contact your recruiter to request a new invitation.',
   HttpError: class HttpError extends Error {
     status: number;
     constructor(status: number, message: string) {
@@ -98,9 +102,17 @@ describe('CandidateSessionPage unit flow', () => {
     render(<CandidateSessionPage token="" />);
 
     await waitFor(() =>
-      expect(screen.getByText('Unable to load simulation')).toBeInTheDocument(),
+      expect(screen.getByText(/Invite link unavailable/i)).toBeInTheDocument(),
     );
-    expect(screen.getByText('Missing invite token.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /This invite link is no longer valid\. Please contact your recruiter to request a new invitation\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Go to Home/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Retry/i)).not.toBeInTheDocument();
   });
 
   it('shows auth prompt when access token is missing', async () => {
@@ -142,6 +154,27 @@ describe('CandidateSessionPage unit flow', () => {
     expect(session.setToken).toHaveBeenCalledWith(null);
   });
 
+  it.each([400, 404, 409, 410])(
+    'shows guidance when invite link fails (%s)',
+    async (status) => {
+      mockUseCandidateSession.mockReturnValue(buildSession());
+      mockResolveInvite.mockRejectedValueOnce({ status });
+
+      render(<CandidateSessionPage token="invite-token" />);
+
+      expect(
+        await screen.findByText(/Invite link unavailable/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/contact your recruiter to request a new invitation/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Go to Home/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Retry/i)).not.toBeInTheDocument();
+    },
+  );
+
   it('shows error view for non-auth bootstrap failures', async () => {
     mockUseCandidateSession.mockReturnValue(buildSession());
     mockResolveInvite.mockRejectedValueOnce({ status: 500 });
@@ -151,22 +184,5 @@ describe('CandidateSessionPage unit flow', () => {
     await waitFor(() =>
       expect(screen.getByText('Unable to load simulation')).toBeInTheDocument(),
     );
-  });
-
-  it('shows guidance when invite link is invalid or expired', async () => {
-    mockUseCandidateSession.mockReturnValue(buildSession());
-    mockResolveInvite.mockRejectedValueOnce({ status: 404 });
-
-    render(<CandidateSessionPage token="invite-token" />);
-
-    await waitFor(() =>
-      expect(screen.getByText('Invite link unavailable')).toBeInTheDocument(),
-    );
-    expect(
-      screen.getByText(/contact your recruiter to request a new invitation/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Go to Candidate Dashboard' }),
-    ).toBeInTheDocument();
   });
 });

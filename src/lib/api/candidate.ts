@@ -8,6 +8,11 @@ import {
 
 export { HttpError };
 
+export const INVITE_UNAVAILABLE_MESSAGE =
+  'This invite link is no longer valid. Please contact your recruiter to request a new invitation.';
+export const INVITE_EXPIRED_MESSAGE =
+  'This invite link has expired or was already used. Please contact your recruiter to request a new invitation.';
+
 const RAW_API_BASE =
   process.env.NEXT_PUBLIC_TENON_API_BASE_URL ?? '/api/backend';
 const API_BASE = RAW_API_BASE === '/api' ? '/api/backend' : RAW_API_BASE;
@@ -530,11 +535,8 @@ export async function resolveCandidateInviteToken(
       const backendMsg = extractBackendMessage(details, true) ?? '';
       const lowerMsg = backendMsg.toLowerCase();
 
-      if (status === 404)
-        throw new HttpError(
-          404,
-          'This invite link is no longer valid. Please contact your recruiter to request a new invitation.',
-        );
+      if (status === 400 || status === 404 || status === 409)
+        throw new HttpError(status, INVITE_UNAVAILABLE_MESSAGE);
       if (status === 401) throw new HttpError(401, 'Please sign in again.');
       if (status === 403) {
         if (
@@ -552,11 +554,7 @@ export async function resolveCandidateInviteToken(
         }
         throw new HttpError(403, 'You do not have access to this invite.');
       }
-      if (status === 410)
-        throw new HttpError(
-          410,
-          'This invite link has expired or was already used. Please contact your recruiter to request a new invitation.',
-        );
+      if (status === 410) throw new HttpError(410, INVITE_EXPIRED_MESSAGE);
 
       const fallbackMsg =
         extractBackendMessage(details, false) ?? backendMsg ?? '';
