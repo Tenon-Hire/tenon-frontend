@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   getCandidateWorkspaceStatus,
   initCandidateWorkspace,
@@ -212,10 +213,23 @@ export function WorkspacePanel({
       </div>
 
       {loading ? (
-        <div className="mt-3 text-sm text-gray-600">Loading workspace…</div>
+        <div className="mt-4 space-y-2 text-sm text-gray-600">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-56 bg-gray-100" />
+          <Skeleton className="h-3 w-48 bg-gray-100" />
+        </div>
       ) : error ? (
-        <div className="mt-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800">
-          {error}
+        <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div>{error}</div>
+          <div className="mt-2 flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void loadWorkspace('refresh')}
+            >
+              Retry
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="mt-3 space-y-2 text-sm text-gray-700">
@@ -227,7 +241,7 @@ export function WorkspacePanel({
           <div>{workspaceMessage}</div>
           {repoLabel ? <div>Repo: {repoLabel}</div> : null}
           {workspace?.repoUrl ? (
-            <div className="text-xs text-gray-600 break-all">
+            <div className="break-all text-xs text-gray-600">
               Repo URL:{' '}
               <a
                 aria-label="Repo URL"
@@ -251,7 +265,8 @@ export function WorkspacePanel({
             </a>
           ) : (
             <div className="text-xs text-gray-500">
-              Codespace link will appear when ready.
+              Codespace link will appear when ready. Hit Refresh to check
+              status.
             </div>
           )}
         </div>

@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { CandidateSession } from '@/types/recruiter';
 import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
 
@@ -108,7 +110,7 @@ export default function CandidateSubmissionsPage() {
   >({});
   const statusDisplay = candidate?.status ?? null;
 
-  useEffect(() => {
+  const loadSubmissions = useCallback((): (() => void) => {
     let cancelled = false;
 
     async function run() {
@@ -210,11 +212,18 @@ export default function CandidateSubmissionsPage() {
       }
     }
 
-    run();
+    void run();
     return () => {
       cancelled = true;
     };
   }, [simulationId, candidateSessionKey, includeDetail]);
+
+  useEffect(() => {
+    const cancel = loadSubmissions();
+    return () => {
+      cancel?.();
+    };
+  }, [loadSubmissions]);
 
   const headerTitle = useMemo(() => {
     const label =
@@ -261,14 +270,42 @@ export default function CandidateSubmissionsPage() {
       ) : null}
 
       {loading ? (
-        <div className="text-sm text-gray-600">Loading submissions…</div>
+        <div className="space-y-3 rounded border border-gray-200 bg-white p-4">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-60 bg-gray-100" />
+          <Skeleton className="h-24 w-full bg-gray-50" />
+        </div>
       ) : error ? (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {error}
+          <div>{error}</div>
+          <div className="mt-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void loadSubmissions()}
+            >
+              Retry
+            </Button>
+          </div>
         </div>
       ) : items.length === 0 ? (
         <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700">
-          No submissions yet for this candidate.
+          <div className="text-base font-semibold text-gray-900">
+            No submissions yet
+          </div>
+          <div className="mt-1 text-sm text-gray-600">
+            The candidate hasn’t submitted work for this simulation yet. Refresh
+            to check for new activity.
+          </div>
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void loadSubmissions()}
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

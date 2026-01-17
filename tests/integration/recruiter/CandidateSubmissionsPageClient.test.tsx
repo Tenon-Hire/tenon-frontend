@@ -153,8 +153,9 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    expect(await screen.findByText(/No submissions yet/i)).toBeInTheDocument();
     expect(
-      await screen.findByText(/No submissions yet for this candidate/i),
+      screen.getByRole('button', { name: /Refresh/i }),
     ).toBeInTheDocument();
   });
 

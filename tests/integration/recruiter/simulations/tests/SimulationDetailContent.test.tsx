@@ -115,8 +115,6 @@ describe('RecruiterSimulationDetailPage', () => {
   it('renders candidates list and links to candidate submissions', async () => {
     render(<RecruiterSimulationDetailPage />);
 
-    expect(screen.getByText('Loading candidates…')).toBeInTheDocument();
-
     await waitFor(() => {
       expect(screen.getByText('Jane Doe')).toBeInTheDocument();
     });
@@ -512,8 +510,11 @@ describe('RecruiterSimulationDetailPage', () => {
     render(<RecruiterSimulationDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('No candidates yet.')).toBeInTheDocument();
+      expect(screen.getByText(/No candidates yet/i)).toBeInTheDocument();
     });
+    expect(
+      screen.getByRole('button', { name: /Invite your first candidate/i }),
+    ).toBeInTheDocument();
   });
 
   it('renders error state when candidates request fails', async () => {
@@ -539,6 +540,7 @@ describe('RecruiterSimulationDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Boom')).toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: /Retry/i })).toBeInTheDocument();
   });
 
   it('uses text fallback when candidates request fails with text/plain', async () => {
@@ -1012,8 +1014,6 @@ describe('RecruiterSimulationDetailPage', () => {
         <RecruiterSimulationDetailPage />
       </React.StrictMode>,
     );
-
-    expect(screen.getByText('Loading candidates…')).toBeInTheDocument();
 
     expect(await screen.findByText('Strict Mode')).toBeInTheDocument();
   });

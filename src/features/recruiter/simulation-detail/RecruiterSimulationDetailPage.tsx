@@ -21,6 +21,7 @@ import {
   buildNotAuthorizedUrl,
   buildReturnTo,
 } from '@/lib/auth/routing';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { toUserMessage } from '@/lib/utils/errors';
 import type { CandidateSession } from '@/types/recruiter';
 
@@ -1305,14 +1306,60 @@ export default function RecruiterSimulationDetailPage() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-600">Loading candidates…</div>
+        <div className="overflow-hidden rounded border border-gray-200 bg-white">
+          <div className="grid grid-cols-9 gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+            {Array.from({ length: 9 }).map((_, idx) => (
+              <Skeleton key={idx} className="h-3 w-20" />
+            ))}
+          </div>
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="grid grid-cols-9 items-center gap-3 border-b border-gray-200 px-4 py-3 last:border-b-0"
+            >
+              <div className="col-span-2 space-y-1">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-24 bg-gray-100" />
+              </div>
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-20" />
+              <div className="flex justify-end">
+                <Skeleton className="h-8 w-28" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : error ? (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {error}
+          <div>{error}</div>
+          <div className="mt-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void loadCandidates()}
+            >
+              Retry
+            </Button>
+          </div>
         </div>
       ) : candidates.length === 0 ? (
         <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700">
-          No candidates yet.
+          <div className="text-base font-semibold text-gray-900">
+            No candidates yet
+          </div>
+          <div className="mt-1 text-sm text-gray-600">
+            Invite candidates to this simulation to track their progress and
+            submissions.
+          </div>
+          <div className="mt-3">
+            <Button onClick={() => setInviteModalOpen(true)}>
+              Invite your first candidate
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="overflow-hidden rounded border border-gray-200 bg-white">
