@@ -4,6 +4,7 @@ import {
   fallbackStatus,
   toHttpError,
 } from '@/lib/api/utils/errors';
+import { normalizeApiError } from '@/lib/utils/errors';
 
 describe('api errors helpers', () => {
   it('extracts backend message/ detail variants', () => {
@@ -43,5 +44,26 @@ describe('api errors helpers', () => {
 
     const unknown = toHttpError('boom', { status: 500, message: 'fallback' });
     expect(unknown).toMatchObject({ status: 500, message: 'fallback' });
+  });
+
+  it('normalizes api errors with actionable messages', () => {
+    expect(normalizeApiError({ status: 401, message: 'nope' }).action).toBe(
+      'signin',
+    );
+    expect(
+      normalizeApiError({ status: 404, message: 'missing' }).message,
+    ).toContain('Not found');
+    expect(
+      normalizeApiError({
+        status: 429,
+        details: { error: { code: 'rate_limit' } },
+      }).code,
+    ).toBe('rate_limit');
+    expect(
+      normalizeApiError({ status: 0, message: 'Network' }).message,
+    ).toContain('Request timed out');
+    expect(normalizeApiError({ status: 500, message: 'boom' }).action).toBe(
+      'contact_support',
+    );
   });
 });

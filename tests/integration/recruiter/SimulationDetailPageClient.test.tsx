@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
+import { NotificationsProvider } from '@/features/shared/notifications';
 import { jsonResponse, type MockResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1' };
@@ -72,6 +73,13 @@ const mockFetchHandlers = (handlers: Record<string, Handler>) => {
   });
 };
 
+const renderPage = () =>
+  render(
+    <NotificationsProvider>
+      <RecruiterSimulationDetailPage />
+    </NotificationsProvider>,
+  );
+
 beforeEach(() => {
   fetchMock.mockReset();
   global.fetch = fetchMock as unknown as typeof fetch;
@@ -121,7 +129,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ]),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     expect(
       await screen.findByText(/Simulation ID: sim-1/i),
@@ -164,7 +172,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ]),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     expect(await screen.findByText('Casey')).toBeInTheDocument();
     expect(screen.queryByText(/secret submission/i)).not.toBeInTheDocument();
@@ -213,7 +221,7 @@ describe('RecruiterSimulationDetailPage', () => {
       }),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     await screen.findByText(/No candidates yet/i);
     await user.click(screen.getByRole('button', { name: /Invite candidate/i }));
@@ -251,7 +259,7 @@ describe('RecruiterSimulationDetailPage', () => {
       }),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     await screen.findByText(/No candidates yet/i);
 
@@ -317,7 +325,7 @@ describe('RecruiterSimulationDetailPage', () => {
       },
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     await user.click(screen.getByRole('button', { name: /Invite candidate/i }));
     await user.type(screen.getByLabelText(/Candidate name/i), 'Alex');
@@ -370,7 +378,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     await user.click(
       await screen.findByRole('button', { name: /Resend invite/i }),
@@ -409,7 +417,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     await user.click(
       await screen.findByRole('button', { name: /Resend invite/i }),
@@ -449,7 +457,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     await user.click(
       await screen.findByRole('button', { name: /Resend invite/i }),
@@ -494,7 +502,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ]),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     await user.click(
       await screen.findByRole('button', { name: /Copy invite link/i }),
@@ -536,7 +544,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ]),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     expect(await screen.findByText('Not verified')).toBeInTheDocument();
     const dashes = await screen.findAllByText('—');
@@ -556,7 +564,7 @@ describe('RecruiterSimulationDetailPage', () => {
       '/api/simulations/sim-empty/candidates': jsonResponse([]),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     expect(await screen.findByText(/No candidates yet/i)).toBeInTheDocument();
   });
@@ -577,7 +585,7 @@ describe('RecruiterSimulationDetailPage', () => {
       ),
     });
 
-    render(<RecruiterSimulationDetailPage />);
+    renderPage();
 
     expect(await screen.findByText(/Auth failed/i)).toBeInTheDocument();
   });

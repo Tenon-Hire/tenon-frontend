@@ -10,7 +10,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { useInviteCandidateFlow } from '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow';
 import { InviteCandidateModal } from '@/features/recruiter/invitations/InviteCandidateModal';
-import { InviteToast } from '@/features/recruiter/invitations/InviteToast';
+import { useNotifications } from '@/features/shared/notifications';
 import {
   copyToClipboard,
   errorToMessage,
@@ -462,21 +462,11 @@ export default function RecruiterSimulationDetailPage() {
   const [planError, setPlanError] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [toast, setToast] = useState<
-    | { open: false }
-    | {
-        open: true;
-        kind: 'success' | 'error';
-        message: string;
-        inviteUrl?: string;
-      }
-  >({ open: false });
-  const [toastCopied, setToastCopied] = useState(false);
   const [cooldownTick, setCooldownTick] = useState(0);
+  const { notify, update } = useNotifications();
+  const copyTimersRef = useRef<Record<string, number>>({});
 
   const mountedRef = useRef(true);
-  const toastTimerRef = useRef<number | null>(null);
-  const toastCopyTimerRef = useRef<number | null>(null);
   const cooldownTimersRef = useRef<Record<string, number>>({});
   const cooldownIntervalRef = useRef<number | null>(null);
 
@@ -494,9 +484,6 @@ export default function RecruiterSimulationDetailPage() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-      if (toastCopyTimerRef.current)
-        window.clearTimeout(toastCopyTimerRef.current);
       Object.values(cooldownTimersRef.current).forEach((timerId) => {
         window.clearTimeout(timerId);
       });
@@ -505,6 +492,10 @@ export default function RecruiterSimulationDetailPage() {
         window.clearInterval(cooldownIntervalRef.current);
         cooldownIntervalRef.current = null;
       }
+      Object.values(copyTimersRef.current).forEach((timerId) =>
+        window.clearTimeout(timerId),
+      );
+      copyTimersRef.current = {};
     };
   }, []);
 
@@ -759,11 +750,6 @@ export default function RecruiterSimulationDetailPage() {
     [],
   );
 
-  const dismissToast = useCallback(() => {
-    setToast({ open: false });
-    setToastCopied(false);
-  }, []);
-
   const handleCopy = useCallback(
     async (candidate: CandidateSession) => {
       const link = candidate.inviteUrl?.trim() || null;
@@ -793,16 +779,19 @@ export default function RecruiterSimulationDetailPage() {
       }));
 
       if (ok) {
-        setToast({
-          open: true,
-          kind: 'success',
-          message: 'Invite link copied.',
+        notify({
+          id: `invite-copy-${id}`,
+          tone: 'success',
+          title: 'Invite link copied',
+          description: 'Share the link with the candidate.',
         });
-        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-        toastTimerRef.current = window.setTimeout(() => {
-          dismissToast();
-          toastTimerRef.current = null;
-        }, 4000);
+      } else {
+        notify({
+          id: `invite-copy-error-${id}`,
+          tone: 'error',
+          title: 'Unable to copy invite link',
+          description: 'Use the manual copy option instead.',
+        });
       }
 
       window.setTimeout(() => {
@@ -814,7 +803,7 @@ export default function RecruiterSimulationDetailPage() {
         }));
       }, 1800);
     },
-    [dismissToast, updateRowState],
+    [notify, updateRowState],
   );
 
   const handleResend = useCallback(
@@ -943,16 +932,12 @@ export default function RecruiterSimulationDetailPage() {
             ),
             cooldownUntilMs: prev.cooldownUntilMs ?? null,
           }));
-          setToast({
-            open: true,
-            kind: 'success',
-            message: 'Invite resent.',
+          notify({
+            id: `invite-resent-${id}`,
+            tone: 'success',
+            title: 'Invite resent',
+            description: 'A fresh invite email is on the way.',
           });
-          if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-          toastTimerRef.current = window.setTimeout(() => {
-            dismissToast();
-            toastTimerRef.current = null;
-          }, 4000);
         }
         return !rateLimited;
       } catch (e: unknown) {
@@ -962,10 +947,16 @@ export default function RecruiterSimulationDetailPage() {
           resending: false,
           error: errorToMessage(e, 'Unable to resend invite.'),
         }));
+        notify({
+          id: `invite-resend-error-${id}`,
+          tone: 'error',
+          title: 'Unable to resend invite',
+          description: errorToMessage(e, 'Please try again.'),
+        });
         return false;
       }
     },
-    [dismissToast, loadCandidates, simulationId, updateRowState],
+    [loadCandidates, notify, simulationId, updateRowState],
   );
 
   const inviteLabel = useMemo(
@@ -1001,8 +992,9 @@ export default function RecruiterSimulationDetailPage() {
 
   const submitInvite = useCallback(
     async (candidateName: string, inviteEmail: string) => {
-      const res = await inviteFlow.submit(candidateName, inviteEmail);
-      if (!res) return;
+      const resResult = await inviteFlow.submit(candidateName, inviteEmail);
+      if (!resResult) return;
+      const res = resResult;
 
       setInviteModalOpen(false);
 
@@ -1011,22 +1003,69 @@ export default function RecruiterSimulationDetailPage() {
         : res.candidateEmail;
 
       const actionLabel = res.outcome === 'resent' ? 'resent' : 'sent';
-      setToast({
-        open: true,
-        kind: 'success',
-        message: `Invite ${actionLabel} for ${who}.`,
-        inviteUrl: res.inviteUrl,
-      });
+      const toastId = `invite-${res.simulationId}-${res.candidateEmail}`;
+      function resetLabel() {
+        update(toastId, {
+          actions:
+            res.inviteUrl && res.inviteUrl.trim()
+              ? [
+                  {
+                    label: 'Copy invite link',
+                    onClick: handleCopy,
+                  },
+                ]
+              : undefined,
+        });
+        if (copyTimersRef.current[toastId]) {
+          window.clearTimeout(copyTimersRef.current[toastId]);
+          delete copyTimersRef.current[toastId];
+        }
+      }
 
-      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = window.setTimeout(() => {
-        dismissToast();
-        toastTimerRef.current = null;
-      }, 6500);
+      async function handleCopy() {
+        if (!res.inviteUrl) return;
+        if (copyTimersRef.current[toastId]) {
+          window.clearTimeout(copyTimersRef.current[toastId]);
+          delete copyTimersRef.current[toastId];
+        }
+        const ok = await copyToClipboard(res.inviteUrl);
+        if (!ok) {
+          notify({
+            id: `invite-copy-${res.simulationId}-${res.candidateEmail}`,
+            tone: 'error',
+            title: 'Copy failed',
+            description: 'Copy the link manually from the table.',
+          });
+          resetLabel();
+          return;
+        }
+        update(toastId, { actions: [{ label: 'Copied', disabled: true }] });
+        copyTimersRef.current[toastId] = window.setTimeout(() => {
+          resetLabel();
+        }, 1800);
+      }
+
+      notify({
+        id: toastId,
+        tone: 'success',
+        title: `Invite ${actionLabel} for ${who}.`,
+        description: res.inviteUrl
+          ? 'Share this link with the candidate.'
+          : undefined,
+        actions:
+          res.inviteUrl && res.inviteUrl.trim()
+            ? [
+                {
+                  label: 'Copy invite link',
+                  onClick: handleCopy,
+                },
+              ]
+            : undefined,
+      });
 
       void loadCandidates();
     },
-    [dismissToast, inviteFlow, loadCandidates],
+    [inviteFlow, loadCandidates, notify, update],
   );
 
   return (
@@ -1054,23 +1093,6 @@ export default function RecruiterSimulationDetailPage() {
           </Link>
         </div>
       </div>
-
-      <InviteToast
-        toast={toast}
-        copied={toastCopied}
-        onDismiss={dismissToast}
-        onCopyStateChange={(next) => {
-          setToastCopied(next);
-          if (toastCopyTimerRef.current)
-            window.clearTimeout(toastCopyTimerRef.current);
-          if (next) {
-            toastCopyTimerRef.current = window.setTimeout(() => {
-              setToastCopied(false);
-              toastCopyTimerRef.current = null;
-            }, 1800);
-          }
-        }}
-      />
 
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">

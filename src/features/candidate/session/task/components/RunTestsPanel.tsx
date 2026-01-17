@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Button from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { toStatus, toUserMessage } from '@/lib/utils/errors';
+import { useNotifications } from '@/features/shared/notifications';
+import { normalizeApiError } from '@/lib/utils/errors';
 
 type PollResultStatus = 'running' | 'passed' | 'failed' | 'timeout' | 'error';
 
@@ -75,13 +76,16 @@ export function RunTestsPanel({
     stdout: false,
     stderr: false,
   });
+  const { notify } = useNotifications();
   const runStartRef = useRef<number | null>(null);
   const runLockRef = useRef(false);
+  const currentRunIdRef = useRef<string | null>(null);
 
   const pollTimerRef = useRef<number | null>(null);
   const pendingPollRef = useRef<{ attempt: number; runId: string } | null>(
     null,
   );
+  const lastToastRef = useRef<{ id: string; state: RunState } | null>(null);
 
   const clearTimer = useCallback(() => {
     if (pollTimerRef.current) {
@@ -92,6 +96,44 @@ export function RunTestsPanel({
 
   useEffect(() => clearTimer, [clearTimer]);
 
+  const maybeNotifyRun = useCallback(
+    (next: RunState, msg?: string) => {
+      if (next === 'running' || next === 'starting' || next === 'idle') return;
+      const toastId =
+        currentRunIdRef.current ??
+        (storageKey ? `run-${storageKey}` : 'run-tests');
+      if (
+        lastToastRef.current &&
+        lastToastRef.current.id === toastId &&
+        lastToastRef.current.state === next
+      ) {
+        return;
+      }
+      lastToastRef.current = { id: toastId, state: next };
+      const tone =
+        next === 'success'
+          ? 'success'
+          : next === 'timeout'
+            ? 'warning'
+            : 'error';
+      const title =
+        next === 'success'
+          ? 'Tests passed'
+          : next === 'failed'
+            ? 'Tests failed'
+            : next === 'timeout'
+              ? 'Tests timed out'
+              : 'Test run issue';
+      notify({
+        id: toastId,
+        tone,
+        title,
+        description: msg ?? fallbackMessage(next, msg),
+      });
+    },
+    [notify, storageKey],
+  );
+
   const endRun = useCallback(
     (next: RunState, msg?: string) => {
       clearTimer();
@@ -100,13 +142,14 @@ export function RunTestsPanel({
       runLockRef.current = false;
       setState(next);
       setMessage(fallbackMessage(next, msg));
+      maybeNotifyRun(next, msg);
       if (storageKey) {
         try {
           sessionStorage.removeItem(storageKey);
         } catch {}
       }
     },
-    [clearTimer, storageKey],
+    [clearTimer, maybeNotifyRun, storageKey],
   );
 
   const resolvePollDelay = useCallback(
@@ -177,15 +220,11 @@ export function RunTestsPanel({
 
         endRun('error', res.message);
       } catch (err) {
-        const status = toStatus(err);
-        const errMessage =
-          status === 401 || status === 403
-            ? 'Session expired. Please sign in again.'
-            : toUserMessage(
-                err,
-                'Unable to run tests right now. Please retry.',
-              );
-        endRun('error', errMessage);
+        const normalized = normalizeApiError(
+          err,
+          'Unable to run tests right now. Please retry.',
+        );
+        endRun('error', normalized.message);
       }
     },
     [clearTimer, endRun, maxAttempts, maxDurationMs, onPoll, resolvePollDelay],
@@ -222,12 +261,15 @@ export function RunTestsPanel({
     setState('starting');
     runLockRef.current = true;
     runStartRef.current = Date.now();
+    currentRunIdRef.current = null;
+    lastToastRef.current = null;
 
     try {
       const res = await onStart();
       if (!res?.runId) throw new Error('Missing run id');
 
       setState('running');
+      currentRunIdRef.current = res.runId;
       if (storageKey) {
         try {
           sessionStorage.setItem(storageKey, res.runId);
@@ -245,12 +287,11 @@ export function RunTestsPanel({
         resolvePollDelay(0),
       );
     } catch (err) {
-      const status = toStatus(err);
-      const errMessage =
-        status === 401 || status === 403
-          ? 'Session expired. Please sign in again.'
-          : toUserMessage(err, 'Failed to start tests. Please try again.');
-      endRun('error', errMessage);
+      const normalized = normalizeApiError(
+        err,
+        'Failed to start tests. Please try again.',
+      );
+      endRun('error', normalized.message);
     }
   }, [
     clearTimer,
@@ -393,6 +434,8 @@ export function RunTestsPanel({
     if (!storedId) return;
     setState('running');
     runLockRef.current = true;
+    currentRunIdRef.current = storedId;
+    lastToastRef.current = null;
     setMessage(fallbackMessage('running'));
     runStartRef.current = Date.now();
     if (typeof document !== 'undefined') {
