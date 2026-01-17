@@ -8,8 +8,14 @@ import { HttpError } from '@/lib/api/candidate';
 
 describe('candidate error messages', () => {
   it('maps bootstrap statuses to friendly messages', () => {
+    expect(friendlyBootstrapError(new HttpError(400, 'x'))).toContain(
+      'no longer valid',
+    );
     expect(friendlyBootstrapError(new HttpError(404, 'x'))).toContain(
-      'invalid',
+      'no longer valid',
+    );
+    expect(friendlyBootstrapError(new HttpError(409, 'x'))).toContain(
+      'no longer valid',
     );
     expect(friendlyBootstrapError(new HttpError(401, 'x'))).toContain(
       'sign in',
@@ -18,7 +24,7 @@ describe('candidate error messages', () => {
       'sign in',
     );
     expect(friendlyBootstrapError(new HttpError(410, 'x'))).toContain(
-      'expired',
+      'expired or was already used',
     );
     expect(friendlyBootstrapError(new Error('Backend fail'))).toContain(
       'Network error',
@@ -37,9 +43,13 @@ describe('candidate error messages', () => {
   });
 
   it('maps task errors for missing session and network', () => {
-    expect(friendlyTaskError(new HttpError(404, 'x'))).toContain(
-      'Session not found',
+    expect(friendlyTaskError(new HttpError(400, 'x'))).toContain(
+      'no longer valid',
     );
+    expect(friendlyTaskError(new HttpError(404, 'x'))).toContain(
+      'no longer valid',
+    );
+    expect(friendlyTaskError(new HttpError(410, 'x'))).toContain('expired');
     expect(friendlyTaskError(new HttpError(0, 'offline'))).toContain(
       'Network error',
     );

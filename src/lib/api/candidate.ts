@@ -1,3 +1,7 @@
+import {
+  INVITE_EXPIRED_MESSAGE,
+  INVITE_UNAVAILABLE_MESSAGE,
+} from '@/lib/copy/invite';
 import { apiClient, type ApiClientOptions } from './httpClient';
 import {
   HttpError,
@@ -530,8 +534,8 @@ export async function resolveCandidateInviteToken(
       const backendMsg = extractBackendMessage(details, true) ?? '';
       const lowerMsg = backendMsg.toLowerCase();
 
-      if (status === 404)
-        throw new HttpError(404, 'That invite link is invalid or unavailable.');
+      if (status === 400 || status === 404 || status === 409)
+        throw new HttpError(status, INVITE_UNAVAILABLE_MESSAGE);
       if (status === 401) throw new HttpError(401, 'Please sign in again.');
       if (status === 403) {
         if (
@@ -549,8 +553,7 @@ export async function resolveCandidateInviteToken(
         }
         throw new HttpError(403, 'You do not have access to this invite.');
       }
-      if (status === 410)
-        throw new HttpError(410, 'That invite link has expired.');
+      if (status === 410) throw new HttpError(410, INVITE_EXPIRED_MESSAGE);
 
       const fallbackMsg =
         extractBackendMessage(details, false) ?? backendMsg ?? '';

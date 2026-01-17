@@ -96,6 +96,8 @@ describe('useCandidateBootstrap', () => {
 
     expect(onResolved).not.toHaveBeenCalled();
     expect(screen.getByTestId('state').textContent).toBe('error');
-    expect(screen.getByTestId('error').textContent).toContain('invalid');
+    expect(screen.getByTestId('error').textContent).toContain(
+      'no longer valid',
+    );
   });
 });
