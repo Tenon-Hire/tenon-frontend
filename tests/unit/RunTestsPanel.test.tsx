@@ -13,7 +13,18 @@ const baseResult = {
   commitSha: null,
 };
 
-const getTestsButton = () => screen.getByRole('button', { name: /tests/i });
+const getTestsButton = () =>
+  screen.getByRole('button', { name: /^(run|re-run|retry|running)\s+tests/i });
+
+let timersAreFake = false;
+const useFakeTimers = () => {
+  timersAreFake = true;
+  jest.useFakeTimers();
+};
+const restoreRealTimers = () => {
+  jest.useRealTimers();
+  timersAreFake = false;
+};
 
 beforeAll(() => {
   jest.spyOn(console, 'error').mockImplementation((message, ...args) => {
@@ -30,15 +41,17 @@ afterAll(() => {
 
 describe('RunTestsPanel', () => {
   afterEach(() => {
-    act(() => {
-      jest.runOnlyPendingTimers();
-    });
+    if (timersAreFake) {
+      act(() => {
+        jest.runOnlyPendingTimers();
+      });
+    }
     act(() => {});
-    jest.useRealTimers();
+    restoreRealTimers();
   });
 
   it('starts a run and polls until success', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'run-1' });
@@ -92,7 +105,7 @@ describe('RunTestsPanel', () => {
   });
 
   it('prevents duplicate runs while running and allows retry after failure', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'r-2' });
@@ -127,7 +140,7 @@ describe('RunTestsPanel', () => {
   });
 
   it('ignores rapid double clicks before state updates', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'fast' });
     const onPoll = jest
@@ -147,10 +160,12 @@ describe('RunTestsPanel', () => {
     await act(async () => Promise.resolve());
 
     expect(onStart).toHaveBeenCalledTimes(1);
+
+    restoreRealTimers();
   });
 
   it('times out after max polling attempts when runs never finish', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'stuck' });
@@ -192,7 +207,7 @@ describe('RunTestsPanel', () => {
   });
 
   it('uses default messages for passed, timeout, and error statuses', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'run-defaults' });
@@ -238,7 +253,7 @@ describe('RunTestsPanel', () => {
   });
 
   it('surfaces errors from start and poll failures', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockRejectedValue(new Error('fail to start'));
@@ -276,7 +291,7 @@ describe('RunTestsPanel', () => {
   });
 
   it('clears start errors after a successful run start', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest
@@ -304,7 +319,7 @@ describe('RunTestsPanel', () => {
   });
 
   it('clears polling timers on unmount', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     const onStart = jest.fn().mockResolvedValue({ runId: 'run-unmount' });
@@ -332,7 +347,7 @@ describe('RunTestsPanel', () => {
   });
 
   it('truncates stdout and expands on demand', async () => {
-    jest.useFakeTimers();
+    useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     const longStdout = 'a'.repeat(9001);
 
