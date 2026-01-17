@@ -435,23 +435,90 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   if (!state.started) {
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-4">
-        <div>
-          <div className="text-lg font-semibold">{title}</div>
+      <div className="mx-auto max-w-4xl space-y-5 p-6">
+        <div className="space-y-1">
+          <div className="text-lg font-semibold text-gray-900">{title}</div>
           <div className="text-sm text-gray-600">Role: {role}</div>
+          <div className="text-xs text-gray-500">
+            5-day simulation. Complete each day in order; you can pause and
+            resume anytime.
+          </div>
         </div>
-        <div className="text-sm text-gray-700">
-          You’re signed in. When you’re ready, start your simulation to begin
-          Day 1. You can come back anytime to resume.
+
+        <div className="rounded-md border border-blue-100 bg-blue-50 p-4">
+          <div className="text-sm font-semibold text-blue-900">
+            What to expect
+          </div>
+          <ul className="mt-2 space-y-1 text-sm text-blue-900">
+            <li>Day 1: written kickoff. Days 2–3: GitHub-native code tasks.</li>
+            <li>Day 4: quick recording. Day 5: documentation + wrap-up.</li>
+            <li>
+              Plan ~60–90 minutes for each code task; test results live here.
+            </li>
+          </ul>
         </div>
-        <div className="flex gap-3">
-          <Button onClick={handleStart}>Start simulation</Button>
-          <Button
-            variant="secondary"
-            onClick={() => router.push('/candidate/dashboard')}
-          >
-            Back to Candidate Dashboard
-          </Button>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-semibold text-gray-900">
+              How code tasks work
+            </div>
+            <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-gray-700">
+              <li>
+                Tenon provisions a GitHub repo from a template. If access is
+                locked, we’ll ask for your GitHub username to grant you access.
+              </li>
+              <li>
+                Open the repo in Codespaces (VS Code in the browser) from the
+                workspace card — that’s your editor and terminal.
+              </li>
+              <li>
+                Run tests from Tenon. We trigger GitHub Actions and show results
+                back in this panel.
+              </li>
+              <li>
+                Commit and submit from Tenon. We capture your latest commit SHA
+                with your submission.
+              </li>
+            </ol>
+          </div>
+
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-4 shadow-sm">
+            <div className="text-sm font-semibold text-amber-900">
+              Safety + setup
+            </div>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-amber-900">
+              <li>Do not paste tokens or secrets into the UI or repo.</li>
+              <li>Use the repo link provided; do not create your own repo.</li>
+              <li>
+                Have your GitHub username ready and accept the Codespaces prompt
+                so we can open your workspace.
+              </li>
+            </ul>
+            <div className="mt-3 text-xs text-amber-900">
+              Unsure where the editor/terminal is? Open Codespaces from the
+              workspace card once it appears.
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="text-sm font-semibold text-gray-900">
+            When you’re ready
+          </div>
+          <div className="mt-1 text-sm text-gray-700">
+            Start Day 1 now. You can return anytime to continue where you left
+            off.
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Button onClick={handleStart}>Start simulation</Button>
+            <Button
+              variant="secondary"
+              onClick={() => router.push('/candidate/dashboard')}
+            >
+              Back to Candidate Dashboard
+            </Button>
+          </div>
         </div>
       </div>
     );
