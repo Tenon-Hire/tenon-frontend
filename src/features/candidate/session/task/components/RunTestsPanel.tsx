@@ -76,6 +76,7 @@ export function RunTestsPanel({
     stderr: false,
   });
   const runStartRef = useRef<number | null>(null);
+  const runLockRef = useRef(false);
 
   const pollTimerRef = useRef<number | null>(null);
   const pendingPollRef = useRef<{ attempt: number; runId: string } | null>(
@@ -96,6 +97,7 @@ export function RunTestsPanel({
       clearTimer();
       pendingPollRef.current = null;
       runStartRef.current = null;
+      runLockRef.current = false;
       setState(next);
       setMessage(fallbackMessage(next, msg));
       if (storageKey) {
@@ -142,6 +144,7 @@ export function RunTestsPanel({
         const res = await onPoll(id);
         setResult(res);
         if (res.status === 'running') {
+          runLockRef.current = true;
           setState('running');
           setMessage(fallbackMessage('running', res.message));
           if (typeof document !== 'undefined') {
@@ -208,7 +211,8 @@ export function RunTestsPanel({
   }, [clearTimer, pollRun, resolvePollDelay]);
 
   const startRun = useCallback(async () => {
-    if (state === 'starting' || state === 'running') return;
+    if (runLockRef.current || state === 'starting' || state === 'running')
+      return;
 
     clearTimer();
     pendingPollRef.current = null;
@@ -216,6 +220,7 @@ export function RunTestsPanel({
     setResult(null);
     setExpandedOutput({ stdout: false, stderr: false });
     setState('starting');
+    runLockRef.current = true;
     runStartRef.current = Date.now();
 
     try {
@@ -261,6 +266,8 @@ export function RunTestsPanel({
     if (state === 'starting') return 'Starting…';
     if (state === 'running') return 'Running tests…';
     if (state === 'success') return 'Re-run tests';
+    if (state === 'failed' || state === 'timeout' || state === 'error')
+      return 'Retry tests';
     return 'Run tests';
   }, [state]);
 
@@ -385,6 +392,7 @@ export function RunTestsPanel({
     } catch {}
     if (!storedId) return;
     setState('running');
+    runLockRef.current = true;
     setMessage(fallbackMessage('running'));
     runStartRef.current = Date.now();
     if (typeof document !== 'undefined') {

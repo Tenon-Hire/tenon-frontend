@@ -13,6 +13,8 @@ const baseResult = {
   commitSha: null,
 };
 
+const getTestsButton = () => screen.getByRole('button', { name: /tests/i });
+
 beforeAll(() => {
   jest.spyOn(console, 'error').mockImplementation((message, ...args) => {
     if (typeof message === 'string' && message.includes('not wrapped in act')) {
@@ -60,7 +62,7 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/Preparing test run/i)).toBeInTheDocument();
 
@@ -106,7 +108,7 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
-    const cta = screen.getByRole('button', { name: /run tests/i });
+    const cta = getTestsButton();
     await user.click(cta);
     await user.click(cta);
 
@@ -120,8 +122,31 @@ describe('RunTestsPanel', () => {
     expect(onPoll).toHaveBeenCalledTimes(1);
     expect(await screen.findByText(/Red/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     expect(onStart).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores rapid double clicks before state updates', async () => {
+    jest.useFakeTimers();
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'fast' });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValue({ ...baseResult, status: 'running' as const });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    const cta = getTestsButton();
+    act(() => {
+      cta.click();
+      cta.click();
+    });
+
+    await act(async () => Promise.resolve());
+
+    expect(onStart).toHaveBeenCalledTimes(1);
   });
 
   it('times out after max polling attempts when runs never finish', async () => {
@@ -142,7 +167,7 @@ describe('RunTestsPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
 
     await act(async () => {
       jest.advanceTimersByTime(1000);
@@ -186,7 +211,7 @@ describe('RunTestsPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     await act(async () => {
       jest.advanceTimersByTime(1000);
       await Promise.resolve();
@@ -202,7 +227,7 @@ describe('RunTestsPanel', () => {
     });
     expect(await screen.findByText(/Tests timed out/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     await act(async () => {
       jest.advanceTimersByTime(1000);
       await Promise.resolve();
@@ -223,7 +248,7 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     await act(async () => Promise.resolve());
 
     expect(await screen.findByText(/fail to start/i)).toBeInTheDocument();
@@ -238,7 +263,7 @@ describe('RunTestsPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     await act(async () => Promise.resolve());
 
     await act(async () => {
@@ -266,12 +291,12 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     await act(async () => Promise.resolve());
 
     expect(await screen.findByText(/fail to start/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     expect(onStart).toHaveBeenCalledTimes(2);
 
     expect(await screen.findByText(/Tests are running/i)).toBeInTheDocument();
@@ -291,7 +316,7 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
     await act(async () => Promise.resolve());
 
     act(() => {
@@ -325,7 +350,7 @@ describe('RunTestsPanel', () => {
       <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
     );
 
-    await user.click(screen.getByRole('button', { name: /run tests/i }));
+    await user.click(getTestsButton());
 
     await act(async () => {
       jest.advanceTimersByTime(1000);
