@@ -110,7 +110,7 @@ export function WorkspacePanel({
         if (nextWorkspace) {
           setWorkspace(nextWorkspace);
         }
-        if (mode === 'refresh') {
+        if (mode === 'refresh' && nextWorkspace) {
           const msg = buildWorkspaceMessage(nextWorkspace);
           notify({
             id: `workspace-${taskId}-refresh`,
@@ -137,7 +137,7 @@ export function WorkspacePanel({
         } else {
           setError(normalized.message);
         }
-        const tone = status === 409 ? 'warning' : isSignin ? 'error' : 'error';
+        const tone = status === 409 ? 'warning' : 'error';
         const title = (() => {
           if (isSignin) return 'Session expired';
           if (status === 409) return 'Workspace still provisioning';
