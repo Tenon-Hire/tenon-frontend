@@ -87,6 +87,11 @@ describe('CandidateSessionPage', () => {
     expect(
       await screen.findByText('Backend Engineer Simulation'),
     ).toBeInTheDocument();
+    expect(await screen.findByText('How code tasks work')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Do not paste tokens or secrets/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Use the repo link provided/i)).toBeInTheDocument();
 
     await waitFor(() => expect(resolveMock).toHaveBeenCalledTimes(1));
 
