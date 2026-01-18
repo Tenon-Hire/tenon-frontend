@@ -147,12 +147,10 @@ function deriveTestStatus(testResults: SubmissionTestResults | null): {
     return { label: 'Running', tone: 'info' };
   }
 
-  if (conclusion === 'success' || conclusion === 'passed') {
+  if (conclusion === 'success' || conclusion === 'passed')
     return { label: 'Passed', tone: 'success' };
-  }
-  if (conclusion === 'failure' || conclusion === 'failed') {
+  if (conclusion === 'failure' || conclusion === 'failed')
     return { label: 'Failed', tone: 'warning' };
-  }
 
   const failed = Number.isFinite(testResults.failed)
     ? (testResults.failed as number)
@@ -677,31 +675,25 @@ export default function CandidateSubmissionsPage() {
     return bits.join(' • ');
   }, [candidate, candidateSessionKey, statusDisplay]);
 
-  const artifactList = useMemo(
-    () => Object.values(artifacts ?? {}),
-    [artifacts],
-  );
-
   const latestByDay = useMemo(() => {
     const pickLatest = (day: number) => {
-      const candidates = artifactList.filter(
-        (a) => Number(a.task.dayIndex) === day,
-      );
+      const candidates = items.filter((it) => Number(it.dayIndex) === day);
       if (!candidates.length) return null;
-      let best: SubmissionArtifact | null = null;
+      let best: SubmissionListItem | null = null;
       for (const cand of candidates) {
         const ts = Date.parse(cand.submittedAt ?? '');
+        const candTs = Number.isNaN(ts) ? null : ts;
         const bestTs =
           best && !Number.isNaN(Date.parse(best.submittedAt))
             ? Date.parse(best.submittedAt)
             : null;
-        const candTs = Number.isNaN(ts) ? null : ts;
+
         if (!best) {
           best = cand;
           continue;
         }
-        if (candTs !== null && bestTs !== null) {
-          if (candTs > bestTs) best = cand;
+        if (candTs !== null && bestTs !== null && candTs > bestTs) {
+          best = cand;
           continue;
         }
         if (candTs !== null && bestTs === null) {
@@ -709,26 +701,26 @@ export default function CandidateSubmissionsPage() {
           continue;
         }
         if (
-          (candTs === null &&
-            bestTs === null &&
-            cand.submissionId > best.submissionId) ||
-          (candTs === null &&
-            bestTs === null &&
-            cand.submissionId === best.submissionId)
+          candTs === null &&
+          bestTs === null &&
+          cand.submissionId > best.submissionId
         ) {
           best = cand;
         }
       }
       return best;
     };
+    return { day2: pickLatest(2), day3: pickLatest(3) };
+  }, [items]);
 
-    return {
-      day2: pickLatest(2),
-      day3: pickLatest(3),
-    };
-  }, [artifactList]);
-  const { day2: latestDay2, day3: latestDay3 } = latestByDay;
-  const hasLatest = Boolean(latestDay2 || latestDay3);
+  const { day2: latestDay2Item, day3: latestDay3Item } = latestByDay;
+  const latestDay2 = latestDay2Item
+    ? (artifacts[latestDay2Item.submissionId] ?? null)
+    : null;
+  const latestDay3 = latestDay3Item
+    ? (artifacts[latestDay3Item.submissionId] ?? null)
+    : null;
+  const hasLatest = Boolean(latestDay2Item || latestDay3Item);
 
   return (
     <div className="flex flex-col gap-4 py-8">
@@ -772,6 +764,25 @@ export default function CandidateSubmissionsPage() {
             </Button>
           </div>
         </div>
+      ) : items.length === 0 ? (
+        <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700">
+          <div className="text-base font-semibold text-gray-900">
+            No submissions yet
+          </div>
+          <div className="mt-1 text-sm text-gray-600">
+            The candidate hasn’t submitted work for this simulation yet. Refresh
+            to check for new activity.
+          </div>
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void loadSubmissions()}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
       ) : (
         <>
           <div className="rounded border border-gray-200 bg-white p-4">
@@ -792,6 +803,11 @@ export default function CandidateSubmissionsPage() {
                   key={`latest-2-${latestDay2.submissionId}`}
                   artifact={latestDay2}
                 />
+              ) : latestDay2Item ? (
+                <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                  Day 2 submission #{latestDay2Item.submissionId} details
+                  unavailable.
+                </div>
               ) : (
                 <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
                   No Day 2 submission yet.
@@ -802,6 +818,11 @@ export default function CandidateSubmissionsPage() {
                   key={`latest-3-${latestDay3.submissionId}`}
                   artifact={latestDay3}
                 />
+              ) : latestDay3Item ? (
+                <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                  Day 3 submission #{latestDay3Item.submissionId} details
+                  unavailable.
+                </div>
               ) : (
                 <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
                   No Day 3 submission yet.
@@ -816,63 +837,42 @@ export default function CandidateSubmissionsPage() {
             ) : null}
           </div>
 
-          {items.length === 0 ? (
-            <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700">
-              <div className="text-base font-semibold text-gray-900">
-                No submissions yet
+          <div className="rounded border border-gray-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-gray-900">
+                All submissions
               </div>
-              <div className="mt-1 text-sm text-gray-600">
-                The candidate hasn’t submitted work for this simulation yet.
-                Refresh to check for new activity.
-              </div>
-              <div className="mt-3">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void loadSubmissions()}
-                >
-                  Refresh
-                </Button>
-              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowAll((prev) => !prev)}
+              >
+                {showAll ? 'Hide list' : 'Show all'}
+              </Button>
             </div>
-          ) : (
-            <div className="rounded border border-gray-200 bg-white p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-gray-900">
-                  All submissions
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowAll((prev) => !prev)}
-                >
-                  {showAll ? 'Hide list' : 'Show all'}
-                </Button>
+            {showAll ? (
+              <div className="mt-3 flex flex-col gap-3">
+                {items.map((it) => {
+                  const artifact = artifacts[it.submissionId];
+                  return artifact ? (
+                    <ArtifactCard key={it.submissionId} artifact={artifact} />
+                  ) : (
+                    <div
+                      key={it.submissionId}
+                      className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
+                    >
+                      Day {it.dayIndex} ({it.type}) — submission #
+                      {it.submissionId} content not available.
+                    </div>
+                  );
+                })}
               </div>
-              {showAll ? (
-                <div className="mt-3 flex flex-col gap-3">
-                  {items.map((it) => {
-                    const artifact = artifacts[it.submissionId];
-                    return artifact ? (
-                      <ArtifactCard key={it.submissionId} artifact={artifact} />
-                    ) : (
-                      <div
-                        key={it.submissionId}
-                        className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
-                      >
-                        Day {it.dayIndex} ({it.type}) — submission #
-                        {it.submissionId} content not available.
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="mt-2 text-sm text-gray-600">
-                  Submission list collapsed for brevity.
-                </div>
-              )}
-            </div>
-          )}
+            ) : (
+              <div className="mt-2 text-sm text-gray-600">
+                Submission list collapsed for brevity.
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
