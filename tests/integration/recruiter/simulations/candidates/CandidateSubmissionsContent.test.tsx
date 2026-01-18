@@ -515,7 +515,24 @@ describe('CandidateSubmissionsPage', () => {
           },
           contentText: 'Answer',
           code: null,
-          testResults: { passed: true },
+          repoUrl: 'https://github.com/acme/day2',
+          repoFullName: 'acme/day2',
+          workflowUrl: 'https://github.com/acme/day2/actions/runs/1',
+          commitUrl: 'https://github.com/acme/day2/commit/abc123',
+          diffUrl: 'https://github.com/acme/day2/commit/abc123?diff=split',
+          diffSummary: { filesChanged: 1 },
+          testResults: {
+            passed: 8,
+            failed: 1,
+            total: 9,
+            stdout: 'stdout log',
+            stderr: 'stderr log',
+            workflowRunId: '1',
+            workflowUrl: 'https://github.com/acme/day2/actions/runs/1',
+            commitUrl: 'https://github.com/acme/day2/commit/abc123',
+            conclusion: 'success',
+            runStatus: 'completed',
+          },
           submittedAt: '2025-12-23T18:57:10.981202Z',
         });
       }
@@ -536,7 +553,15 @@ describe('CandidateSubmissionsPage', () => {
       await screen.findByText((content) => content.includes('Prompted Task')),
     ).toBeInTheDocument();
     expect(screen.getByText('Prompt text')).toBeInTheDocument();
-    expect(screen.getByText(/\"passed\": true/)).toBeInTheDocument();
+    expect(screen.getByText(/GitHub artifacts/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /acme\/day2/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: /Workflow run/i }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Passed/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Failed/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/content not available/i)).toBeInTheDocument();
   });
 

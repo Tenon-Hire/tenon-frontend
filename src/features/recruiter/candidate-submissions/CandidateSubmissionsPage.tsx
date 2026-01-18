@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { MarkdownPreview } from '@/components/ui/Markdown';
+import { StatusPill } from '@/components/ui/StatusPill';
 import type { CandidateSession } from '@/types/recruiter';
 import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
 
@@ -18,10 +19,39 @@ type SubmissionListItem = {
   dayIndex: number;
   type: string;
   submittedAt: string;
+  repoUrl?: string | null;
+  repoFullName?: string | null;
+  workflowUrl?: string | null;
+  commitUrl?: string | null;
+  diffUrl?: string | null;
+  diffSummary?: Record<string, unknown> | null;
+  testResults?: SubmissionTestResults | null;
 };
 
 type SubmissionListResponse = {
   items: SubmissionListItem[];
+};
+
+type SubmissionTestResults = {
+  passed: number | null;
+  failed: number | null;
+  total: number | null;
+  stdout: string | null;
+  stderr: string | null;
+  stdoutTruncated?: boolean | null;
+  stderrTruncated?: boolean | null;
+  runId?: string | null;
+  workflowRunId?: string | null;
+  runStatus?: string | null;
+  conclusion?: string | null;
+  timeout?: boolean | null;
+  summary?: unknown;
+  commitUrl?: string | null;
+  workflowUrl?: string | null;
+  artifactName?: string | null;
+  artifactPresent?: boolean | null;
+  artifactErrorCode?: string | null;
+  output?: unknown;
 };
 
 type SubmissionArtifact = {
@@ -35,11 +65,357 @@ type SubmissionArtifact = {
     prompt: string | null;
   };
   contentText: string | null;
-  testResults: unknown | null;
+  code?: {
+    blob?: string | null;
+    repoPath?: string | null;
+    repoFullName?: string | null;
+    repoUrl?: string | null;
+  } | null;
+  repoUrl?: string | null;
+  repoFullName?: string | null;
+  workflowUrl?: string | null;
+  commitUrl?: string | null;
+  diffUrl?: string | null;
+  diffSummary?: Record<string, unknown> | null;
+  testResults: SubmissionTestResults | null;
   submittedAt: string;
 };
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString();
+}
+
+function formatStatusLabel(value: string | null | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.replace(/_/g, ' ').toLowerCase();
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function deriveRepoInfo(artifact: SubmissionArtifact) {
+  const code =
+    artifact.code && typeof artifact.code === 'object' ? artifact.code : null;
+  const repoUrl =
+    artifact.repoUrl ??
+    code?.repoUrl ??
+    (typeof code?.repoPath === 'string' && code.repoPath.includes('http')
+      ? code.repoPath
+      : null) ??
+    null;
+  const repoFullName =
+    artifact.repoFullName ??
+    code?.repoFullName ??
+    (typeof code?.repoPath === 'string' && !code.repoPath.includes('http')
+      ? code.repoPath
+      : null) ??
+    null;
+
+  return {
+    repoUrl,
+    repoFullName,
+  };
+}
+
+type StatusTone = 'info' | 'success' | 'warning' | 'muted';
+
+function deriveTestStatus(testResults: SubmissionTestResults | null): {
+  label: string;
+  tone: StatusTone;
+} {
+  if (!testResults) return { label: 'Not run', tone: 'muted' };
+  if (testResults.timeout) return { label: 'Timed out', tone: 'warning' };
+
+  const conclusion = (testResults.conclusion ?? '').toString().toLowerCase();
+  const runStatus = (testResults.runStatus ?? '').toString().toLowerCase();
+
+  if (conclusion === 'success' || conclusion === 'passed') {
+    return { label: 'Passed', tone: 'success' };
+  }
+  if (conclusion === 'failure' || conclusion === 'failed') {
+    return { label: 'Failed', tone: 'warning' };
+  }
+  if (
+    runStatus === 'running' ||
+    runStatus === 'in_progress' ||
+    runStatus === 'queued'
+  ) {
+    return { label: 'Running', tone: 'info' };
+  }
+
+  const failed = Number.isFinite(testResults.failed)
+    ? (testResults.failed as number)
+    : null;
+  if (failed && failed > 0) return { label: 'Failed', tone: 'warning' };
+
+  const passed = Number.isFinite(testResults.passed)
+    ? (testResults.passed as number)
+    : null;
+  const total = Number.isFinite(testResults.total)
+    ? (testResults.total as number)
+    : null;
+  if (passed && total && passed === total) {
+    return { label: 'Passed', tone: 'success' };
+  }
+
+  if (runStatus) {
+    return {
+      label: formatStatusLabel(testResults.runStatus) ?? 'Running',
+      tone: 'info',
+    };
+  }
+
+  if (conclusion) {
+    return {
+      label: formatStatusLabel(testResults.conclusion) ?? 'Unknown',
+      tone: 'muted',
+    };
+  }
+
+  return { label: 'Not run', tone: 'muted' };
+}
+
+function ArtifactLink({
+  label,
+  url,
+  text,
+  fallback = 'Not available',
+}: {
+  label: string;
+  url: string | null;
+  text?: string | null;
+  fallback?: string;
+}) {
+  return (
+    <div className="text-xs text-gray-700">
+      <div className="font-semibold text-gray-800">{label}</div>
+      {url ? (
+        <a
+          className="text-blue-600 hover:underline"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {text ?? url}
+        </a>
+      ) : (
+        <div className="text-gray-500">{fallback}</div>
+      )}
+    </div>
+  );
+}
+
+function DiffSummary({
+  diffSummary,
+}: {
+  diffSummary: Record<string, unknown>;
+}) {
+  return (
+    <div className="mt-2 rounded border border-gray-200 bg-white/60 p-2 text-[11px] text-gray-700">
+      <div className="font-semibold text-gray-800">Diff summary</div>
+      <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap text-[11px]">
+        {JSON.stringify(diffSummary, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+function hasContent(value: string | null | undefined) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function LogViewer({
+  label,
+  value,
+  truncated,
+}: {
+  label: string;
+  value: string | null;
+  truncated?: boolean | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasValue = hasContent(value);
+
+  if (!hasValue && !truncated) return null;
+
+  return (
+    <div className="rounded border border-gray-200 bg-white p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-semibold text-gray-800">
+          {label}
+          {truncated ? ' (truncated)' : ''}
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {open ? 'Hide' : hasValue ? 'View' : 'Show'}
+        </Button>
+      </div>
+      {open ? (
+        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-gray-800">
+          {hasValue ? value : 'No output captured.'}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
+function TestResultsSection({ artifact }: { artifact: SubmissionArtifact }) {
+  const testResults = artifact.testResults;
+  const status = deriveTestStatus(testResults);
+  const workflowUrl = artifact.workflowUrl ?? testResults?.workflowUrl ?? null;
+  const commitUrl = artifact.commitUrl ?? testResults?.commitUrl ?? null;
+  const diffUrl = artifact.diffUrl ?? null;
+
+  const hasCounts =
+    testResults &&
+    (testResults.passed !== null ||
+      testResults.failed !== null ||
+      testResults.total !== null);
+  const hasLogs =
+    (testResults && hasContent(testResults.stdout)) ||
+    (testResults && hasContent(testResults.stderr)) ||
+    Boolean(testResults?.stdoutTruncated || testResults?.stderrTruncated);
+
+  return (
+    <div className="mt-3 rounded border border-gray-100 bg-gray-50 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-sm font-semibold text-gray-900">Test results</div>
+        <StatusPill label={status.label} tone={status.tone} />
+        {testResults?.runStatus ? (
+          <span className="text-xs text-gray-600">
+            Workflow: {formatStatusLabel(testResults.runStatus)}
+          </span>
+        ) : null}
+        {testResults?.workflowRunId ? (
+          <span className="text-xs text-gray-600">
+            Run ID: {testResults.workflowRunId}
+          </span>
+        ) : null}
+        {testResults?.timeout ? (
+          <span className="text-xs text-orange-700">Timed out</span>
+        ) : null}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-blue-700">
+        {workflowUrl ? (
+          <a
+            className="text-blue-600 hover:underline"
+            href={workflowUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Workflow run
+          </a>
+        ) : null}
+        {commitUrl ? (
+          <a
+            className="text-blue-600 hover:underline"
+            href={commitUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Commit
+          </a>
+        ) : null}
+        {diffUrl ? (
+          <a
+            className="text-blue-600 hover:underline"
+            href={diffUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Diff
+          </a>
+        ) : null}
+      </div>
+
+      {testResults ? (
+        <>
+          {hasCounts ? (
+            <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+              <div className="rounded border border-gray-200 bg-white p-2 text-gray-700">
+                <div className="text-[11px] uppercase text-gray-500">
+                  Passed
+                </div>
+                <div className="text-sm font-semibold">
+                  {testResults.passed ?? '—'}
+                </div>
+              </div>
+              <div className="rounded border border-gray-200 bg-white p-2 text-gray-700">
+                <div className="text-[11px] uppercase text-gray-500">
+                  Failed
+                </div>
+                <div className="text-sm font-semibold">
+                  {testResults.failed ?? '—'}
+                </div>
+              </div>
+              <div className="rounded border border-gray-200 bg-white p-2 text-gray-700">
+                <div className="text-[11px] uppercase text-gray-500">Total</div>
+                <div className="text-sm font-semibold">
+                  {testResults.total ?? '—'}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {testResults.summary ? (
+            <div className="mt-2 rounded border border-gray-200 bg-white p-2 text-[11px] text-gray-800">
+              <div className="font-semibold text-gray-900">Summary</div>
+              <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap text-[11px]">
+                {JSON.stringify(testResults.summary, null, 2)}
+              </pre>
+            </div>
+          ) : null}
+
+          {hasLogs ? (
+            <div className="mt-2 space-y-2">
+              <LogViewer
+                label="Stdout"
+                value={testResults?.stdout ?? null}
+                truncated={testResults?.stdoutTruncated}
+              />
+              <LogViewer
+                label="Stderr"
+                value={testResults?.stderr ?? null}
+                truncated={testResults?.stderrTruncated}
+              />
+            </div>
+          ) : (
+            <div className="mt-2 text-xs text-gray-700">
+              No test output captured.
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="mt-2 text-xs text-gray-700">
+          No GitHub test results captured yet.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
+  const { repoUrl, repoFullName } = deriveRepoInfo(artifact);
+  const workflowUrl =
+    artifact.workflowUrl ?? artifact.testResults?.workflowUrl ?? null;
+  const commitUrl =
+    artifact.commitUrl ?? artifact.testResults?.commitUrl ?? null;
+  const submittedAt = formatDateTime(artifact.submittedAt);
+  const diffSummary = artifact.diffSummary ?? null;
+  const repoLabel =
+    repoFullName ??
+    repoUrl ??
+    artifact.code?.repoPath ??
+    artifact.code?.repoFullName ??
+    null;
+
   return (
     <div className="rounded border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
@@ -48,11 +424,42 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
             Day {artifact.task.dayIndex}: {artifact.task.title}
           </div>
           <div className="mt-1 text-xs text-gray-500">
-            {artifact.task.type} • submitted{' '}
-            {new Date(artifact.submittedAt).toLocaleString()}
+            {artifact.task.type} •{' '}
+            {submittedAt ? `submitted ${submittedAt}` : 'submission time N/A'}
           </div>
         </div>
       </div>
+
+      <div className="mt-3 rounded border border-gray-100 bg-gray-50 p-3">
+        <div className="text-xs font-semibold uppercase text-gray-700">
+          GitHub artifacts
+        </div>
+        <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
+          <ArtifactLink
+            label="Repository"
+            url={repoUrl ?? null}
+            text={repoLabel}
+          />
+          <ArtifactLink
+            label="Workflow run"
+            url={workflowUrl}
+            text={workflowUrl ? 'Open workflow run' : null}
+          />
+          <ArtifactLink
+            label="Commit"
+            url={commitUrl}
+            text={commitUrl ? 'Open commit' : null}
+          />
+          <ArtifactLink
+            label="Diff"
+            url={artifact.diffUrl ?? null}
+            text={artifact.diffUrl ? 'View diff' : null}
+          />
+        </div>
+        {diffSummary ? <DiffSummary diffSummary={diffSummary} /> : null}
+      </div>
+
+      <TestResultsSection artifact={artifact} />
 
       {artifact.task.prompt ? (
         <div className="mt-3">
@@ -71,17 +478,6 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
           <div className="max-h-[420px] overflow-auto rounded border border-gray-100 bg-gray-50 p-3">
             <MarkdownPreview content={artifact.contentText} />
           </div>
-        </div>
-      ) : null}
-
-      {artifact.testResults ? (
-        <div className="mt-3">
-          <div className="mb-1 text-xs font-medium text-gray-600">
-            Test results
-          </div>
-          <pre className="max-h-[320px] overflow-auto rounded bg-gray-50 p-3 text-xs text-gray-900">
-            {JSON.stringify(artifact.testResults, null, 2)}
-          </pre>
         </div>
       ) : null}
 

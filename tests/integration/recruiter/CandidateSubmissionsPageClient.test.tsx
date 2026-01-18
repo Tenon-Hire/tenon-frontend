@@ -48,6 +48,10 @@ describe('CandidateSubmissionsPage', () => {
               dayIndex: 2,
               type: 'code',
               submittedAt: '2025-01-02T00:00:00Z',
+              repoUrl: 'https://github.com/acme/day2',
+              workflowUrl: 'https://github.com/acme/day2/actions/runs/123',
+              commitUrl: 'https://github.com/acme/day2/commit/abc123',
+              diffUrl: 'https://github.com/acme/day2/commit/abc123?diff=split',
             },
           ],
         }),
@@ -64,8 +68,29 @@ describe('CandidateSubmissionsPage', () => {
             prompt: 'Fix the failing request',
           },
           contentText: null,
-          code: { blob: 'console.log("hi")', repoPath: 'src/index.ts' },
-          testResults: { passed: true },
+          code: {
+            blob: 'console.log("hi")',
+            repoPath: 'src/index.ts',
+            repoFullName: 'acme/day2',
+          },
+          repoUrl: 'https://github.com/acme/day2',
+          repoFullName: 'acme/day2',
+          workflowUrl: 'https://github.com/acme/day2/actions/runs/123',
+          commitUrl: 'https://github.com/acme/day2/commit/abc123',
+          diffUrl: 'https://github.com/acme/day2/commit/abc123?diff=split',
+          diffSummary: { filesChanged: 3 },
+          testResults: {
+            passed: 10,
+            failed: 2,
+            total: 12,
+            stdout: 'suite output',
+            stderr: 'lint warning',
+            workflowRunId: '123',
+            workflowUrl: 'https://github.com/acme/day2/actions/runs/123',
+            commitUrl: 'https://github.com/acme/day2/commit/abc123',
+            conclusion: 'failure',
+            runStatus: 'completed',
+          },
           submittedAt: '2025-01-02T00:00:00Z',
         }),
       );
@@ -74,7 +99,15 @@ describe('CandidateSubmissionsPage', () => {
 
     expect(await screen.findByText(/Dee — Submissions/i)).toBeInTheDocument();
     expect(await screen.findByText(/Day 2: Debug API/i)).toBeInTheDocument();
-    expect(screen.getByText(/\"passed\": true/i)).toBeInTheDocument();
+    expect(screen.getByText(/GitHub artifacts/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /acme\/day2/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: /Workflow run/i }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Passed/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Failed/i).length).toBeGreaterThan(0);
   });
 
   it('matches candidateSessionId when route param is a string', async () => {
