@@ -2,6 +2,7 @@ import '../../../setup/paramsMock';
 import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 import {
   getRequestUrl,
@@ -108,6 +109,9 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
+
     await waitFor(() => {
       expect(
         screen.getByText(
@@ -213,27 +217,32 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
+
     await waitFor(() => {
       expect(
-        screen.getByText(
+        screen.getAllByText(
           (content) =>
             content.includes('Day 1:') &&
             content.includes('Architecture & Planning'),
-        ),
-      ).toBeInTheDocument();
+        ).length,
+      ).toBeGreaterThan(0);
     });
 
     expect(
-      screen.getByText(
+      screen.getAllByText(
         (content) =>
           content.includes('Day 2:') &&
           content.includes('Feature Implementation'),
-      ),
-    ).toBeInTheDocument();
+      ).length,
+    ).toBeGreaterThan(0);
 
     expect(
-      screen.getByText('No content captured for this submission.'),
-    ).toBeInTheDocument();
+      screen.getAllByText(
+        /This is a code task; see GitHub artifacts and test results above./i,
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
   it('renders empty state when candidate has no submissions', async () => {
@@ -366,16 +375,19 @@ describe('CandidateSubmissionsPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
+        screen.getAllByText(
           (content) =>
             content.includes('Day 3:') && content.includes('No Content Task'),
-        ),
-      ).toBeInTheDocument();
+        ).length,
+      ).toBeGreaterThan(0);
     });
 
+    expect(screen.getByText('Describe nothing')).toBeInTheDocument();
     expect(
-      screen.getByText('No content captured for this submission.'),
-    ).toBeInTheDocument();
+      screen.queryByText(
+        /This is a code task; see GitHub artifacts and test results above./i,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('blocks submissions when candidate lookup fails', async () => {
@@ -515,7 +527,24 @@ describe('CandidateSubmissionsPage', () => {
           },
           contentText: 'Answer',
           code: null,
-          testResults: { passed: true },
+          repoUrl: 'https://github.com/acme/day2',
+          repoFullName: 'acme/day2',
+          workflowUrl: 'https://github.com/acme/day2/actions/runs/1',
+          commitUrl: 'https://github.com/acme/day2/commit/abc123',
+          diffUrl: 'https://github.com/acme/day2/commit/abc123?diff=split',
+          diffSummary: { filesChanged: 1 },
+          testResults: {
+            passed: 8,
+            failed: 1,
+            total: 9,
+            stdout: 'stdout log',
+            stderr: 'stderr log',
+            workflowRunId: '1',
+            workflowUrl: 'https://github.com/acme/day2/actions/runs/1',
+            commitUrl: 'https://github.com/acme/day2/commit/abc123',
+            conclusion: 'success',
+            runStatus: 'completed',
+          },
           submittedAt: '2025-12-23T18:57:10.981202Z',
         });
       }
@@ -531,13 +560,170 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
+
     expect(await screen.findByText(/CandidateSession: 2/)).toBeInTheDocument();
     expect(
-      await screen.findByText((content) => content.includes('Prompted Task')),
-    ).toBeInTheDocument();
+      (
+        await screen.findAllByText((content) =>
+          content.includes('Prompted Task'),
+        )
+      ).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText('Prompt text')).toBeInTheDocument();
-    expect(screen.getByText(/\"passed\": true/)).toBeInTheDocument();
+    expect(screen.getAllByText(/GitHub artifacts/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('link', { name: /acme\/day2/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: /Workflow run/i }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Passed/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Failed/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/content not available/i)).toBeInTheDocument();
+  });
+
+  it('does not render GitHub artifacts for Day 1 only submissions', async () => {
+    setMockParams({ id: '1', candidateSessionId: '5' });
+
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 5,
+            inviteEmail: 'day1@example.com',
+            candidateName: 'Day One',
+            status: 'completed',
+            startedAt: '2025-12-23T18:00:00.000000Z',
+            completedAt: '2025-12-23T19:00:00.000000Z',
+            hasReport: false,
+          },
+        ]);
+      }
+
+      if (url.startsWith('/api/submissions?candidateSessionId=5')) {
+        return jsonResponse({
+          items: [
+            {
+              submissionId: 20,
+              candidateSessionId: 5,
+              taskId: 20,
+              dayIndex: 1,
+              type: 'design',
+              submittedAt: '2025-12-23T18:57:10.981202Z',
+            },
+          ],
+        });
+      }
+
+      if (url === '/api/submissions/20') {
+        return jsonResponse({
+          submissionId: 20,
+          candidateSessionId: 5,
+          task: {
+            taskId: 20,
+            dayIndex: 1,
+            type: 'design',
+            title: 'Day1 Task',
+            prompt: 'Describe day1',
+          },
+          contentText: 'Day1 answer',
+          code: null,
+          testResults: null,
+          submittedAt: '2025-12-23T18:57:10.981202Z',
+        });
+      }
+
+      return textResponse('Not found', 404);
+    });
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsPage />);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
+
+    expect(await screen.findByText(/Day1 Task/)).toBeInTheDocument();
+    expect(screen.queryByText(/Workflow run/i)).not.toBeInTheDocument();
+  });
+
+  it('shows message when Day 2 submission has no test results', async () => {
+    setMockParams({ id: '1', candidateSessionId: '6' });
+
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = getRequestUrl(input);
+
+      if (url === '/api/simulations/1/candidates') {
+        return jsonResponse([
+          {
+            candidateSessionId: 6,
+            inviteEmail: 'day2@example.com',
+            candidateName: 'Code Candidate',
+            status: 'in_progress',
+            startedAt: '2025-12-23T18:00:00.000000Z',
+            completedAt: null,
+            hasReport: false,
+          },
+        ]);
+      }
+
+      if (url.startsWith('/api/submissions?candidateSessionId=6')) {
+        return jsonResponse({
+          items: [
+            {
+              submissionId: 30,
+              candidateSessionId: 6,
+              taskId: 30,
+              dayIndex: 2,
+              type: 'code',
+              submittedAt: '2025-12-23T18:57:10.981202Z',
+            },
+          ],
+        });
+      }
+
+      if (url === '/api/submissions/30') {
+        return jsonResponse({
+          submissionId: 30,
+          candidateSessionId: 6,
+          task: {
+            taskId: 30,
+            dayIndex: 2,
+            type: 'code',
+            title: 'Code Task',
+            prompt: 'Implement features',
+          },
+          contentText: null,
+          code: null,
+          repoFullName: 'acme/day2',
+          repoUrl: null,
+          workflowUrl: 'https://github.com/acme/day2/actions/runs/777',
+          commitUrl: 'https://github.com/acme/day2/commit/zzz',
+          diffUrl: 'https://github.com/acme/day2/commit/zzz?diff=split',
+          testResults: null,
+          submittedAt: '2025-12-23T18:57:10.981202Z',
+        });
+      }
+
+      return textResponse('Not found', 404);
+    });
+
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<CandidateSubmissionsPage />);
+
+    expect((await screen.findAllByText(/Code Task/)).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText(/No GitHub test results captured yet/i))
+        .length,
+    ).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByRole('link', { name: /acme\/day2/i })).length,
+    ).toBeGreaterThan(0);
   });
 
   it('surfaces thrown errors from fetch calls', async () => {
@@ -628,9 +814,10 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
+
     expect(await screen.findByText(/Path Task/)).toBeInTheDocument();
-    expect(
-      screen.getByText('No content captured for this submission.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No text answer submitted/i)).toBeInTheDocument();
   });
 });
