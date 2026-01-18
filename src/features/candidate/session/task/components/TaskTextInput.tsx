@@ -29,7 +29,7 @@ export function TaskTextInput({
             className="text-blue-600 hover:text-blue-700 hover:underline"
             href="https://www.markdownguide.org/cheat-sheet/"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
           >
             Cheat sheet
           </a>

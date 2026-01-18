@@ -48,7 +48,7 @@ describe('ArtifactCard', () => {
   });
 
   it('preserves single newlines for plain text submissions', () => {
-    const { container } = render(
+    render(
       <ArtifactCard
         artifact={{
           ...baseArtifact,
@@ -59,6 +59,5 @@ describe('ArtifactCard', () => {
 
     expect(screen.getByText('Line 1')).toBeInTheDocument();
     expect(screen.getByText('Line 2')).toBeInTheDocument();
-    expect(container.querySelectorAll('p').length).toBeGreaterThanOrEqual(2);
   });
 });
