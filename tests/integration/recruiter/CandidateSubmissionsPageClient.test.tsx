@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 import { getRequestUrl, jsonResponse } from '../../setup/responseHelpers';
 
@@ -24,6 +25,7 @@ afterAll(() => {
 
 describe('CandidateSubmissionsPage', () => {
   it('renders submission artifacts with test results', async () => {
+    const user = userEvent.setup();
     fetchMock
       .mockResolvedValueOnce(
         jsonResponse([
@@ -52,6 +54,15 @@ describe('CandidateSubmissionsPage', () => {
               workflowUrl: 'https://github.com/acme/day2/actions/runs/123',
               commitUrl: 'https://github.com/acme/day2/commit/abc123',
               diffUrl: 'https://github.com/acme/day2/commit/abc123?diff=split',
+            },
+            {
+              submissionId: 2,
+              candidateSessionId: 900,
+              taskId: 6,
+              dayIndex: 3,
+              type: 'debug',
+              submittedAt: '2025-01-03T00:00:00Z',
+              repoFullName: 'acme/day3',
             },
           ],
         }),
@@ -93,21 +104,62 @@ describe('CandidateSubmissionsPage', () => {
           },
           submittedAt: '2025-01-02T00:00:00Z',
         }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          submissionId: 2,
+          candidateSessionId: 900,
+          task: {
+            taskId: 6,
+            dayIndex: 3,
+            type: 'debug',
+            title: 'Fix Day3',
+            prompt: null,
+          },
+          contentText: null,
+          code: null,
+          repoFullName: 'acme/day3',
+          repoUrl: null,
+          workflowUrl: 'https://github.com/acme/day3/actions/runs/456',
+          commitUrl: 'https://github.com/acme/day3/commit/def456',
+          diffUrl: 'https://github.com/acme/day3/commit/def456?diff=split',
+          testResults: {
+            passed: 5,
+            failed: 0,
+            total: 5,
+            stdout: 'day3 stdout',
+            stderr: null,
+            workflowRunId: '456',
+            workflowUrl: 'https://github.com/acme/day3/actions/runs/456',
+            commitUrl: 'https://github.com/acme/day3/commit/def456',
+            conclusion: 'success',
+            runStatus: 'completed',
+          },
+          submittedAt: '2025-01-03T00:00:00Z',
+        }),
       );
 
     render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/Dee — Submissions/i)).toBeInTheDocument();
-    expect(await screen.findByText(/Day 2: Debug API/i)).toBeInTheDocument();
-    expect(screen.getByText(/GitHub artifacts/i)).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: /acme\/day2/i }),
+      await screen.findByText(/Latest GitHub artifacts/i),
     ).toBeInTheDocument();
+    expect(screen.getAllByText(/Day 2: Debug API/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Day 3: Fix Day3/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: /acme\/day2/i }).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.getAllByRole('link', { name: /Workflow run/i }).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText(/Passed/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Failed/i).length).toBeGreaterThan(0);
+
+    const viewButtons = screen.getAllByRole('button', { name: /View/i });
+    expect(viewButtons.length).toBeGreaterThan(0);
+    await user.click(viewButtons[0]);
+    expect(await screen.findByText(/suite output/i)).toBeInTheDocument();
   });
 
   it('matches candidateSessionId when route param is a string', async () => {

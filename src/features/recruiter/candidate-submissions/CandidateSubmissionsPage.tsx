@@ -99,20 +99,27 @@ function formatStatusLabel(value: string | null | undefined) {
 function deriveRepoInfo(artifact: SubmissionArtifact) {
   const code =
     artifact.code && typeof artifact.code === 'object' ? artifact.code : null;
-  const repoUrl =
+  const repoPathAsFullName =
+    (artifact.task.dayIndex === 2 || artifact.task.dayIndex === 3) &&
+    typeof code?.repoPath === 'string' &&
+    !code.repoPath.includes('http')
+      ? code.repoPath
+      : null;
+  const repoFullName =
+    artifact.repoFullName ?? code?.repoFullName ?? repoPathAsFullName ?? null;
+  const repoUrlExplicit =
     artifact.repoUrl ??
     code?.repoUrl ??
     (typeof code?.repoPath === 'string' && code.repoPath.includes('http')
       ? code.repoPath
       : null) ??
     null;
-  const repoFullName =
-    artifact.repoFullName ??
-    code?.repoFullName ??
-    (typeof code?.repoPath === 'string' && !code.repoPath.includes('http')
-      ? code.repoPath
-      : null) ??
-    null;
+
+  const repoUrl =
+    repoUrlExplicit ??
+    (repoFullName && repoFullName.includes('/')
+      ? `https://github.com/${repoFullName}`
+      : null);
 
   return {
     repoUrl,
@@ -132,18 +139,19 @@ function deriveTestStatus(testResults: SubmissionTestResults | null): {
   const conclusion = (testResults.conclusion ?? '').toString().toLowerCase();
   const runStatus = (testResults.runStatus ?? '').toString().toLowerCase();
 
-  if (conclusion === 'success' || conclusion === 'passed') {
-    return { label: 'Passed', tone: 'success' };
-  }
-  if (conclusion === 'failure' || conclusion === 'failed') {
-    return { label: 'Failed', tone: 'warning' };
-  }
   if (
     runStatus === 'running' ||
     runStatus === 'in_progress' ||
     runStatus === 'queued'
   ) {
     return { label: 'Running', tone: 'info' };
+  }
+
+  if (conclusion === 'success' || conclusion === 'passed') {
+    return { label: 'Passed', tone: 'success' };
+  }
+  if (conclusion === 'failure' || conclusion === 'failed') {
+    return { label: 'Failed', tone: 'warning' };
   }
 
   const failed = Number.isFinite(testResults.failed)
@@ -225,6 +233,24 @@ function DiffSummary({
 
 function hasContent(value: string | null | undefined) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasGithubFields(artifact: SubmissionArtifact) {
+  return Boolean(
+    artifact.repoUrl ||
+    artifact.repoFullName ||
+    artifact.workflowUrl ||
+    artifact.commitUrl ||
+    artifact.diffUrl ||
+    artifact.diffSummary ||
+    artifact.testResults?.workflowUrl ||
+    artifact.testResults?.commitUrl,
+  );
+}
+
+function shouldShowGithubSection(artifact: SubmissionArtifact) {
+  const day = artifact.task.dayIndex;
+  return day === 2 || day === 3 || hasGithubFields(artifact);
 }
 
 function LogViewer({
@@ -415,6 +441,7 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
     artifact.code?.repoPath ??
     artifact.code?.repoFullName ??
     null;
+  const showGithub = shouldShowGithubSection(artifact);
 
   return (
     <div className="rounded border border-gray-200 bg-white p-4">
@@ -430,36 +457,40 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
         </div>
       </div>
 
-      <div className="mt-3 rounded border border-gray-100 bg-gray-50 p-3">
-        <div className="text-xs font-semibold uppercase text-gray-700">
-          GitHub artifacts
-        </div>
-        <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
-          <ArtifactLink
-            label="Repository"
-            url={repoUrl ?? null}
-            text={repoLabel}
-          />
-          <ArtifactLink
-            label="Workflow run"
-            url={workflowUrl}
-            text={workflowUrl ? 'Open workflow run' : null}
-          />
-          <ArtifactLink
-            label="Commit"
-            url={commitUrl}
-            text={commitUrl ? 'Open commit' : null}
-          />
-          <ArtifactLink
-            label="Diff"
-            url={artifact.diffUrl ?? null}
-            text={artifact.diffUrl ? 'View diff' : null}
-          />
-        </div>
-        {diffSummary ? <DiffSummary diffSummary={diffSummary} /> : null}
-      </div>
+      {showGithub ? (
+        <>
+          <div className="mt-3 rounded border border-gray-100 bg-gray-50 p-3">
+            <div className="text-xs font-semibold uppercase text-gray-700">
+              GitHub artifacts
+            </div>
+            <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
+              <ArtifactLink
+                label="Repository"
+                url={repoUrl ?? null}
+                text={repoLabel}
+              />
+              <ArtifactLink
+                label="Workflow run"
+                url={workflowUrl}
+                text={workflowUrl ? 'Open workflow run' : null}
+              />
+              <ArtifactLink
+                label="Commit"
+                url={commitUrl}
+                text={commitUrl ? 'Open commit' : null}
+              />
+              <ArtifactLink
+                label="Diff"
+                url={artifact.diffUrl ?? null}
+                text={artifact.diffUrl ? 'View diff' : null}
+              />
+            </div>
+            {diffSummary ? <DiffSummary diffSummary={diffSummary} /> : null}
+          </div>
 
-      <TestResultsSection artifact={artifact} />
+          <TestResultsSection artifact={artifact} />
+        </>
+      ) : null}
 
       {artifact.task.prompt ? (
         <div className="mt-3">
@@ -483,7 +514,9 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
 
       {!artifact.contentText ? (
         <div className="mt-3 text-sm text-gray-600">
-          No content captured for this submission.
+          {showGithub
+            ? 'This is a code task; see GitHub artifacts and test results above.'
+            : 'No text answer submitted.'}
         </div>
       ) : null}
     </div>
@@ -505,6 +538,7 @@ export default function CandidateSubmissionsPage() {
   const [artifacts, setArtifacts] = useState<
     Record<number, SubmissionArtifact>
   >({});
+  const [showAll, setShowAll] = useState(true);
   const statusDisplay = candidate?.status ?? null;
 
   const loadSubmissions = useCallback((): (() => void) => {
@@ -643,6 +677,59 @@ export default function CandidateSubmissionsPage() {
     return bits.join(' • ');
   }, [candidate, candidateSessionKey, statusDisplay]);
 
+  const artifactList = useMemo(
+    () => Object.values(artifacts ?? {}),
+    [artifacts],
+  );
+
+  const latestByDay = useMemo(() => {
+    const pickLatest = (day: number) => {
+      const candidates = artifactList.filter(
+        (a) => Number(a.task.dayIndex) === day,
+      );
+      if (!candidates.length) return null;
+      let best: SubmissionArtifact | null = null;
+      for (const cand of candidates) {
+        const ts = Date.parse(cand.submittedAt ?? '');
+        const bestTs =
+          best && !Number.isNaN(Date.parse(best.submittedAt))
+            ? Date.parse(best.submittedAt)
+            : null;
+        const candTs = Number.isNaN(ts) ? null : ts;
+        if (!best) {
+          best = cand;
+          continue;
+        }
+        if (candTs !== null && bestTs !== null) {
+          if (candTs > bestTs) best = cand;
+          continue;
+        }
+        if (candTs !== null && bestTs === null) {
+          best = cand;
+          continue;
+        }
+        if (
+          (candTs === null &&
+            bestTs === null &&
+            cand.submissionId > best.submissionId) ||
+          (candTs === null &&
+            bestTs === null &&
+            cand.submissionId === best.submissionId)
+        ) {
+          best = cand;
+        }
+      }
+      return best;
+    };
+
+    return {
+      day2: pickLatest(2),
+      day3: pickLatest(3),
+    };
+  }, [artifactList]);
+  const { day2: latestDay2, day3: latestDay3 } = latestByDay;
+  const hasLatest = Boolean(latestDay2 || latestDay3);
+
   return (
     <div className="flex flex-col gap-4 py-8">
       <div className="flex items-center justify-between gap-4">
@@ -685,42 +772,108 @@ export default function CandidateSubmissionsPage() {
             </Button>
           </div>
         </div>
-      ) : items.length === 0 ? (
-        <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700">
-          <div className="text-base font-semibold text-gray-900">
-            No submissions yet
-          </div>
-          <div className="mt-1 text-sm text-gray-600">
-            The candidate hasn’t submitted work for this simulation yet. Refresh
-            to check for new activity.
-          </div>
-          <div className="mt-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => void loadSubmissions()}
-            >
-              Refresh
-            </Button>
-          </div>
-        </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {items.map((it) => {
-            const artifact = artifacts[it.submissionId];
-            return artifact ? (
-              <ArtifactCard key={it.submissionId} artifact={artifact} />
-            ) : (
-              <div
-                key={it.submissionId}
-                className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
-              >
-                Day {it.dayIndex} ({it.type}) — submission #{it.submissionId}{' '}
-                content not available.
+        <>
+          <div className="rounded border border-gray-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">
+                  Latest GitHub artifacts (Day 2 / Day 3)
+                </div>
+                <div className="text-xs text-gray-600">
+                  Shows the newest Day 2 and Day 3 submissions by submitted
+                  time.
+                </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+            <div className="mt-3 flex flex-col gap-3 md:grid md:grid-cols-2">
+              {latestDay2 ? (
+                <ArtifactCard
+                  key={`latest-2-${latestDay2.submissionId}`}
+                  artifact={latestDay2}
+                />
+              ) : (
+                <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                  No Day 2 submission yet.
+                </div>
+              )}
+              {latestDay3 ? (
+                <ArtifactCard
+                  key={`latest-3-${latestDay3.submissionId}`}
+                  artifact={latestDay3}
+                />
+              ) : (
+                <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                  No Day 3 submission yet.
+                </div>
+              )}
+            </div>
+            {!hasLatest ? (
+              <div className="mt-2 text-xs text-gray-600">
+                Day 2 / Day 3 artifacts will appear here after the candidate
+                submits code.
+              </div>
+            ) : null}
+          </div>
+
+          {items.length === 0 ? (
+            <div className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700">
+              <div className="text-base font-semibold text-gray-900">
+                No submissions yet
+              </div>
+              <div className="mt-1 text-sm text-gray-600">
+                The candidate hasn’t submitted work for this simulation yet.
+                Refresh to check for new activity.
+              </div>
+              <div className="mt-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void loadSubmissions()}
+                >
+                  Refresh
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded border border-gray-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-gray-900">
+                  All submissions
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowAll((prev) => !prev)}
+                >
+                  {showAll ? 'Hide list' : 'Show all'}
+                </Button>
+              </div>
+              {showAll ? (
+                <div className="mt-3 flex flex-col gap-3">
+                  {items.map((it) => {
+                    const artifact = artifacts[it.submissionId];
+                    return artifact ? (
+                      <ArtifactCard key={it.submissionId} artifact={artifact} />
+                    ) : (
+                      <div
+                        key={it.submissionId}
+                        className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
+                      >
+                        Day {it.dayIndex} ({it.type}) — submission #
+                        {it.submissionId} content not available.
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-2 text-sm text-gray-600">
+                  Submission list collapsed for brevity.
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

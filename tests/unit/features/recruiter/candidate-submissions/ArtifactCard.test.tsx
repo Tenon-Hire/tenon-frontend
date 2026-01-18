@@ -42,9 +42,7 @@ describe('ArtifactCard', () => {
       />,
     );
 
-    expect(
-      screen.getByText(/No content captured for this submission/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No text answer submitted/i)).toBeInTheDocument();
   });
 
   it('preserves single newlines for plain text submissions', () => {
