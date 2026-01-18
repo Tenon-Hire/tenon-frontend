@@ -5,3 +5,4 @@ export { StatusPill } from './StatusPill';
 export { Card } from './Card';
 export { cn } from './classnames';
 export { Skeleton } from './Skeleton';
+export { MarkdownPreview } from './Markdown';
