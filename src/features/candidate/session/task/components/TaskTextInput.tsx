@@ -20,10 +20,20 @@ export function TaskTextInput({
   return (
     <>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
-        <span className="leading-5">
-          Markdown is supported for headings, lists, emphasis, and code. Use
-          Preview to verify formatting.
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="leading-5">
+            Markdown is supported for headings, lists, emphasis, and code. Use
+            Preview to verify formatting.
+          </span>
+          <a
+            className="text-blue-600 hover:text-blue-700 hover:underline"
+            href="https://www.markdownguide.org/cheat-sheet/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Cheat sheet
+          </a>
+        </div>
         <div className="inline-flex overflow-hidden rounded-md border border-gray-200 bg-white text-xs font-medium">
           <button
             type="button"

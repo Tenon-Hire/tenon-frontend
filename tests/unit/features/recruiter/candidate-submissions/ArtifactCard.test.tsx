@@ -46,4 +46,19 @@ describe('ArtifactCard', () => {
       screen.getByText(/No content captured for this submission/i),
     ).toBeInTheDocument();
   });
+
+  it('preserves single newlines for plain text submissions', () => {
+    const { container } = render(
+      <ArtifactCard
+        artifact={{
+          ...baseArtifact,
+          contentText: 'Line 1\nLine 2',
+        }}
+      />,
+    );
+
+    expect(screen.getByText('Line 1')).toBeInTheDocument();
+    expect(screen.getByText('Line 2')).toBeInTheDocument();
+    expect(container.querySelectorAll('p').length).toBeGreaterThanOrEqual(2);
+  });
 });

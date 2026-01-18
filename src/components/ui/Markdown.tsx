@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { cn } from './classnames';
 
 type MarkdownPreviewProps = {
@@ -31,7 +32,9 @@ export function MarkdownPreview({
 
   return (
     <div className={cn(markdownClassName, className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{safeContent}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+        {safeContent}
+      </ReactMarkdown>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import '@testing-library/jest-dom';
 import React from 'react';
 
 jest.mock('remark-gfm', () => () => null);
+jest.mock('remark-breaks', () => () => null);
 
 jest.mock('react-markdown', () => {
   return function MockReactMarkdown({
@@ -18,6 +19,31 @@ jest.mock('react-markdown', () => {
     const elements: Array<React.ReactNode> = [];
     let listItems: Array<React.ReactNode> = [];
 
+    const parseInline = (text: string) => {
+      const nodes: Array<React.ReactNode> = [];
+      let remaining = text;
+      const matcher = /(\*\*(.+?)\*\*|\*(.+?)\*)/;
+
+      while (remaining.length) {
+        const match = matcher.exec(remaining);
+        if (!match) {
+          nodes.push(remaining);
+          break;
+        }
+        if (match.index > 0) {
+          nodes.push(remaining.slice(0, match.index));
+        }
+        const tag = match[1].startsWith('**') ? 'strong' : 'em';
+        const content = match[2] ?? match[3] ?? '';
+        nodes.push(
+          React.createElement(tag, { key: `inline-${nodes.length}` }, content),
+        );
+        remaining = remaining.slice(match.index + match[1].length);
+      }
+
+      return nodes;
+    };
+
     const flushList = () => {
       if (listItems.length === 0) return;
       elements.push(
@@ -32,20 +58,28 @@ jest.mock('react-markdown', () => {
       if (line.startsWith('# ')) {
         flushList();
         elements.push(
-          React.createElement('h1', { key: `h1-${idx}` }, line.slice(2)),
+          React.createElement(
+            'h1',
+            { key: `h1-${idx}` },
+            parseInline(line.slice(2)),
+          ),
         );
         return;
       }
       if (line.startsWith('- ')) {
         listItems.push(
-          React.createElement('li', { key: `li-${idx}` }, line.slice(2)),
+          React.createElement(
+            'li',
+            { key: `li-${idx}` },
+            parseInline(line.slice(2)),
+          ),
         );
         return;
       }
       flushList();
       if (line.trim()) {
         elements.push(
-          React.createElement('p', { key: `p-${idx}` }, line.trim()),
+          React.createElement('p', { key: `p-${idx}` }, parseInline(line)),
         );
       }
     });

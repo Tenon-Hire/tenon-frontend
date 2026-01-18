@@ -5,7 +5,7 @@ describe('TaskTextInput', () => {
   it('renders markdown preview when toggled', () => {
     render(
       <TaskTextInput
-        value={'# Title\n\n- item one'}
+        value={'# Title\n\n- item one\n\n**bold** and *italic*'}
         onChange={jest.fn()}
         disabled={false}
         savedAt={null}
@@ -18,6 +18,8 @@ describe('TaskTextInput', () => {
       screen.getByRole('heading', { name: 'Title', level: 1 }),
     ).toBeInTheDocument();
     expect(screen.getByText('item one')).toBeInTheDocument();
+    expect(document.querySelector('strong')?.textContent).toBe('bold');
+    expect(document.querySelector('em')?.textContent).toBe('italic');
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
