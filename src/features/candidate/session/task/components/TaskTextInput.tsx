@@ -66,14 +66,14 @@ export function TaskTextInput({
 
       {mode === 'write' ? (
         <textarea
-          className="w-full min-h-[260px] rounded-md border p-3 text-sm leading-6"
+          className="w-full min-h-[360px] md:min-h-[420px] rounded-md border p-3 text-sm leading-6 resize-y"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Write your response here… Markdown supported (e.g., # Heading, **bold**, - list)"
           disabled={disabled}
         />
       ) : (
-        <div className="w-full min-h-[260px] rounded-md border bg-white p-3">
+        <div className="w-full min-h-[360px] md:min-h-[420px] rounded-md border bg-white p-3">
           <MarkdownPreview
             content={value}
             emptyPlaceholder="Add content to preview your Markdown formatting."
