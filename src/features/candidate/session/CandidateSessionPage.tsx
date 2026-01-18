@@ -450,9 +450,12 @@ export default function CandidateSessionPage({ token }: { token: string }) {
             What to expect
           </h2>
           <ul className="mt-2 space-y-1 text-sm text-blue-900">
-            <li><b>Day 1:</b> architecture plan (written).</li>
             <li>
-              <b>Days 2–3:</b> GitHub-native code tasks (repo + Codespaces + Actions).
+              <b>Day 1:</b> architecture plan (written).
+            </li>
+            <li>
+              <b>Days 2–3:</b> GitHub-native code tasks (repo + Codespaces +
+              Actions).
             </li>
             <li>
               <b>Day 4:</b> handoff demo & presentation.
