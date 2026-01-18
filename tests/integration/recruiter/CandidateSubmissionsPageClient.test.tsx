@@ -163,6 +163,7 @@ describe('CandidateSubmissionsPage', () => {
   });
 
   it('matches candidateSessionId when route param is a string', async () => {
+    const user = userEvent.setup();
     fetchMock
       .mockResolvedValueOnce(
         jsonResponse([
@@ -211,6 +212,7 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
     expect(await screen.findByText(/First Task/i)).toBeInTheDocument();
 
     const calledUrls = fetchMock.mock.calls.map((call) =>

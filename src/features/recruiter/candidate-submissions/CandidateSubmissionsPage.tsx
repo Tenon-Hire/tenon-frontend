@@ -536,7 +536,7 @@ export default function CandidateSubmissionsPage() {
   const [artifacts, setArtifacts] = useState<
     Record<number, SubmissionArtifact>
   >({});
-  const [showAll, setShowAll] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const statusDisplay = candidate?.status ?? null;
 
   const loadSubmissions = useCallback((): (() => void) => {

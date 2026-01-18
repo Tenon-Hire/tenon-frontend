@@ -2,6 +2,7 @@ import '../../../setup/paramsMock';
 import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 import {
   getRequestUrl,
@@ -108,6 +109,9 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
+
     await waitFor(() => {
       expect(
         screen.getByText(
@@ -212,6 +216,9 @@ describe('CandidateSubmissionsPage', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     render(<CandidateSubmissionsPage />);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
 
     await waitFor(() => {
       expect(
@@ -552,6 +559,9 @@ describe('CandidateSubmissionsPage', () => {
 
     render(<CandidateSubmissionsPage />);
 
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
+
     expect(await screen.findByText(/CandidateSession: 2/)).toBeInTheDocument();
     expect(
       (
@@ -632,6 +642,9 @@ describe('CandidateSubmissionsPage', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     render(<CandidateSubmissionsPage />);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
 
     expect(await screen.findByText(/Day1 Task/)).toBeInTheDocument();
     expect(screen.queryByText(/Workflow run/i)).not.toBeInTheDocument();
@@ -799,6 +812,9 @@ describe('CandidateSubmissionsPage', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     render(<CandidateSubmissionsPage />);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /Show all/i }));
 
     expect(await screen.findByText(/Path Task/)).toBeInTheDocument();
     expect(screen.getByText(/No text answer submitted/i)).toBeInTheDocument();
