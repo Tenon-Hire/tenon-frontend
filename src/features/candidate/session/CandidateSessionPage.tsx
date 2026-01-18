@@ -440,8 +440,8 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
           <div className="text-sm text-gray-600">Role: {role}</div>
           <div className="text-xs text-gray-500">
-            5-day simulation. Complete each day in order; you can pause and
-            resume anytime.
+            5-day simulation over 5 consecutive days. Each day runs 9:00 AM–5:00
+            PM local time. Complete each day in order.
           </div>
         </div>
 
@@ -450,10 +450,18 @@ export default function CandidateSessionPage({ token }: { token: string }) {
             What to expect
           </h2>
           <ul className="mt-2 space-y-1 text-sm text-blue-900">
-            <li>Day 1: written kickoff. Days 2–3: GitHub-native code tasks.</li>
-            <li>Day 4–5: coming next; you’ll see them once unlocked.</li>
+            <li><b>Day 1:</b> architecture plan (written).</li>
             <li>
-              Plan ~60–90 minutes for each code task; test results live here.
+              <b>Days 2–3:</b> GitHub-native code tasks (repo + Codespaces + Actions).
+            </li>
+            <li>
+              <b>Day 4:</b> handoff demo & presentation.
+            </li>
+            <li>
+              <b>Day 5:</b> documentation & wrap-up.
+            </li>
+            <li>
+              Schedule: 9:00 AM–5:00 PM local time, for 5 consecutive days.
             </li>
           </ul>
         </div>
