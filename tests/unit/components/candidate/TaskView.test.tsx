@@ -56,7 +56,7 @@ describe('TaskView', () => {
     );
 
     const textarea = screen.getByPlaceholderText(
-      'Write your response here…',
+      /Write your response here…/i,
     ) as HTMLTextAreaElement;
     expect(textarea.value).toBe('Saved draft');
 
@@ -207,7 +207,7 @@ describe('TaskView', () => {
     );
 
     const textarea = screen.getByPlaceholderText(
-      'Write your response here…',
+      /Write your response here…/i,
     ) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'manual draft' } });
 
@@ -230,7 +230,7 @@ describe('TaskView', () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     render(<TaskView task={textTask} submitting={false} onSubmit={onSubmit} />);
 
-    const textarea = screen.getByPlaceholderText('Write your response here…');
+    const textarea = screen.getByPlaceholderText(/Write your response here…/i);
     fireEvent.change(textarea, { target: { value: 'Draft body' } });
     fireEvent.click(screen.getByRole('button', { name: /submit & continue/i }));
 
@@ -269,9 +269,12 @@ describe('TaskView', () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Write your response here…'), {
-      target: { value: 'hello' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Write your response here…/i),
+      {
+        target: { value: 'hello' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: /submit & continue/i }));
 
     await act(async () => {
@@ -298,9 +301,12 @@ describe('TaskView', () => {
 
     render(<TaskView task={textTask} submitting={false} onSubmit={onSubmit} />);
 
-    fireEvent.change(screen.getByPlaceholderText('Write your response here…'), {
-      target: { value: 'Filled' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Write your response here…/i),
+      {
+        target: { value: 'Filled' },
+      },
+    );
     fireEvent.click(screen.getByRole('button', { name: /submit & continue/i }));
     expect(
       await screen.findByRole('button', { name: /submitted ✓/i }),

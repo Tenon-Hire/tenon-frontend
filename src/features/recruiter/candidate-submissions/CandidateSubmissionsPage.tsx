@@ -7,6 +7,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { MarkdownPreview } from '@/components/ui/Markdown';
 import type { CandidateSession } from '@/types/recruiter';
 import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
 
@@ -38,7 +39,7 @@ type SubmissionArtifact = {
   submittedAt: string;
 };
 
-function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
+export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
   return (
     <div className="rounded border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
@@ -67,9 +68,9 @@ function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
           <div className="mb-1 text-xs font-medium text-gray-600">
             Text answer
           </div>
-          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap rounded bg-gray-50 p-3 text-xs text-gray-900">
-            {artifact.contentText}
-          </pre>
+          <div className="max-h-[420px] overflow-auto rounded border border-gray-100 bg-gray-50 p-3">
+            <MarkdownPreview content={artifact.contentText} />
+          </div>
         </div>
       ) : null}
 
