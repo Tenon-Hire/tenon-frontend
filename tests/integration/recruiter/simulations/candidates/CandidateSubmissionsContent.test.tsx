@@ -382,11 +382,12 @@ describe('CandidateSubmissionsPage', () => {
       ).toBeGreaterThan(0);
     });
 
+    expect(screen.getByText('Describe nothing')).toBeInTheDocument();
     expect(
-      screen.getAllByText(
+      screen.queryByText(
         /This is a code task; see GitHub artifacts and test results above./i,
-      ).length,
-    ).toBeGreaterThan(0);
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('blocks submissions when candidate lookup fails', async () => {

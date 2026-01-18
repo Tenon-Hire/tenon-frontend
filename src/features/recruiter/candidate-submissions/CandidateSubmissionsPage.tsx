@@ -433,6 +433,7 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
     artifact.commitUrl ?? artifact.testResults?.commitUrl ?? null;
   const submittedAt = formatDateTime(artifact.submittedAt);
   const diffSummary = artifact.diffSummary ?? null;
+  const hasPrompt = hasContent(artifact.task.prompt);
   const repoLabel =
     repoFullName ??
     repoUrl ??
@@ -510,7 +511,7 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
         </div>
       ) : null}
 
-      {!artifact.contentText ? (
+      {!artifact.contentText && !hasPrompt ? (
         <div className="mt-3 text-sm text-gray-600">
           {showGithub
             ? 'This is a code task; see GitHub artifacts and test results above.'
