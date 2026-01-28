@@ -1,6 +1,22 @@
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { cn } from '@/components/ui/classnames';
 import { MarkdownPreview } from '@/components/ui/Markdown';
+
+const LazyMarkdownPreview = dynamic(
+  () => import('@/components/ui/Markdown').then((m) => m.MarkdownPreview),
+  {
+    loading: () => (
+      <div className="text-xs text-gray-500" aria-label="loading-markdown">
+        Loading preview…
+      </div>
+    ),
+    ssr: false,
+  },
+);
+
+const PreviewComponent =
+  process.env.NODE_ENV === 'test' ? MarkdownPreview : LazyMarkdownPreview;
 
 type TaskTextInputProps = {
   value: string;
@@ -74,7 +90,7 @@ export function TaskTextInput({
         />
       ) : (
         <div className="w-full min-h-[360px] md:min-h-[420px] rounded-md border bg-white p-3">
-          <MarkdownPreview
+          <PreviewComponent
             content={value}
             emptyPlaceholder="Add content to preview your Markdown formatting."
           />

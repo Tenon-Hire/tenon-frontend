@@ -671,13 +671,8 @@ export async function getCandidateCurrentTask(
   ensureAuthToken(token);
   const path = `/candidate/session/${candidateSessionId}/current_task`;
   const skipCache = options?.skipCache === true;
-  const tokenTail =
-    typeof token === 'string' && token.length > 12
-      ? token.slice(-12)
-      : (token ?? 'missing');
   const cacheKey = buildCacheKey('candidate-task', {
     candidateSessionId,
-    token: tokenTail,
   });
 
   return fetchWithCache(cacheKey, CACHE_TTL_MS, skipCache, async () => {

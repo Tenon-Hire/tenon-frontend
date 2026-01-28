@@ -8,7 +8,11 @@ const debugPerf = ['1', 'true'].includes(
   (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase(),
 );
 
-const watchedMetrics = new Set<NextWebVitalsMetric['name']>(['LCP', 'INP', 'CLS']);
+const watchedMetrics = new Set<NextWebVitalsMetric['name']>([
+  'LCP',
+  'INP',
+  'CLS',
+]);
 
 function formatValue(metric: NextWebVitalsMetric) {
   if (metric.name === 'CLS') {
