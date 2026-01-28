@@ -34,7 +34,10 @@ const DEBUG_PERF =
   (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase() === 'true';
 
 function nowMs() {
-  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+  if (
+    typeof performance !== 'undefined' &&
+    typeof performance.now === 'function'
+  ) {
     return performance.now();
   }
   return Date.now();

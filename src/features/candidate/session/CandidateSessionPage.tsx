@@ -88,18 +88,15 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   const taskInFlightRef = useRef(false);
   const perfMarksRef = useRef<Record<string, number>>({});
 
-  const markStart = useCallback(
-    (label: string) => {
-      if (!debugSession) return;
-      if (typeof performance === 'undefined' || !performance.now) return;
-      const now = performance.now();
-      perfMarksRef.current[label] = now;
-      try {
-        performance.mark(`${label}:start`);
-      } catch {}
-    },
-    [debugSession],
-  );
+  const markStart = useCallback((label: string) => {
+    if (!debugSession) return;
+    if (typeof performance === 'undefined' || !performance.now) return;
+    const now = performance.now();
+    perfMarksRef.current[label] = now;
+    try {
+      performance.mark(`${label}:start`);
+    } catch {}
+  }, []);
 
   const markEnd = useCallback(
     (label: string, extra?: Record<string, unknown>) => {
@@ -113,22 +110,28 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           : extra;
       try {
         performance.mark(`${label}:end`);
-        performance.measure(`${label}:duration`, `${label}:start`, `${label}:end`);
+        performance.measure(
+          `${label}:duration`,
+          `${label}:start`,
+          `${label}:end`,
+        );
       } catch {}
       if (typeof start === 'number') {
         // eslint-disable-next-line no-console
         console.info(`[perf:ui] ${label}`, payload);
       }
     },
-    [debugSession],
+    [],
   );
 
   const fetchCurrentTask = useCallback(
-    async (overrides?: {
-      authToken?: string;
-      candidateSessionId?: number;
-    },
-    options?: { skipCache?: boolean }): Promise<void> => {
+    async (
+      overrides?: {
+        authToken?: string;
+        candidateSessionId?: number;
+      },
+      options?: { skipCache?: boolean },
+    ): Promise<void> => {
       const authToken = overrides?.authToken ?? state.token;
       const sessionId = overrides?.candidateSessionId ?? candidateSessionId;
       if (!authToken || !sessionId) return;
@@ -144,15 +147,17 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       setTaskLoading();
 
       try {
-        const dto = await getCandidateCurrentTask(sessionId, authToken, {
-          skipCache: options?.skipCache,
-        });
+        const skipCache = options?.skipCache === true;
+        const dto = await (skipCache
+          ? getCandidateCurrentTask(sessionId, authToken, { skipCache: true })
+          : getCandidateCurrentTask(sessionId, authToken));
         setTaskLoaded({
           isComplete: Boolean(dto.isComplete),
           completedTaskIds: normalizeCompletedTaskIds(dto),
           currentTask: toTask(dto.currentTask),
         });
         devDebug('task fetch success', { sessionId });
+        setView('running');
         markEnd('candidate:task:fetch', { sessionId, result: 'success' });
       } catch (err) {
         setErrorStatus(statusFromError(err));
@@ -268,7 +273,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         markEnd('candidate:init', { status: 'success' });
         void fetchCurrentTask(
           { authToken, candidateSessionId: resp.candidateSessionId },
-          { skipCache: false },
+          undefined,
         ).catch((err) => {
           setErrorMessage(friendlyTaskError(err));
           setView('error');
@@ -624,7 +629,9 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           {state.taskState.error}{' '}
           <button
             className="underline ml-2"
-            onClick={() => void fetchCurrentTask(undefined, { skipCache: true })}
+            onClick={() =>
+              void fetchCurrentTask(undefined, { skipCache: true })
+            }
           >
             Retry
           </button>
@@ -690,7 +697,9 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              onClick={() => void fetchCurrentTask(undefined, { skipCache: true })}
+              onClick={() =>
+                void fetchCurrentTask(undefined, { skipCache: true })
+              }
             >
               Retry
             </Button>

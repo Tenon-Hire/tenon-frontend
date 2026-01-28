@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { cn } from '@/components/ui/classnames';
-import { LazyMarkdownPreview } from '@/components/ui/LazyMarkdownPreview';
+import { MarkdownPreview } from '@/components/ui/Markdown';
 
 type TaskTextInputProps = {
   value: string;
@@ -74,7 +74,7 @@ export function TaskTextInput({
         />
       ) : (
         <div className="w-full min-h-[360px] md:min-h-[420px] rounded-md border bg-white p-3">
-          <LazyMarkdownPreview
+          <MarkdownPreview
             content={value}
             emptyPlaceholder="Add content to preview your Markdown formatting."
           />

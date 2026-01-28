@@ -605,68 +605,62 @@ export async function resolveCandidateInviteToken(
   const skipCache = options?.skipCache === true;
   const cacheKey = buildCacheKey('candidate-bootstrap', { token });
 
-  return fetchWithCache(
-    cacheKey,
-    CACHE_TTL_MS,
-    skipCache,
-    async () => {
-      try {
-        return await apiClient.get<CandidateSessionBootstrapResponse>(
-          path,
-          { cache: 'no-store' },
-          toClientOptions(authToken),
-        );
-      } catch (err: unknown) {
-        if (err && typeof err === 'object') {
-          const status = (err as { status?: unknown }).status;
-          const details = (err as { details?: unknown }).details;
-          const backendMsg = extractBackendMessage(details, true) ?? '';
-          const lowerMsg = backendMsg.toLowerCase();
+  return fetchWithCache(cacheKey, CACHE_TTL_MS, skipCache, async () => {
+    try {
+      return await apiClient.get<CandidateSessionBootstrapResponse>(
+        path,
+        { cache: 'no-store' },
+        toClientOptions(authToken),
+      );
+    } catch (err: unknown) {
+      if (err && typeof err === 'object') {
+        const status = (err as { status?: unknown }).status;
+        const details = (err as { details?: unknown }).details;
+        const backendMsg = extractBackendMessage(details, true) ?? '';
+        const lowerMsg = backendMsg.toLowerCase();
 
-          if (status === 400 || status === 404 || status === 409)
-            throw new HttpError(status, INVITE_UNAVAILABLE_MESSAGE);
-          if (status === 401) throw new HttpError(401, 'Please sign in again.');
-          if (status === 403) {
-            if (
-              lowerMsg.includes('verify') ||
-              lowerMsg.includes('email verification') ||
-              lowerMsg.includes('email_verified')
-            ) {
-              throw new HttpError(
-                403,
-                'Please verify your email, then try again.',
-              );
-            }
-            if (lowerMsg.includes('email claim') || lowerMsg.includes('email')) {
-              throw new HttpError(
-                403,
-                'We could not confirm your email. Please sign in again.',
-              );
-            }
-            throw new HttpError(403, 'You do not have access to this invite.');
+        if (status === 400 || status === 404 || status === 409)
+          throw new HttpError(status, INVITE_UNAVAILABLE_MESSAGE);
+        if (status === 401) throw new HttpError(401, 'Please sign in again.');
+        if (status === 403) {
+          if (
+            lowerMsg.includes('verify') ||
+            lowerMsg.includes('email verification') ||
+            lowerMsg.includes('email_verified')
+          ) {
+            throw new HttpError(
+              403,
+              'Please verify your email, then try again.',
+            );
           }
-          if (status === 410) throw new HttpError(410, INVITE_EXPIRED_MESSAGE);
-
-          const fallbackMsg =
-            extractBackendMessage(details, false) ?? backendMsg ?? '';
-
-          const safeStatus =
-            typeof status === 'number' ? status : fallbackStatus(err, 500);
-
-          throw new HttpError(
-            safeStatus,
-            fallbackMsg.trim() ||
-              'Something went wrong loading your simulation.',
-          );
+          if (lowerMsg.includes('email claim') || lowerMsg.includes('email')) {
+            throw new HttpError(
+              403,
+              'We could not confirm your email. Please sign in again.',
+            );
+          }
+          throw new HttpError(403, 'You do not have access to this invite.');
         }
+        if (status === 410) throw new HttpError(410, INVITE_EXPIRED_MESSAGE);
 
-        throw toHttpError(err, {
-          status: 500,
-          message: 'Something went wrong loading your simulation.',
-        });
+        const fallbackMsg =
+          extractBackendMessage(details, false) ?? backendMsg ?? '';
+
+        const safeStatus =
+          typeof status === 'number' ? status : fallbackStatus(err, 500);
+
+        throw new HttpError(
+          safeStatus,
+          fallbackMsg.trim() || 'Something went wrong loading your simulation.',
+        );
       }
-    },
-  );
+
+      throw toHttpError(err, {
+        status: 500,
+        message: 'Something went wrong loading your simulation.',
+      });
+    }
+  });
 }
 
 export async function getCandidateCurrentTask(
@@ -680,73 +674,68 @@ export async function getCandidateCurrentTask(
   const tokenTail =
     typeof token === 'string' && token.length > 12
       ? token.slice(-12)
-      : token ?? 'missing';
+      : (token ?? 'missing');
   const cacheKey = buildCacheKey('candidate-task', {
     candidateSessionId,
     token: tokenTail,
   });
 
-  return fetchWithCache(
-    cacheKey,
-    CACHE_TTL_MS,
-    skipCache,
-    async () => {
-      try {
-        return await apiClient.get<CandidateCurrentTaskResponse>(
-          path,
-          {
-            headers: {
-              'x-candidate-session-id': String(candidateSessionId),
-            },
-            cache: 'no-store',
+  return fetchWithCache(cacheKey, CACHE_TTL_MS, skipCache, async () => {
+    try {
+      return await apiClient.get<CandidateCurrentTaskResponse>(
+        path,
+        {
+          headers: {
+            'x-candidate-session-id': String(candidateSessionId),
           },
-          toClientOptions(token),
+          cache: 'no-store',
+        },
+        toClientOptions(token),
+      );
+    } catch (err: unknown) {
+      if (err instanceof TypeError) {
+        throw new HttpError(
+          0,
+          'Network error. Please check your connection and try again.',
         );
-      } catch (err: unknown) {
-        if (err instanceof TypeError) {
+      }
+
+      if (err && typeof err === 'object') {
+        const status = (err as { status?: unknown }).status;
+        if (typeof status !== 'number') {
           throw new HttpError(
             0,
             'Network error. Please check your connection and try again.',
           );
         }
+        const backendMsg = extractBackendMessage(
+          (err as { details?: unknown }).details,
+          false,
+        );
 
-        if (err && typeof err === 'object') {
-          const status = (err as { status?: unknown }).status;
-          if (typeof status !== 'number') {
-            throw new HttpError(
-              0,
-              'Network error. Please check your connection and try again.',
-            );
-          }
-          const backendMsg = extractBackendMessage(
-            (err as { details?: unknown }).details,
-            false,
-          );
-
-          if (status === 404)
-            throw new HttpError(
-              404,
-              backendMsg ?? 'Session not found. Please reopen your invite link.',
-            );
-          if (status === 410)
-            throw new HttpError(410, 'That invite link has expired.');
-
-          const message =
-            backendMsg ?? 'Something went wrong loading your current task.';
-
+        if (status === 404)
           throw new HttpError(
-            typeof status === 'number' ? status : fallbackStatus(err, 500),
-            message,
+            404,
+            backendMsg ?? 'Session not found. Please reopen your invite link.',
           );
-        }
+        if (status === 410)
+          throw new HttpError(410, 'That invite link has expired.');
 
-        throw toHttpError(err, {
-          status: 500,
-          message: 'Something went wrong loading your current task.',
-        });
+        const message =
+          backendMsg ?? 'Something went wrong loading your current task.';
+
+        throw new HttpError(
+          typeof status === 'number' ? status : fallbackStatus(err, 500),
+          message,
+        );
       }
-    },
-  );
+
+      throw toHttpError(err, {
+        status: 500,
+        message: 'Something went wrong loading your current task.',
+      });
+    }
+  });
 }
 
 export async function initCandidateWorkspace(params: {
