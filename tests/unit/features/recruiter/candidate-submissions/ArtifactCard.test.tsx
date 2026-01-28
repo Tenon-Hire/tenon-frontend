@@ -16,7 +16,7 @@ const baseArtifact = {
 };
 
 describe('ArtifactCard', () => {
-  it('renders markdown-formatted content', () => {
+  it('renders markdown-formatted content', async () => {
     render(
       <ArtifactCard
         artifact={{
@@ -27,9 +27,9 @@ describe('ArtifactCard', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: 'Heading', level: 1 }),
+      await screen.findByRole('heading', { name: 'Heading', level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.getByText('item one')).toBeInTheDocument();
+    expect(await screen.findByText('item one')).toBeInTheDocument();
   });
 
   it('handles missing content', () => {

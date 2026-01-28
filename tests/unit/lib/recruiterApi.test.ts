@@ -56,7 +56,10 @@ describe('recruiterApi', () => {
 
       await listSimulations();
 
-      expect(mockedBffGet).toHaveBeenCalledWith('/simulations', undefined);
+      expect(mockedBffGet).toHaveBeenCalledWith(
+        '/simulations',
+        expect.objectContaining({ cache: undefined }),
+      );
       expect(mockedApiGet).not.toHaveBeenCalled();
     });
 
@@ -134,7 +137,10 @@ describe('recruiterApi', () => {
 
       await listSimulations();
 
-      expect(mockedBffGet).toHaveBeenCalledWith('/simulations', undefined);
+      expect(mockedBffGet).toHaveBeenCalledWith(
+        '/simulations',
+        expect.objectContaining({ cache: undefined }),
+      );
       expect(mockedApiGet).not.toHaveBeenCalled();
     });
   });

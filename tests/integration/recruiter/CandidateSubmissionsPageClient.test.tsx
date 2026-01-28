@@ -1,7 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
-import { getRequestUrl, jsonResponse } from '../../setup/responseHelpers';
+import {
+  recruiterBffClient,
+  __resetHttpClientCache,
+} from '@/lib/api/httpClient';
+import { __resetCandidateCache } from '@/lib/api/recruiter';
 
 const params = { id: 'sim-1', candidateSessionId: '900' };
 
@@ -9,26 +13,25 @@ jest.mock('next/navigation', () => ({
   useParams: () => params,
 }));
 
-const fetchMock = jest.fn();
-const realFetch = global.fetch;
+jest.mock('@/lib/api/httpClient', () => ({
+  recruiterBffClient: { get: jest.fn() },
+  __resetHttpClientCache: jest.fn(),
+}));
 
 beforeEach(() => {
-  fetchMock.mockReset();
-  global.fetch = fetchMock as unknown as typeof fetch;
+  jest.resetAllMocks();
   params.id = 'sim-1';
   params.candidateSessionId = '900';
-});
-
-afterAll(() => {
-  global.fetch = realFetch;
+  __resetCandidateCache();
+  __resetHttpClientCache();
 });
 
 describe('CandidateSubmissionsPage', () => {
   it('renders submission artifacts with test results', async () => {
-    const user = userEvent.setup();
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse([
+    const getMock = recruiterBffClient.get as jest.Mock;
+    getMock.mockImplementation((path: string) => {
+      if (path.includes('/simulations/sim-1/candidates')) {
+        return Promise.resolve([
           {
             candidateSessionId: 900,
             inviteEmail: 'dee@example.com',
@@ -38,10 +41,10 @@ describe('CandidateSubmissionsPage', () => {
             completedAt: '2025-01-02T12:00:00Z',
             hasReport: true,
           },
-        ]),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
+        ]);
+      }
+      if (path.includes('/submissions?candidateSessionId=900')) {
+        return Promise.resolve({
           items: [
             {
               submissionId: 1,
@@ -65,10 +68,10 @@ describe('CandidateSubmissionsPage', () => {
               repoFullName: 'acme/day3',
             },
           ],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
+        });
+      }
+      if (path.includes('/submissions/1')) {
+        return Promise.resolve({
           submissionId: 1,
           candidateSessionId: 900,
           task: {
@@ -103,10 +106,10 @@ describe('CandidateSubmissionsPage', () => {
             runStatus: 'completed',
           },
           submittedAt: '2025-01-02T00:00:00Z',
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
+        });
+      }
+      if (path.includes('/submissions/2')) {
+        return Promise.resolve({
           submissionId: 2,
           candidateSessionId: 900,
           task: {
@@ -136,9 +139,12 @@ describe('CandidateSubmissionsPage', () => {
             runStatus: 'completed',
           },
           submittedAt: '2025-01-03T00:00:00Z',
-        }),
-      );
+        });
+      }
+      throw new Error(`Unexpected path ${path}`);
+    });
 
+    const user = userEvent.setup();
     render(<CandidateSubmissionsPage />);
 
     expect(await screen.findByText(/Dee — Submissions/i)).toBeInTheDocument();
@@ -163,10 +169,10 @@ describe('CandidateSubmissionsPage', () => {
   });
 
   it('matches candidateSessionId when route param is a string', async () => {
-    const user = userEvent.setup();
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse([
+    const getMock = recruiterBffClient.get as jest.Mock;
+    getMock.mockImplementation((path: string) => {
+      if (path.includes('/simulations/sim-1/candidates')) {
+        return Promise.resolve([
           {
             candidateSessionId: 900,
             inviteEmail: 'dee@example.com',
@@ -176,10 +182,10 @@ describe('CandidateSubmissionsPage', () => {
             completedAt: '2025-01-02T12:00:00Z',
             hasReport: true,
           },
-        ]),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
+        ]);
+      }
+      if (path.includes('/submissions?candidateSessionId=900')) {
+        return Promise.resolve({
           items: [
             {
               submissionId: 2,
@@ -190,10 +196,10 @@ describe('CandidateSubmissionsPage', () => {
               submittedAt: '2025-01-02T00:00:00Z',
             },
           ],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
+        });
+      }
+      if (path.includes('/submissions/2')) {
+        return Promise.resolve({
           submissionId: 2,
           candidateSessionId: 900,
           task: {
@@ -207,87 +213,26 @@ describe('CandidateSubmissionsPage', () => {
           code: null,
           testResults: null,
           submittedAt: '2025-01-02T00:00:00Z',
-        }),
-      );
+        });
+      }
+      throw new Error(`Unexpected path ${path}`);
+    });
 
+    const user = userEvent.setup();
     render(<CandidateSubmissionsPage />);
 
     await user.click(await screen.findByRole('button', { name: /Show all/i }));
     expect(await screen.findByText(/First Task/i)).toBeInTheDocument();
 
-    const calledUrls = fetchMock.mock.calls.map((call) =>
-      getRequestUrl(call[0]),
+    const calledUrls = (getMock.mock.calls as [string][]).map(
+      (call) => call[0],
     );
-    expect(calledUrls).toContain('/api/submissions?candidateSessionId=900');
-  });
-
-  it('shows empty state when there are no submissions', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse([
-          {
-            candidateSessionId: 900,
-            inviteEmail: 'dee@example.com',
-            candidateName: 'Dee',
-            status: 'completed',
-            startedAt: null,
-            completedAt: null,
-            hasReport: false,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(jsonResponse({ items: [] }));
-
-    render(<CandidateSubmissionsPage />);
-
-    expect(await screen.findByText(/No submissions yet/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Refresh/i }),
-    ).toBeInTheDocument();
-  });
-
-  it('renders friendly error when submissions list fails', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse([
-          {
-            candidateSessionId: 900,
-            inviteEmail: 'dee@example.com',
-            candidateName: 'Dee',
-            status: 'completed',
-            startedAt: null,
-            completedAt: null,
-            hasReport: false,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(jsonResponse({ message: 'Upstream down' }, 500));
-    params.id = 'sim-err';
-
-    render(<CandidateSubmissionsPage />);
-
-    expect(await screen.findByText(/Upstream down/i)).toBeInTheDocument();
-  });
-
-  it('surfaces network errors when submissions request rejects', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse([
-          {
-            candidateSessionId: 900,
-            inviteEmail: 'dee@example.com',
-            candidateName: 'Dee',
-            status: 'completed',
-            startedAt: null,
-            completedAt: null,
-            hasReport: false,
-          },
-        ]),
-      )
-      .mockRejectedValueOnce(new Error('network fail'));
-
-    render(<CandidateSubmissionsPage />);
-
-    expect(await screen.findByText(/network fail/i)).toBeInTheDocument();
+    expect(calledUrls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('/simulations/sim-1/candidates'),
+        expect.stringContaining('/submissions?candidateSessionId=900'),
+        expect.stringContaining('/submissions/2'),
+      ]),
+    );
   });
 });

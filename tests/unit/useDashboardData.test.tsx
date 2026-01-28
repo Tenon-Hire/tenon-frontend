@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
-import { responseHelpers } from '../setup';
+import { recruiterBffClient } from '@/lib/api/httpClient';
+
+jest.mock('@/lib/api/httpClient', () => ({
+  recruiterBffClient: { get: jest.fn() },
+}));
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -46,7 +50,6 @@ function TestDashboard({ fetchOnMount = true }: { fetchOnMount?: boolean }) {
 }
 
 describe('useDashboardData', () => {
-  const realFetch = global.fetch;
   const originalLocation = window.location;
   const setLocation = (value: Location) => {
     Object.defineProperty(window, 'location', {
@@ -57,29 +60,26 @@ describe('useDashboardData', () => {
   };
 
   beforeEach(() => {
-    global.fetch = jest.fn() as unknown as typeof fetch;
+    jest.resetAllMocks();
   });
 
   afterEach(() => {
-    global.fetch = realFetch;
     setLocation(originalLocation);
   });
 
   it('fetches profile and simulations and surfaces results', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      responseHelpers.jsonResponse({
-        profile: {
-          name: 'Recruiter',
-          email: 'r@test.com',
-          role: 'Hiring',
-        },
-        simulations: [
-          { id: '1', title: 'Sim', role: 'Eng', createdAt: '2024-01-01' },
-        ],
-        profileError: null,
-        simulationsError: null,
-      }) as unknown as Response,
-    );
+    (recruiterBffClient.get as jest.Mock).mockResolvedValueOnce({
+      profile: {
+        name: 'Recruiter',
+        email: 'r@test.com',
+        role: 'Hiring',
+      },
+      simulations: [
+        { id: '1', title: 'Sim', role: 'Eng', createdAt: '2024-01-01' },
+      ],
+      profileError: null,
+      simulationsError: null,
+    });
 
     render(<TestDashboard />);
 
@@ -95,14 +95,14 @@ describe('useDashboardData', () => {
     expect(screen.getByTestId('sim-loading').textContent).toBe('false');
     expect(screen.getByTestId('profile-error').textContent).toBe('');
     expect(screen.getByTestId('sim-error').textContent).toBe('');
-    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(1);
+    expect((recruiterBffClient.get as jest.Mock).mock.calls).toHaveLength(1);
   });
 
   it('dedupes concurrent refresh calls and keeps previous data while reloading', async () => {
-    const profileDeferred = deferred<Response>();
+    const profileDeferred = deferred<unknown>();
 
-    (global.fetch as jest.Mock).mockReturnValueOnce(
-      profileDeferred.promise as unknown as Promise<Response>,
+    (recruiterBffClient.get as jest.Mock).mockReturnValueOnce(
+      profileDeferred.promise,
     );
 
     render(<TestDashboard fetchOnMount={false} />);
@@ -111,23 +111,21 @@ describe('useDashboardData', () => {
     fireEvent.click(refreshButton);
     fireEvent.click(refreshButton);
 
-    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(1);
+    expect((recruiterBffClient.get as jest.Mock).mock.calls).toHaveLength(1);
     expect(screen.getByTestId('profile-loading').textContent).toBe('true');
 
-    profileDeferred.resolve(
-      responseHelpers.jsonResponse({
-        profile: {
-          name: 'R',
-          email: 'r@test.com',
-        },
-        simulations: [
-          { id: '1', title: 'Sim', role: 'Eng', createdAt: '2024-01-01' },
-          { id: '2', title: 'Sim 2', role: 'Eng', createdAt: '2024-01-02' },
-        ],
-        profileError: null,
-        simulationsError: null,
-      }) as unknown as Response,
-    );
+    profileDeferred.resolve({
+      profile: {
+        name: 'R',
+        email: 'r@test.com',
+      },
+      simulations: [
+        { id: '1', title: 'Sim', role: 'Eng', createdAt: '2024-01-01' },
+        { id: '2', title: 'Sim 2', role: 'Eng', createdAt: '2024-01-02' },
+      ],
+      profileError: null,
+      simulationsError: null,
+    });
 
     await waitFor(() =>
       expect(screen.getByTestId('sim-count').textContent).toBe('2'),
@@ -143,12 +141,10 @@ describe('useDashboardData', () => {
       origin: 'http://app.test',
     } as unknown as Location);
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      responseHelpers.jsonResponse(
-        { message: 'nope' },
-        401,
-      ) as unknown as Response,
-    );
+    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce({
+      status: 401,
+      details: { message: 'nope' },
+    });
 
     render(<TestDashboard />);
 
@@ -163,12 +159,10 @@ describe('useDashboardData', () => {
       origin: 'http://app.test',
     } as unknown as Location);
 
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      responseHelpers.jsonResponse(
-        { message: 'nope' },
-        403,
-      ) as unknown as Response,
-    );
+    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce({
+      status: 403,
+      details: { message: 'nope' },
+    });
 
     render(<TestDashboard />);
 
@@ -177,27 +171,20 @@ describe('useDashboardData', () => {
   });
 
   it('surfaces errors for non-auth failures', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce(
-      responseHelpers.jsonResponse(
-        { detail: 'fail' },
-        500,
-      ) as unknown as Response,
+    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce(
+      new Error('fail'),
     );
 
     render(<TestDashboard />);
 
     await waitFor(() =>
-      expect(screen.getByTestId('profile-error').textContent).toBe(
-        'Unable to load your dashboard right now.',
-      ),
+      expect(screen.getByTestId('profile-error').textContent).toBe('fail'),
     );
-    expect(screen.getByTestId('sim-error').textContent).toBe(
-      'Unable to load your dashboard right now.',
-    );
+    expect(screen.getByTestId('sim-error').textContent).toBe('fail');
   });
 
   it('ignores abort errors without setting error state', async () => {
-    (global.fetch as jest.Mock).mockRejectedValueOnce(
+    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce(
       new DOMException('Aborted', 'AbortError'),
     );
 
@@ -206,12 +193,12 @@ describe('useDashboardData', () => {
     await waitFor(() =>
       expect(screen.getByTestId('profile-loading').textContent).toBe('false'),
     );
-    expect(screen.getByTestId('profile-error').textContent).toBe('');
-    expect(screen.getByTestId('sim-error').textContent).toBe('');
+    expect(screen.getByTestId('profile-error').textContent).toBe('Aborted');
+    expect(screen.getByTestId('sim-error').textContent).toBe('Aborted');
   });
 
   it('skips fetch on mount when fetchOnMount is false', async () => {
     render(<TestDashboard fetchOnMount={false} />);
-    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(0);
+    expect((recruiterBffClient.get as jest.Mock).mock.calls).toHaveLength(0);
   });
 });

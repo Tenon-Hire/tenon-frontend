@@ -9,6 +9,8 @@ import {
   jsonResponse,
   textResponse,
 } from '../../../../setup/responseHelpers';
+import { __resetCandidateCache } from '@/lib/api/recruiter';
+import { __resetHttpClientCache } from '@/lib/api/httpClient';
 
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -30,6 +32,11 @@ let anchorClickSpy: jest.SpyInstance | null = null;
 const originalDebugErrors = process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
 
 describe('CandidateSubmissionsPage', () => {
+  beforeEach(() => {
+    __resetCandidateCache();
+    __resetHttpClientCache();
+  });
+
   beforeAll(() => {
     anchorClickSpy = jest
       .spyOn(HTMLAnchorElement.prototype, 'click')

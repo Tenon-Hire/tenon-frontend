@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -7,10 +8,11 @@ import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { MarkdownPreview } from '@/components/ui/Markdown';
 import { StatusPill } from '@/components/ui/StatusPill';
 import type { CandidateSession } from '@/types/recruiter';
 import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
+import { listSimulationCandidates } from '@/lib/api/recruiter';
+import { recruiterBffClient } from '@/lib/api/httpClient';
 
 type SubmissionListItem = {
   submissionId: number;
@@ -80,6 +82,16 @@ type SubmissionArtifact = {
   testResults: SubmissionTestResults | null;
   submittedAt: string;
 };
+
+const MarkdownPreviewLazy = dynamic(
+  () => import('@/components/ui/Markdown').then((mod) => mod.MarkdownPreview),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+    ),
+  },
+);
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return null;
@@ -506,7 +518,7 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
             Text answer
           </div>
           <div className="max-h-[420px] overflow-auto rounded border border-gray-100 bg-gray-50 p-3">
-            <MarkdownPreview content={artifact.contentText} />
+            <MarkdownPreviewLazy content={artifact.contentText} />
           </div>
         </div>
       ) : null}
@@ -538,115 +550,130 @@ export default function CandidateSubmissionsPage() {
     Record<number, SubmissionArtifact>
   >({});
   const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 8;
   const statusDisplay = candidate?.status ?? null;
 
-  const loadSubmissions = useCallback((): (() => void) => {
-    let cancelled = false;
+  const loadSubmissions = useCallback(
+    (opts?: { skipCache?: boolean }): (() => void) => {
+      let cancelled = false;
+      const controller = new AbortController();
+      let candidateFetched = false;
 
-    async function run() {
-      try {
-        setLoading(true);
-        setError(null);
+      async function run() {
+        try {
+          setLoading(true);
+          setError(null);
 
-        if (!candidateSessionKey || !/^\d+$/.test(candidateSessionKey)) {
-          throw new Error('Invalid candidate id.');
-        }
+          if (!candidateSessionKey || !/^\d+$/.test(candidateSessionKey)) {
+            throw new Error('Invalid candidate id.');
+          }
 
-        const candRes = await fetch(
-          `/api/simulations/${simulationId}/candidates`,
-          { method: 'GET', cache: 'no-store' },
-        );
+          const candArr = await listSimulationCandidates(simulationId, {
+            skipCache: opts?.skipCache,
+            signal: controller.signal,
+            cacheTtlMs: 9000,
+          });
 
-        if (!candRes.ok) {
-          const candParsed: unknown = await candRes.json().catch(() => null);
-          throw new Error(
-            toUserMessage(candParsed, 'Unable to verify candidate access.', {
-              includeDetail,
-            }),
-          );
-        }
+          const found =
+            candArr.find(
+              (c) => String(c.candidateSessionId) === candidateSessionKey,
+            ) ?? null;
+          if (!found) {
+            throw new Error('Candidate not found for this simulation.');
+          }
+          if (!cancelled) setCandidate(found);
+          candidateFetched = true;
 
-        const candArr = (await candRes.json()) as CandidateSession[];
-        const found =
-          candArr.find(
-            (c) => String(c.candidateSessionId) === candidateSessionKey,
-          ) ?? null;
-        if (!found) {
-          throw new Error('Candidate not found for this simulation.');
-        }
-        if (!cancelled) setCandidate(found);
-
-        const listRes = await fetch(
-          `/api/submissions?candidateSessionId=${encodeURIComponent(
-            candidateSessionKey,
-          )}`,
-          { method: 'GET', cache: 'no-store' },
-        );
-
-        if (!listRes.ok) {
-          const maybeJson: unknown = await listRes.json().catch(() => null);
-          const fallbackText = await listRes.text().catch(() => '');
-          const msg =
-            maybeJson !== null
-              ? toUserMessage(maybeJson, 'Request failed', {
-                  includeDetail,
-                })
-              : fallbackText;
-          throw new Error(
-            msg || `Failed to load submissions (${listRes.status})`,
-          );
-        }
-
-        const listJson = (await listRes.json()) as SubmissionListResponse;
-        const ordered = [...(listJson.items ?? [])].sort(
-          (a, b) => a.dayIndex - b.dayIndex,
-        );
-        if (!cancelled) setItems(ordered);
-
-        if (ordered.length === 0) {
-          if (!cancelled) setArtifacts({});
-          return;
-        }
-
-        const results = await Promise.all(
-          ordered.map(async (s) => {
-            const r = await fetch(`/api/submissions/${s.submissionId}`, {
-              method: 'GET',
+          const listJson = await recruiterBffClient.get<SubmissionListResponse>(
+            `/submissions?candidateSessionId=${encodeURIComponent(
+              candidateSessionKey,
+            )}`,
+            {
               cache: 'no-store',
-            });
-            if (!r.ok) return null;
-            const a = (await r.json()) as SubmissionArtifact;
-            return a;
-          }),
-        );
+              signal: controller.signal,
+              skipCache: opts?.skipCache,
+              cacheTtlMs: 9000,
+            },
+          );
 
-        const map: Record<number, SubmissionArtifact> = {};
-        for (const a of results) {
-          if (!a) continue;
-          map[a.submissionId] = a;
-        }
-        if (!cancelled) setArtifacts(map);
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setCandidate(null);
-          setItems([]);
-          setArtifacts({});
-          setError(
-            toUserMessage(e, 'Request failed', {
-              includeDetail: includeDetail,
+          const ordered = [...(listJson.items ?? [])].sort(
+            (a, b) => a.dayIndex - b.dayIndex,
+          );
+          if (!cancelled) {
+            setItems(ordered);
+            setPage(1);
+          }
+
+          if (ordered.length === 0) {
+            if (!cancelled) setArtifacts({});
+            return;
+          }
+
+          const results = await Promise.all(
+            ordered.map(async (s) => {
+              try {
+                const a = await recruiterBffClient.get<SubmissionArtifact>(
+                  `/submissions/${s.submissionId}`,
+                  {
+                    cache: 'no-store',
+                    signal: controller.signal,
+                    skipCache: opts?.skipCache,
+                    cacheTtlMs: 10000,
+                    dedupeKey: `submission-${s.submissionId}`,
+                  },
+                );
+                return a;
+              } catch {
+                return null;
+              }
             }),
           );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
 
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [simulationId, candidateSessionKey, includeDetail]);
+          const map: Record<number, SubmissionArtifact> = {};
+          for (const a of results) {
+            if (!a) continue;
+            map[a.submissionId] = a;
+          }
+          if (!cancelled) setArtifacts(map);
+        } catch (e: unknown) {
+          if (!cancelled) {
+            setCandidate(null);
+            setItems([]);
+            setArtifacts({});
+            const status =
+              e && typeof e === 'object' && 'status' in (e as object)
+                ? (e as { status?: unknown }).status
+                : null;
+
+            if (
+              !candidateFetched &&
+              typeof status === 'number' &&
+              status >= 500
+            ) {
+              setError('Unable to verify candidate access.');
+              return;
+            }
+
+            setError(
+              toUserMessage(e, 'Request failed', {
+                includeDetail,
+              }),
+            );
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      }
+
+      void run();
+      return () => {
+        cancelled = true;
+        controller.abort();
+      };
+    },
+    [simulationId, candidateSessionKey, includeDetail],
+  );
 
   useEffect(() => {
     const cancel = loadSubmissions();
@@ -723,6 +750,28 @@ export default function CandidateSubmissionsPage() {
     : null;
   const hasLatest = Boolean(latestDay2Item || latestDay3Item);
 
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(items.length / PAGE_SIZE)),
+    [PAGE_SIZE, items.length],
+  );
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    if (!showAll) return;
+    setPage(1);
+  }, [showAll]);
+
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    return items.slice(start, end);
+  }, [items, page, PAGE_SIZE]);
+
   return (
     <div className="flex flex-col gap-4 py-8">
       <div className="flex items-center justify-between gap-4">
@@ -759,7 +808,7 @@ export default function CandidateSubmissionsPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => void loadSubmissions()}
+              onClick={() => void loadSubmissions({ skipCache: true })}
             >
               Retry
             </Button>
@@ -778,7 +827,7 @@ export default function CandidateSubmissionsPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => void loadSubmissions()}
+              onClick={() => void loadSubmissions({ skipCache: true })}
             >
               Refresh
             </Button>
@@ -852,22 +901,55 @@ export default function CandidateSubmissionsPage() {
               </Button>
             </div>
             {showAll ? (
-              <div className="mt-3 flex flex-col gap-3">
-                {items.map((it) => {
-                  const artifact = artifacts[it.submissionId];
-                  return artifact ? (
-                    <ArtifactCard key={it.submissionId} artifact={artifact} />
-                  ) : (
-                    <div
-                      key={it.submissionId}
-                      className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
+              <>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+                  <span>
+                    Showing{' '}
+                    {items.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
+                    {Math.min(items.length, page * PAGE_SIZE)} of {items.length}{' '}
+                    submissions
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
                     >
-                      Day {it.dayIndex} ({it.type}) — submission #
-                      {it.submissionId} content not available.
-                    </div>
-                  );
-                })}
-              </div>
+                      Previous
+                    </Button>
+                    <span className="text-gray-700">
+                      Page {page} / {totalPages}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        setPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={page >= totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col gap-3">
+                  {pagedItems.map((it) => {
+                    const artifact = artifacts[it.submissionId];
+                    return artifact ? (
+                      <ArtifactCard key={it.submissionId} artifact={artifact} />
+                    ) : (
+                      <div
+                        key={it.submissionId}
+                        className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
+                      >
+                        Day {it.dayIndex} ({it.type}) — submission #
+                        {it.submissionId} content not available.
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="mt-2 text-sm text-gray-600">
                 Submission list collapsed for brevity.

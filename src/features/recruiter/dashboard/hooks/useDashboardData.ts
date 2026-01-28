@@ -7,6 +7,7 @@ import {
 import { toUserMessage } from '@/lib/utils/errors';
 import type { RecruiterProfile, SimulationListItem } from '@/types/recruiter';
 import { dashboardPerfDebugEnabled, logPerf, nowMs } from '../utils/perf';
+import { recruiterBffClient } from '@/lib/api/httpClient';
 
 type Options = {
   initialProfile?: RecruiterProfile | null;
@@ -69,18 +70,29 @@ export function useDashboardData(options?: Options) {
     const startedAt = nowMs();
 
     const promise = (async () => {
-      const res = await fetch('/api/dashboard', {
-        cache: 'no-store',
-        credentials: 'include',
-        signal: controller.signal,
-      });
-      const parsed: unknown = await res.json().catch(() => null);
-      if (dashboardPerfDebugEnabled) {
-        logPerf('/api/dashboard response', startedAt, { status: res.status });
-      }
-
-      if (!res.ok) {
-        const status = res.status;
+      try {
+        const parsed = await recruiterBffClient.get<DashboardPayload>(
+          '/dashboard',
+          {
+            cache: 'no-store',
+            signal: controller.signal,
+            cacheTtlMs: 9000,
+          },
+        );
+        if (dashboardPerfDebugEnabled) {
+          logPerf('/api/dashboard response', startedAt, { status: 200 });
+        }
+        return parsed;
+      } catch (caught: unknown) {
+        const status =
+          caught && typeof caught === 'object'
+            ? (caught as { status?: unknown }).status
+            : null;
+        if (dashboardPerfDebugEnabled) {
+          logPerf('/api/dashboard response', startedAt, {
+            status: status ?? 'error',
+          });
+        }
         if (
           typeof window !== 'undefined' &&
           (status === 401 || status === 403)
@@ -94,15 +106,13 @@ export function useDashboardData(options?: Options) {
           window.location.assign(destination);
         }
         const error = new Error(
-          toUserMessage(parsed, 'Unable to load your dashboard right now.', {
+          toUserMessage(caught, 'Unable to load your dashboard right now.', {
             includeDetail: true,
           }),
         ) as Error & { status?: number };
-        error.status = status;
+        error.status = typeof status === 'number' ? status : undefined;
         throw error;
       }
-
-      return parsed as DashboardPayload;
     })().finally(() => {
       if (inflightRef.current.dashboard === promise) {
         inflightRef.current.dashboard = undefined;
