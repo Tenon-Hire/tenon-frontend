@@ -566,10 +566,8 @@ export default function RecruiterSimulationDetailPage() {
             ? (e as { details?: unknown }).details
             : null;
 
-        if (status === 401 && typeof window !== 'undefined') {
-          const returnTo = buildReturnTo();
-          const destination = buildLoginUrl('recruiter', returnTo);
-          window.location.assign(destination);
+        if (status === 401) {
+          setError('Session expired. Please sign in again.');
           return;
         }
         if (status === 403) {

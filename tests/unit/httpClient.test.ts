@@ -121,4 +121,18 @@ describe('httpClient', () => {
     expect(second).toEqual({ value: 2 });
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it('uses TTL cache when cacheTtlMs is provided', async () => {
+    __resetHttpClientCache();
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      responseHelpers.jsonResponse({ value: 1 }) as unknown as Response,
+    );
+
+    const first = await apiClient.get('/ttl-cache', { cacheTtlMs: 500 });
+    const second = await apiClient.get('/ttl-cache', { cacheTtlMs: 500 });
+
+    expect(first).toEqual({ value: 1 });
+    expect(second).toEqual({ value: 1 });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });
