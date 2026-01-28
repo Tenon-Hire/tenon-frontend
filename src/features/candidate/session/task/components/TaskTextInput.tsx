@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/components/ui/classnames';
+import type { MarkdownPreviewProps } from '@/components/ui/Markdown';
 
 const LazyMarkdownPreview = dynamic(
   () => import('@/components/ui/Markdown').then((m) => m.MarkdownPreview),
@@ -14,12 +15,8 @@ const LazyMarkdownPreview = dynamic(
   },
 );
 
-type PreviewProps = {
-  content: string | null | undefined;
-  emptyPlaceholder?: React.ReactNode;
-};
-
-let PreviewComponent: React.ComponentType<PreviewProps> = LazyMarkdownPreview;
+let PreviewComponent: React.ComponentType<MarkdownPreviewProps> =
+  LazyMarkdownPreview;
 if (process.env.NODE_ENV === 'test') {
   const mod =
     require('@/components/ui/Markdown') as typeof import('@/components/ui/Markdown'); // eslint-disable-line @typescript-eslint/no-require-imports

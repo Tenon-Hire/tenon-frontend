@@ -87,11 +87,9 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   const taskInFlightRef = useRef(false);
   const perfMarksRef = useRef<Record<string, number>>({});
-  const debugSessionRef = useRef(debugSession);
-  debugSessionRef.current = debugSession;
 
   const markStart = useCallback((label: string) => {
-    if (!debugSessionRef.current) return;
+    if (!debugSession) return;
     if (typeof performance === 'undefined' || !performance.now) return;
     const now = performance.now();
     perfMarksRef.current[label] = now;
@@ -102,7 +100,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   const markEnd = useCallback(
     (label: string, extra?: Record<string, unknown>) => {
-      if (!debugSessionRef.current) return;
+      if (!debugSession) return;
       if (typeof performance === 'undefined' || !performance.now) return;
       const start = perfMarksRef.current[label];
       const now = performance.now();
