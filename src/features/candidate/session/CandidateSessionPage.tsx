@@ -88,11 +88,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   const taskInFlightRef = useRef(false);
   const perfMarksRef = useRef<Record<string, number>>({});
   const debugSessionRef = useRef(debugSession);
-
-  useEffect(() => {
-    debugSessionRef.current = debugSession;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debugSession]);
+  debugSessionRef.current = debugSession;
 
   const markStart = useCallback((label: string) => {
     if (!debugSessionRef.current) return;

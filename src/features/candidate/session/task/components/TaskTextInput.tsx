@@ -14,12 +14,16 @@ const LazyMarkdownPreview = dynamic(
   },
 );
 
-let PreviewComponent: typeof LazyMarkdownPreview = LazyMarkdownPreview;
+type PreviewProps = {
+  content: string | null | undefined;
+  emptyPlaceholder?: React.ReactNode;
+};
+
+let PreviewComponent: React.ComponentType<PreviewProps> = LazyMarkdownPreview;
 if (process.env.NODE_ENV === 'test') {
-  import('@/components/ui/Markdown').then((mod) => {
-    PreviewComponent =
-      mod.MarkdownPreview as unknown as typeof LazyMarkdownPreview;
-  });
+  const mod =
+    require('@/components/ui/Markdown') as typeof import('@/components/ui/Markdown'); // eslint-disable-line @typescript-eslint/no-require-imports
+  PreviewComponent = mod.MarkdownPreview;
 }
 
 type TaskTextInputProps = {
