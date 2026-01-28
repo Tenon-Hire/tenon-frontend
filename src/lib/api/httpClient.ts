@@ -29,6 +29,75 @@ const BFF_CLIENT_OPTIONS: ApiClientOptions = {
   skipAuth: true,
 };
 
+const DEBUG_PERF =
+  (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase() === '1' ||
+  (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase() === 'true';
+
+function nowMs() {
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+const SENSITIVE_KEYS = ['token', 'authorization', 'secret', 'code', 'password'];
+
+function sanitizePath(url: string): string {
+  try {
+    const parsed = new URL(url, 'http://localhost');
+    const safePath = parsed.pathname
+      .split('/')
+      .map((segment, index) =>
+        index === 0 || segment.length <= 32 ? segment : '[id]',
+      )
+      .join('/');
+
+    const params = new URLSearchParams(parsed.search);
+    params.forEach((value, key) => {
+      const lower = key.toLowerCase();
+      if (SENSITIVE_KEYS.some((s) => lower.includes(s))) {
+        params.set(key, '[redacted]');
+        return;
+      }
+      if (value.length > 48) {
+        params.set(key, '[id]');
+      }
+    });
+    const qs = params.toString();
+    return qs ? `${safePath}?${qs}` : safePath;
+  } catch {
+    const [pathPart, queryPart] = url.split('?');
+    const safePath = pathPart
+      .split('/')
+      .map((segment, index) =>
+        index === 0 || segment.length <= 32 ? segment : '[id]',
+      )
+      .join('/');
+    if (!queryPart) return safePath;
+    const safeQuery = queryPart.replace(/[A-Za-z0-9_-]{48,}/g, '[id]');
+    return `${safePath}?${safeQuery}`;
+  }
+}
+
+function logRequestPerf(
+  method: HttpMethod,
+  targetUrl: string,
+  status: number | 'error' | 'network',
+  startedAt: number | null,
+  cacheMode?: RequestCache,
+) {
+  if (!DEBUG_PERF || startedAt === null) return;
+  const durationMs = Math.round(nowMs() - startedAt);
+  const safeUrl = sanitizePath(targetUrl);
+  const payload: Record<string, unknown> = {
+    status,
+    durationMs,
+  };
+  if (cacheMode) payload.cache = cacheMode;
+  // eslint-disable-next-line no-console
+  console.info(`[api][perf] ${method} ${safeUrl}`, payload);
+}
+
 function normalizeUrl(basePath: string, path: string): string {
   const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
   const p = path.startsWith('/') ? path : `/${path}`;
@@ -101,6 +170,8 @@ async function request<TResponse = unknown>(
   const basePath = clientOptions.basePath ?? DEFAULT_BASE_PATH;
   const targetUrl = normalizeUrl(basePath, path);
   const sameOrigin = isSameOriginRequest(targetUrl);
+  const startedAt = DEBUG_PERF ? nowMs() : null;
+  let status: number | 'error' | 'network' = 'error';
 
   const headers: Record<string, string> = {
     ...(options.headers ?? {}),
@@ -134,33 +205,47 @@ async function request<TResponse = unknown>(
   const credentials =
     options.credentials ?? (sameOrigin ? ('include' as const) : 'omit');
 
-  const response = await fetch(targetUrl, {
-    method: options.method ?? 'GET',
-    headers,
-    body:
-      options.body === undefined
-        ? undefined
-        : isFormData
-          ? (options.body as FormData)
-          : JSON.stringify(options.body),
-    credentials,
-    cache,
-    signal: options.signal,
-  });
+  try {
+    const response = await fetch(targetUrl, {
+      method: options.method ?? 'GET',
+      headers,
+      body:
+        options.body === undefined
+          ? undefined
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
+      credentials,
+      cache,
+      signal: options.signal,
+    });
+    status = response.status;
 
-  if (!response.ok) {
-    const errorBody = await parseResponseBody(response);
-    const error: ApiErrorShape = {
-      message: extractErrorMessage(errorBody, response.status),
-      status: response.status,
-      details: errorBody,
-    };
-    throw error;
+    if (!response.ok) {
+      const errorBody = await parseResponseBody(response);
+      const error: ApiErrorShape = {
+        message: extractErrorMessage(errorBody, response.status),
+        status: response.status,
+        details: errorBody,
+      };
+      throw error;
+    }
+
+    if (response.status === 204) return undefined as TResponse;
+
+    return (await parseResponseBody(response)) as TResponse;
+  } catch (err) {
+    status = (err as { status?: number })?.status ?? 'network';
+    throw err;
+  } finally {
+    logRequestPerf(
+      (options.method ?? 'GET') as HttpMethod,
+      targetUrl,
+      status,
+      startedAt,
+      cache,
+    );
   }
-
-  if (response.status === 204) return undefined as TResponse;
-
-  return (await parseResponseBody(response)) as TResponse;
 }
 
 function buildScopedClient(defaultOptions: ApiClientOptions) {

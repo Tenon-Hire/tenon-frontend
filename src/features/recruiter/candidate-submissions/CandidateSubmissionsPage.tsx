@@ -7,7 +7,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { MarkdownPreview } from '@/components/ui/Markdown';
+import { LazyMarkdownPreview } from '@/components/ui/LazyMarkdownPreview';
 import { StatusPill } from '@/components/ui/StatusPill';
 import type { CandidateSession } from '@/types/recruiter';
 import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
@@ -506,7 +506,7 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
             Text answer
           </div>
           <div className="max-h-[420px] overflow-auto rounded border border-gray-100 bg-gray-50 p-3">
-            <MarkdownPreview content={artifact.contentText} />
+            <LazyMarkdownPreview content={artifact.contentText} />
           </div>
         </div>
       ) : null}

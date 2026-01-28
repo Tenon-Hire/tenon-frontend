@@ -76,6 +76,11 @@ Client-safe:
 - Point to local backend: set `TENON_BACKEND_BASE_URL` and `NEXT_PUBLIC_TENON_API_BASE_URL` in `.env.local`.
 - Load test `/api/dashboard` locally (optional): `npm run loadtest:dashboard` (override with `LOADTEST_URL`, `LOADTEST_CONN`, `LOADTEST_DURATION`, `LOADTEST_COOKIE`, `LOADTEST_AUTH_HEADER` for authenticated calls; without auth you will mostly hit 401/403).
 
+## Performance Debugging
+
+- Set `NEXT_PUBLIC_TENON_DEBUG_PERF=1` to log Web Vitals (LCP/INP/CLS), navigation timings, client API request durations, and candidate UI marks (bootstrap/task fetch) to the browser console. Server routes still respect `TENON_DEBUG_PERF`.
+- API perf logs scrub auth headers and long IDs; keep the flag off in production unless diagnosing an issue.
+
 ## Security Notes
 
 - Client bundles should only read `NEXT_PUBLIC_*` env vars; keep secrets in `TENON_*` server-only vars.

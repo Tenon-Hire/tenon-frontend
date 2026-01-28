@@ -86,18 +86,56 @@ export default function CandidateSessionPage({ token }: { token: string }) {
   }>({ token: null, inFlight: false, done: false });
 
   const taskInFlightRef = useRef(false);
+  const perfMarksRef = useRef<Record<string, number>>({});
+
+  const markStart = useCallback(
+    (label: string) => {
+      if (!debugSession) return;
+      if (typeof performance === 'undefined' || !performance.now) return;
+      const now = performance.now();
+      perfMarksRef.current[label] = now;
+      try {
+        performance.mark(`${label}:start`);
+      } catch {}
+    },
+    [debugSession],
+  );
+
+  const markEnd = useCallback(
+    (label: string, extra?: Record<string, unknown>) => {
+      if (!debugSession) return;
+      if (typeof performance === 'undefined' || !performance.now) return;
+      const start = perfMarksRef.current[label];
+      const now = performance.now();
+      const payload =
+        typeof start === 'number'
+          ? { durationMs: Math.round(now - start), ...(extra ?? {}) }
+          : extra;
+      try {
+        performance.mark(`${label}:end`);
+        performance.measure(`${label}:duration`, `${label}:start`, `${label}:end`);
+      } catch {}
+      if (typeof start === 'number') {
+        // eslint-disable-next-line no-console
+        console.info(`[perf:ui] ${label}`, payload);
+      }
+    },
+    [debugSession],
+  );
 
   const fetchCurrentTask = useCallback(
     async (overrides?: {
       authToken?: string;
       candidateSessionId?: number;
-    }): Promise<void> => {
+    },
+    options?: { skipCache?: boolean }): Promise<void> => {
       const authToken = overrides?.authToken ?? state.token;
       const sessionId = overrides?.candidateSessionId ?? candidateSessionId;
       if (!authToken || !sessionId) return;
       if (taskInFlightRef.current) return;
 
       taskInFlightRef.current = true;
+      markStart('candidate:task:fetch');
       devDebug('task fetch start', {
         sessionId,
         token: authToken ? 'present' : 'missing',
@@ -106,17 +144,21 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       setTaskLoading();
 
       try {
-        const dto = await getCandidateCurrentTask(sessionId, authToken);
+        const dto = await getCandidateCurrentTask(sessionId, authToken, {
+          skipCache: options?.skipCache,
+        });
         setTaskLoaded({
           isComplete: Boolean(dto.isComplete),
           completedTaskIds: normalizeCompletedTaskIds(dto),
           currentTask: toTask(dto.currentTask),
         });
         devDebug('task fetch success', { sessionId });
+        markEnd('candidate:task:fetch', { sessionId, result: 'success' });
       } catch (err) {
         setErrorStatus(statusFromError(err));
         setTaskError(friendlyTaskError(err));
         devDebug('task fetch failed', err);
+        markEnd('candidate:task:fetch', { sessionId, result: 'error' });
         throw err;
       } finally {
         taskInFlightRef.current = false;
@@ -129,7 +171,14 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       setTaskLoaded,
       setTaskLoading,
       state.token,
+      markEnd,
+      markStart,
     ],
+  );
+
+  const refreshTask = useCallback(
+    (opts?: { skipCache?: boolean }) => fetchCurrentTask(undefined, opts),
+    [fetchCurrentTask],
   );
 
   const { submitting, handleSubmit } = useTaskSubmission({
@@ -138,7 +187,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
     currentTask: state.taskState.currentTask,
     clearTaskError,
     setTaskError,
-    refreshTask: fetchCurrentTask,
+    refreshTask,
   });
 
   useEffect(() => {
@@ -199,10 +248,13 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       setErrorMessage(null);
       setErrorStatus(null);
       setAuthMessage(null);
+      markStart('candidate:init');
       devDebug('init start', { token: initToken });
 
       try {
-        const resp = await resolveCandidateInviteToken(initToken, authToken);
+        const resp = await resolveCandidateInviteToken(initToken, authToken, {
+          skipCache: allowRetry,
+        });
         devDebug('bootstrap success', { sessionId: resp.candidateSessionId });
         setCandidateSessionId(resp.candidateSessionId);
         setBootstrap({
@@ -213,6 +265,14 @@ export default function CandidateSessionPage({ token }: { token: string }) {
         clearTaskError();
         setView('starting');
         initRef.current.done = true;
+        markEnd('candidate:init', { status: 'success' });
+        void fetchCurrentTask(
+          { authToken, candidateSessionId: resp.candidateSessionId },
+          { skipCache: false },
+        ).catch((err) => {
+          setErrorMessage(friendlyTaskError(err));
+          setView('error');
+        });
       } catch (err) {
         const status = statusFromError(err);
         if (status === 401) {
@@ -221,6 +281,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           setAuthMessage('Please sign in again.');
           setErrorStatus(status);
           setView('auth');
+          markEnd('candidate:init', { status: 'auth' });
           return;
         }
         if (status === 403) {
@@ -228,12 +289,14 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           setAuthMessage(friendlyBootstrapError(err));
           setErrorStatus(status);
           setView('auth');
+          markEnd('candidate:init', { status: 'forbidden' });
           return;
         }
         setErrorStatus(status);
         setErrorMessage(friendlyBootstrapError(err));
         setView('error');
         initRef.current.done = true;
+        markEnd('candidate:init', { status: 'error' });
       } finally {
         initRef.current.inFlight = false;
       }
@@ -244,6 +307,9 @@ export default function CandidateSessionPage({ token }: { token: string }) {
       setCandidateSessionId,
       setToken,
       state.token,
+      fetchCurrentTask,
+      markEnd,
+      markStart,
     ],
   );
 
@@ -558,7 +624,7 @@ export default function CandidateSessionPage({ token }: { token: string }) {
           {state.taskState.error}{' '}
           <button
             className="underline ml-2"
-            onClick={() => void fetchCurrentTask()}
+            onClick={() => void fetchCurrentTask(undefined, { skipCache: true })}
           >
             Retry
           </button>
@@ -623,7 +689,11 @@ export default function CandidateSessionPage({ token }: { token: string }) {
             invite.
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => void fetchCurrentTask()}>Retry</Button>
+            <Button
+              onClick={() => void fetchCurrentTask(undefined, { skipCache: true })}
+            >
+              Retry
+            </Button>
             <Button
               variant="secondary"
               onClick={() => router.push('/candidate/dashboard')}

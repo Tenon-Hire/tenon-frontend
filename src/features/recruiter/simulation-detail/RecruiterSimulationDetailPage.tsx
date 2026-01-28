@@ -452,6 +452,7 @@ export default function RecruiterSimulationDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<CandidateSession[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
   const [simulationTemplateKey, setSimulationTemplateKey] = useState<
     string | null
   >(null);
@@ -509,6 +510,7 @@ export default function RecruiterSimulationDetailPage() {
     setSimulationPlan(null);
     setPlanLoading(true);
     setPlanError(null);
+    setPage(1);
   }, [simulationId]);
 
   useEffect(() => {
@@ -733,6 +735,28 @@ export default function RecruiterSimulationDetailPage() {
       );
     });
   }, [candidates, searchQuery]);
+
+  const pageSize = 25;
+  const pageCount = useMemo(
+    () => Math.max(1, Math.ceil(visibleCandidates.length / pageSize)),
+    [pageSize, visibleCandidates.length],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, candidates.length]);
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const pagedCandidates = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return visibleCandidates.slice(start, end);
+  }, [page, pageSize, visibleCandidates]);
 
   const updateRowState = useCallback(
     (
@@ -1381,8 +1405,34 @@ export default function RecruiterSimulationDetailPage() {
                   className="mt-1"
                 />
               </div>
-              <div className="text-xs text-gray-500">
-                Showing {visibleCandidates.length} of {candidates.length}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                <span>
+                  Showing {pagedCandidates.length} of {visibleCandidates.length}{' '}
+                  (total {candidates.length})
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page <= 1}
+                  >
+                    Prev
+                  </Button>
+                  <span className="min-w-[70px] text-center text-gray-600">
+                    Page {page} / {pageCount}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      setPage((prev) => Math.min(pageCount, prev + 1))
+                    }
+                    disabled={page >= pageCount}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -1406,7 +1456,7 @@ export default function RecruiterSimulationDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {visibleCandidates.map((c) => {
+                {pagedCandidates.map((c) => {
                   const display = c.candidateName || c.inviteEmail || 'Unnamed';
                   const rowState =
                     rowStates[candidateKey(c.candidateSessionId)] ?? {};

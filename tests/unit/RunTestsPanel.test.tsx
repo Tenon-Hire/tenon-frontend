@@ -104,6 +104,42 @@ describe('RunTestsPanel', () => {
     expect(screen.getByRole('button', { name: /re-run tests/i })).toBeEnabled();
   });
 
+  it('stops polling once a terminal status is reached', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'stop-loop' });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValueOnce({ ...baseResult, status: 'running' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={500} />,
+    );
+
+    await user.click(getTestsButton());
+
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
+    });
+
+    expect(onPoll).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+      await Promise.resolve();
+    });
+
+    expect(onPoll).toHaveBeenCalledTimes(2);
+  });
+
   it('prevents duplicate runs while running and allows retry after failure', async () => {
     useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });

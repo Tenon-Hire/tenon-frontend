@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { cn } from './classnames';
 
-type MarkdownPreviewProps = {
+export type MarkdownPreviewProps = {
   content: string | null | undefined;
   className?: string;
   emptyPlaceholder?: ReactNode;

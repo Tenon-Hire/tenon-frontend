@@ -82,6 +82,7 @@ export function RunTestsPanel({
   const currentRunIdRef = useRef<string | null>(null);
 
   const pollTimerRef = useRef<number | null>(null);
+  const pollRunIdRef = useRef<string | null>(null);
   const pendingPollRef = useRef<{ attempt: number; runId: string } | null>(
     null,
   );
@@ -92,6 +93,7 @@ export function RunTestsPanel({
       window.clearTimeout(pollTimerRef.current);
       pollTimerRef.current = null;
     }
+    pollRunIdRef.current = null;
   }, []);
 
   useEffect(() => clearTimer, [clearTimer]);
@@ -174,6 +176,13 @@ export function RunTestsPanel({
 
       try {
         if (
+          currentRunIdRef.current &&
+          currentRunIdRef.current !== id &&
+          runLockRef.current
+        ) {
+          return;
+        }
+        if (
           maxDurationMs > 0 &&
           runStartRef.current !== null &&
           Date.now() - runStartRef.current > maxDurationMs
@@ -198,6 +207,7 @@ export function RunTestsPanel({
           }
           pendingPollRef.current = null;
           clearTimer();
+          pollRunIdRef.current = id;
           pollTimerRef.current = window.setTimeout(
             () => void pollRun(attempt + 1, id),
             resolvePollDelay(attempt + 1),
@@ -238,6 +248,7 @@ export function RunTestsPanel({
       if (!pending) return;
       pendingPollRef.current = null;
       clearTimer();
+      pollRunIdRef.current = pending.runId;
       pollTimerRef.current = window.setTimeout(
         () => void pollRun(pending.attempt, pending.runId),
         resolvePollDelay(pending.attempt),
@@ -282,6 +293,7 @@ export function RunTestsPanel({
         }
       }
       pendingPollRef.current = null;
+      pollRunIdRef.current = res.runId;
       pollTimerRef.current = window.setTimeout(
         () => void pollRun(0, res.runId),
         resolvePollDelay(0),
@@ -446,6 +458,7 @@ export function RunTestsPanel({
     }
     pendingPollRef.current = null;
     clearTimer();
+    pollRunIdRef.current = storedId;
     pollTimerRef.current = window.setTimeout(
       () => void pollRun(0, storedId),
       resolvePollDelay(0),
