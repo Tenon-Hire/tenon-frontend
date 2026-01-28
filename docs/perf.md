@@ -34,7 +34,7 @@
 
 ## Bundle sizes (route-level JS, client chunk only)
 
-Measured via `.next/static/chunks/app/.../page-*.js` (KB, rounded).
+Approximate, from `.next/static/chunks/app/.../page-*.js` (KB, rounded). For source of truth, run `npm run analyze` and open `.next/analyze/client.html`.
 
 | Route                           | Baseline (before PR) | After (this PR) | Notes                                                                                           |
 | ------------------------------- | -------------------- | --------------- | ----------------------------------------------------------------------------------------------- |

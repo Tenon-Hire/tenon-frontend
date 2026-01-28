@@ -270,7 +270,9 @@ async function request<TResponse = unknown>(
   const method = (options.method ?? 'GET') as HttpMethod;
   const isGet = method === 'GET';
   const skipCache = options.skipCache === true;
-  const dedupeEnabled = isGet && options.disableDedupe !== true && !skipCache;
+  const isBrowser = typeof window !== 'undefined';
+  const dedupeEnabled =
+    isBrowser && isGet && options.disableDedupe !== true && !skipCache;
   const cacheKey =
     dedupeEnabled && isGet
       ? buildCacheKey(
@@ -286,7 +288,7 @@ async function request<TResponse = unknown>(
       : DEFAULT_CACHE_TTL_MS;
 
   if (cacheKey && !skipCache) {
-    if (cacheTtlMs > 0) {
+    if (isBrowser && cacheTtlMs > 0) {
       const cached = getCachedResponse<TResponse>(cacheKey);
       if (cached !== null) {
         logRequestPerf(method, targetUrl, 'cache', startedAt, 'memory');
@@ -330,7 +332,13 @@ async function request<TResponse = unknown>(
       if (response.status === 204) return undefined as TResponse;
 
       const parsed = (await parseResponseBody(response)) as TResponse;
-      if (cacheKey && dedupeEnabled && !skipCache && cacheTtlMs > 0) {
+      if (
+        cacheKey &&
+        dedupeEnabled &&
+        isBrowser &&
+        !skipCache &&
+        cacheTtlMs > 0
+      ) {
         setCachedResponse(cacheKey, parsed, cacheTtlMs);
       }
       return parsed;
