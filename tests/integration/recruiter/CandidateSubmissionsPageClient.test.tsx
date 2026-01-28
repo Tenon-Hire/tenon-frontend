@@ -235,4 +235,85 @@ describe('CandidateSubmissionsPage', () => {
       ]),
     );
   });
+
+  it('shows empty state when no submissions exist', async () => {
+    const getMock = recruiterBffClient.get as jest.Mock;
+    getMock.mockImplementation((path: string) => {
+      if (path.includes('/simulations/sim-1/candidates')) {
+        return Promise.resolve([
+          {
+            candidateSessionId: 900,
+            inviteEmail: 'empty@example.com',
+            candidateName: 'Empty',
+            status: 'not_started',
+            startedAt: null,
+            completedAt: null,
+            hasReport: false,
+          },
+        ]);
+      }
+      if (path.includes('/submissions?candidateSessionId=900')) {
+        return Promise.resolve({ items: [] });
+      }
+      throw new Error(`Unexpected path ${path}`);
+    });
+
+    render(<CandidateSubmissionsPage />);
+
+    expect(await screen.findByText(/No submissions yet/i)).toBeInTheDocument();
+  });
+
+  it('surfaces submissions list errors', async () => {
+    const getMock = recruiterBffClient.get as jest.Mock;
+    getMock.mockImplementation((path: string) => {
+      if (path.includes('/simulations/sim-1/candidates')) {
+        return Promise.resolve([
+          {
+            candidateSessionId: 900,
+            inviteEmail: 'err@example.com',
+            candidateName: 'Err',
+            status: 'completed',
+            startedAt: '2025-01-01T12:00:00Z',
+            completedAt: '2025-01-02T12:00:00Z',
+            hasReport: false,
+          },
+        ]);
+      }
+      if (path.includes('/submissions?candidateSessionId=900')) {
+        return Promise.reject(new Error('Detailed failure'));
+      }
+      throw new Error(`Unexpected path ${path}`);
+    });
+
+    render(<CandidateSubmissionsPage />);
+
+    expect(await screen.findByText('Detailed failure')).toBeInTheDocument();
+  });
+
+  it('surfaces network rejection errors gracefully', async () => {
+    const getMock = recruiterBffClient.get as jest.Mock;
+    getMock.mockImplementation((path: string) => {
+      if (path.includes('/simulations/sim-1/candidates')) {
+        return Promise.resolve([
+          {
+            candidateSessionId: 900,
+            inviteEmail: 'net@example.com',
+            candidateName: 'Net',
+            status: 'completed',
+            startedAt: '2025-01-01T12:00:00Z',
+            completedAt: '2025-01-02T12:00:00Z',
+            hasReport: false,
+          },
+        ]);
+      }
+      if (path.includes('/submissions?candidateSessionId=900')) {
+        return Promise.reject(new Error('network rejection'));
+      }
+      throw new Error(`Unexpected path ${path}`);
+    });
+
+    render(<CandidateSubmissionsPage />);
+
+    expect(await screen.findByText(/network rejection/i)).toBeInTheDocument();
+  });
 });

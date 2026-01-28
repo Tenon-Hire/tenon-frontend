@@ -566,7 +566,13 @@ export default function RecruiterSimulationDetailPage() {
             ? (e as { details?: unknown }).details
             : null;
 
-        if (status === 401 || status === 403) {
+        if (status === 401 && typeof window !== 'undefined') {
+          const returnTo = buildReturnTo();
+          const destination = buildLoginUrl('recruiter', returnTo);
+          window.location.assign(destination);
+          return;
+        }
+        if (status === 403) {
           setError('You are not authorized to view candidates.');
           return;
         }

@@ -84,6 +84,9 @@ export function useDashboardData(options?: Options) {
         }
         return parsed;
       } catch (caught: unknown) {
+        if (isAbortError(caught)) {
+          throw caught;
+        }
         const status =
           caught && typeof caught === 'object'
             ? (caught as { status?: unknown }).status

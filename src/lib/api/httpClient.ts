@@ -33,7 +33,7 @@ const BFF_CLIENT_OPTIONS: ApiClientOptions = {
   skipAuth: true,
 };
 
-const DEFAULT_CACHE_TTL_MS = 8000;
+const DEFAULT_CACHE_TTL_MS = 0;
 const MAX_CACHE_TTL_MS = 15000;
 const MAX_CACHE_ENTRIES = 150;
 
@@ -286,10 +286,12 @@ async function request<TResponse = unknown>(
       : DEFAULT_CACHE_TTL_MS;
 
   if (cacheKey && !skipCache) {
-    const cached = getCachedResponse<TResponse>(cacheKey);
-    if (cached !== null) {
-      logRequestPerf(method, targetUrl, 'cache', startedAt, 'memory');
-      return Promise.resolve(cached);
+    if (cacheTtlMs > 0) {
+      const cached = getCachedResponse<TResponse>(cacheKey);
+      if (cached !== null) {
+        logRequestPerf(method, targetUrl, 'cache', startedAt, 'memory');
+        return Promise.resolve(cached);
+      }
     }
     const inflight = inflightRequests.get(cacheKey);
     if (inflight) {
@@ -346,13 +348,9 @@ async function request<TResponse = unknown>(
     if (cacheKey && dedupeEnabled) {
       inflightRequests.delete(cacheKey);
     }
-    logRequestPerf(
-      method,
-      targetUrl,
-      status,
-      startedAt,
-      cache ?? (cacheKey ? 'memory' : undefined),
-    );
+    const cacheLabel =
+      cache ?? (cacheKey && cacheTtlMs > 0 ? 'memory' : undefined);
+    logRequestPerf(method, targetUrl, status, startedAt, cacheLabel);
   }
 }
 

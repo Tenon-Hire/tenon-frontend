@@ -193,8 +193,8 @@ describe('useDashboardData', () => {
     await waitFor(() =>
       expect(screen.getByTestId('profile-loading').textContent).toBe('false'),
     );
-    expect(screen.getByTestId('profile-error').textContent).toBe('Aborted');
-    expect(screen.getByTestId('sim-error').textContent).toBe('Aborted');
+    expect(screen.getByTestId('profile-error').textContent).toBe('');
+    expect(screen.getByTestId('sim-error').textContent).toBe('');
   });
 
   it('skips fetch on mount when fetchOnMount is false', async () => {
