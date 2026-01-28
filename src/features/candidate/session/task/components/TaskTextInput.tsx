@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/components/ui/classnames';
-import { MarkdownPreview } from '@/components/ui/Markdown';
 
 const LazyMarkdownPreview = dynamic(
   () => import('@/components/ui/Markdown').then((m) => m.MarkdownPreview),
@@ -15,8 +14,13 @@ const LazyMarkdownPreview = dynamic(
   },
 );
 
-const PreviewComponent =
-  process.env.NODE_ENV === 'test' ? MarkdownPreview : LazyMarkdownPreview;
+let PreviewComponent: typeof LazyMarkdownPreview = LazyMarkdownPreview;
+if (process.env.NODE_ENV === 'test') {
+  import('@/components/ui/Markdown').then((mod) => {
+    PreviewComponent =
+      mod.MarkdownPreview as unknown as typeof LazyMarkdownPreview;
+  });
+}
 
 type TaskTextInputProps = {
   value: string;

@@ -91,7 +91,8 @@ export default function CandidateSessionPage({ token }: { token: string }) {
 
   useEffect(() => {
     debugSessionRef.current = debugSession;
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debugSession]);
 
   const markStart = useCallback((label: string) => {
     if (!debugSessionRef.current) return;
