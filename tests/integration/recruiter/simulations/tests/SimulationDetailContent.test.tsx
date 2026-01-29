@@ -9,6 +9,8 @@ import {
   jsonResponse,
   textResponse,
 } from '../../../../setup/responseHelpers';
+import { __resetCandidateCache } from '@/lib/api/recruiter';
+import { __resetHttpClientCache } from '@/lib/api/httpClient';
 
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -67,6 +69,8 @@ const simulationDetailResponse = () =>
 
 describe('RecruiterSimulationDetailPage', () => {
   beforeEach(() => {
+    __resetCandidateCache();
+    __resetHttpClientCache();
     setMockParams({ id: '1' });
 
     const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
@@ -199,18 +203,26 @@ describe('RecruiterSimulationDetailPage', () => {
     const searchInput = screen.getByLabelText(/search candidates/i);
     await user.type(searchInput, 'jane');
     expect(screen.getByTestId('candidate-row-2')).toBeInTheDocument();
-    expect(screen.queryByTestId('candidate-row-3')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('candidate-row-3')).not.toBeInTheDocument(),
+    );
 
     await user.clear(searchInput);
     await user.type(searchInput, 'bob@example.com');
-    expect(screen.getByTestId('candidate-row-3')).toBeInTheDocument();
-    expect(screen.queryByTestId('candidate-row-2')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('candidate-row-3')).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('candidate-row-2')).not.toBeInTheDocument(),
+    );
 
     await user.clear(searchInput);
     await user.type(searchInput, 'nomatch');
-    expect(
-      screen.getByText('No candidates match your search.'),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByText('No candidates match your search.'),
+      ).toBeInTheDocument(),
+    );
   });
 
   it('renders the generated simulation plan with tasks and repo status', async () => {

@@ -1,16 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import Button from '@/components/ui/Button';
 import { CandidateStatusPill } from '@/features/recruiter/components/CandidateStatusPill';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { MarkdownPreview } from '@/components/ui/Markdown';
 import { StatusPill } from '@/components/ui/StatusPill';
 import type { CandidateSession } from '@/types/recruiter';
 import { errorDetailEnabled, toUserMessage } from '@/lib/utils/errors';
+import { listSimulationCandidates } from '@/lib/api/recruiter';
+import { recruiterBffClient } from '@/lib/api/httpClient';
 
 type SubmissionListItem = {
   submissionId: number;
@@ -81,6 +83,16 @@ type SubmissionArtifact = {
   submittedAt: string;
 };
 
+const MarkdownPreviewLazy = dynamic(
+  () => import('@/components/ui/Markdown').then((mod) => mod.MarkdownPreview),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-4 w-28 animate-pulse rounded bg-gray-200" />
+    ),
+  },
+);
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return null;
   const date = new Date(value);
@@ -125,6 +137,47 @@ function deriveRepoInfo(artifact: SubmissionArtifact) {
     repoUrl,
     repoFullName,
   };
+}
+
+async function fetchArtifactsWithLimit(
+  ids: number[],
+  options: {
+    signal?: AbortSignal;
+    skipCache?: boolean;
+    cacheTtlMs?: number;
+    concurrency?: number;
+  },
+): Promise<Record<number, SubmissionArtifact>> {
+  if (!ids.length) return {};
+  const results: Record<number, SubmissionArtifact> = {};
+  const limit = Math.max(1, Math.min(options.concurrency ?? 4, 12));
+  let index = 0;
+
+  const worker = async () => {
+    while (index < ids.length) {
+      const current = ids[index];
+      index += 1;
+      try {
+        const artifact = await recruiterBffClient.get<SubmissionArtifact>(
+          `/submissions/${current}`,
+          {
+            cache: 'no-store',
+            signal: options.signal,
+            skipCache: options.skipCache,
+            cacheTtlMs: options.cacheTtlMs ?? 10000,
+            dedupeKey: `submission-${current}`,
+          },
+        );
+        results[current] = artifact;
+      } catch {}
+    }
+  };
+
+  const workers = Array.from({ length: Math.min(limit, ids.length) }).map(() =>
+    worker(),
+  );
+  await Promise.all(workers);
+  return results;
 }
 
 type StatusTone = 'info' | 'success' | 'warning' | 'muted';
@@ -441,6 +494,14 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
     artifact.code?.repoFullName ??
     null;
   const showGithub = shouldShowGithubSection(artifact);
+  const [expanded, setExpanded] = useState(false);
+  const hasContentText = hasContent(artifact.contentText);
+  const previewText = hasContentText
+    ? (artifact.contentText as string).slice(0, 320)
+    : '';
+  const canToggleText =
+    hasContentText &&
+    (artifact.contentText as string).length > previewText.length;
 
   return (
     <div className="rounded border border-gray-200 bg-white p-4">
@@ -500,14 +561,32 @@ export function ArtifactCard({ artifact }: { artifact: SubmissionArtifact }) {
         </div>
       ) : null}
 
-      {artifact.contentText ? (
+      {hasContentText ? (
         <div className="mt-3">
           <div className="mb-1 text-xs font-medium text-gray-600">
             Text answer
           </div>
           <div className="max-h-[420px] overflow-auto rounded border border-gray-100 bg-gray-50 p-3">
-            <MarkdownPreview content={artifact.contentText} />
+            {expanded ? (
+              <MarkdownPreviewLazy content={artifact.contentText as string} />
+            ) : (
+              <div className="whitespace-pre-wrap text-sm text-gray-900">
+                {previewText}
+                {canToggleText ? '…' : ''}
+              </div>
+            )}
           </div>
+          {canToggleText ? (
+            <div className="mt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setExpanded((prev) => !prev)}
+              >
+                {expanded ? 'Collapse' : 'Expand'}
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -538,115 +617,205 @@ export default function CandidateSubmissionsPage() {
     Record<number, SubmissionArtifact>
   >({});
   const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 8;
+  const artifactsRef = useRef<Record<number, SubmissionArtifact>>({});
+  const currentRequestRef = useRef<AbortController | null>(null);
+  const pageRequestRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+  const pageRequestIdRef = useRef(0);
+  const showAllRef = useRef(false);
   const statusDisplay = candidate?.status ?? null;
 
-  const loadSubmissions = useCallback((): (() => void) => {
-    let cancelled = false;
+  useEffect(() => {
+    artifactsRef.current = artifacts;
+  }, [artifacts]);
 
-    async function run() {
-      try {
-        setLoading(true);
-        setError(null);
+  useEffect(() => {
+    showAllRef.current = showAll;
+  }, [showAll]);
 
-        if (!candidateSessionKey || !/^\d+$/.test(candidateSessionKey)) {
-          throw new Error('Invalid candidate id.');
-        }
+  const loadSubmissions = useCallback(
+    (opts?: { skipCache?: boolean }): (() => void) => {
+      currentRequestRef.current?.abort();
+      pageRequestRef.current?.abort();
+      const controller = new AbortController();
+      currentRequestRef.current = controller;
+      const requestId = ++requestIdRef.current;
+      let candidateVerified = false;
 
-        const candRes = await fetch(
-          `/api/simulations/${simulationId}/candidates`,
-          { method: 'GET', cache: 'no-store' },
-        );
+      async function run() {
+        try {
+          setLoading(true);
+          setError(null);
 
-        if (!candRes.ok) {
-          const candParsed: unknown = await candRes.json().catch(() => null);
-          throw new Error(
-            toUserMessage(candParsed, 'Unable to verify candidate access.', {
+          if (!candidateSessionKey || !/^\d+$/.test(candidateSessionKey)) {
+            throw new Error('Invalid candidate id.');
+          }
+
+          if (opts?.skipCache) {
+            setArtifacts({});
+          }
+
+          const candidatesPromise = listSimulationCandidates(simulationId, {
+            skipCache: opts?.skipCache,
+            signal: controller.signal,
+            cacheTtlMs: 9000,
+          });
+          const candArr = await candidatesPromise;
+          if (controller.signal.aborted || requestIdRef.current !== requestId)
+            return;
+
+          const found =
+            candArr.find(
+              (c) => String(c.candidateSessionId) === candidateSessionKey,
+            ) ?? null;
+          if (!found) {
+            throw new Error('Candidate not found for this simulation.');
+          }
+          candidateVerified = true;
+          setCandidate(found);
+
+          const listJson = await recruiterBffClient.get<SubmissionListResponse>(
+            `/submissions?candidateSessionId=${encodeURIComponent(
+              candidateSessionKey,
+            )}`,
+            {
+              cache: 'no-store',
+              signal: controller.signal,
+              skipCache: opts?.skipCache,
+              cacheTtlMs: 9000,
+            },
+          );
+          if (controller.signal.aborted || requestIdRef.current !== requestId)
+            return;
+
+          const ordered = [...(listJson.items ?? [])].sort(
+            (a, b) => a.dayIndex - b.dayIndex,
+          );
+          setItems(ordered);
+          setPage(1);
+
+          if (ordered.length === 0) {
+            setArtifacts({});
+            return;
+          }
+
+          const pickLatest = (day: number) => {
+            const candidates = ordered.filter(
+              (it) => Number(it.dayIndex) === day,
+            );
+            if (!candidates.length) return null;
+            let best: SubmissionListItem | null = null;
+            for (const cand of candidates) {
+              const ts = Date.parse(cand.submittedAt ?? '');
+              const candTs = Number.isNaN(ts) ? null : ts;
+              const bestTs =
+                best && !Number.isNaN(Date.parse(best.submittedAt))
+                  ? Date.parse(best.submittedAt)
+                  : null;
+
+              if (!best) {
+                best = cand;
+                continue;
+              }
+              if (candTs !== null && bestTs !== null && candTs > bestTs) {
+                best = cand;
+                continue;
+              }
+              if (candTs !== null && bestTs === null) {
+                best = cand;
+                continue;
+              }
+              if (
+                candTs === null &&
+                bestTs === null &&
+                cand.submissionId > best.submissionId
+              ) {
+                best = cand;
+              }
+            }
+            return best;
+          };
+
+          const latestIds: number[] = [];
+          const latest2 = pickLatest(2);
+          const latest3 = pickLatest(3);
+          if (latest2) latestIds.push(latest2.submissionId);
+          if (latest3) latestIds.push(latest3.submissionId);
+
+          const initialPageIds = showAllRef.current
+            ? ordered.slice(0, PAGE_SIZE).map((it) => it.submissionId)
+            : [];
+
+          const idsToFetch = Array.from(
+            new Set([...latestIds, ...initialPageIds]),
+          );
+
+          if (idsToFetch.length) {
+            const fetched = await fetchArtifactsWithLimit(idsToFetch, {
+              signal: controller.signal,
+              skipCache: opts?.skipCache,
+              cacheTtlMs: 10000,
+            });
+            if (controller.signal.aborted || requestIdRef.current !== requestId)
+              return;
+            setArtifacts((prev) => {
+              const next = { ...prev, ...fetched };
+              artifactsRef.current = next;
+              return next;
+            });
+          }
+        } catch (e: unknown) {
+          if (controller.signal.aborted || requestIdRef.current !== requestId) {
+            return;
+          }
+
+          const status =
+            e && typeof e === 'object' && 'status' in (e as object)
+              ? (e as { status?: unknown }).status
+              : null;
+
+          if (!candidateVerified) {
+            const message =
+              e instanceof Error && e.message
+                ? e.message
+                : toUserMessage(e, 'Request failed', {
+                    includeDetail,
+                  });
+            setCandidate(null);
+            setItems([]);
+            setArtifacts({});
+            setError(
+              typeof status === 'number' && status >= 500
+                ? 'Unable to verify candidate access.'
+                : message,
+            );
+            return;
+          }
+
+          setError(
+            toUserMessage(e, 'Request failed', {
               includeDetail,
             }),
           );
+        } finally {
+          if (
+            requestIdRef.current === requestId &&
+            !controller.signal.aborted
+          ) {
+            setLoading(false);
+          }
         }
-
-        const candArr = (await candRes.json()) as CandidateSession[];
-        const found =
-          candArr.find(
-            (c) => String(c.candidateSessionId) === candidateSessionKey,
-          ) ?? null;
-        if (!found) {
-          throw new Error('Candidate not found for this simulation.');
-        }
-        if (!cancelled) setCandidate(found);
-
-        const listRes = await fetch(
-          `/api/submissions?candidateSessionId=${encodeURIComponent(
-            candidateSessionKey,
-          )}`,
-          { method: 'GET', cache: 'no-store' },
-        );
-
-        if (!listRes.ok) {
-          const maybeJson: unknown = await listRes.json().catch(() => null);
-          const fallbackText = await listRes.text().catch(() => '');
-          const msg =
-            maybeJson !== null
-              ? toUserMessage(maybeJson, 'Request failed', {
-                  includeDetail,
-                })
-              : fallbackText;
-          throw new Error(
-            msg || `Failed to load submissions (${listRes.status})`,
-          );
-        }
-
-        const listJson = (await listRes.json()) as SubmissionListResponse;
-        const ordered = [...(listJson.items ?? [])].sort(
-          (a, b) => a.dayIndex - b.dayIndex,
-        );
-        if (!cancelled) setItems(ordered);
-
-        if (ordered.length === 0) {
-          if (!cancelled) setArtifacts({});
-          return;
-        }
-
-        const results = await Promise.all(
-          ordered.map(async (s) => {
-            const r = await fetch(`/api/submissions/${s.submissionId}`, {
-              method: 'GET',
-              cache: 'no-store',
-            });
-            if (!r.ok) return null;
-            const a = (await r.json()) as SubmissionArtifact;
-            return a;
-          }),
-        );
-
-        const map: Record<number, SubmissionArtifact> = {};
-        for (const a of results) {
-          if (!a) continue;
-          map[a.submissionId] = a;
-        }
-        if (!cancelled) setArtifacts(map);
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setCandidate(null);
-          setItems([]);
-          setArtifacts({});
-          setError(
-            toUserMessage(e, 'Request failed', {
-              includeDetail: includeDetail,
-            }),
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
-    }
 
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [simulationId, candidateSessionKey, includeDetail]);
+      void run();
+      return () => {
+        controller.abort();
+      };
+    },
+    [simulationId, candidateSessionKey, includeDetail, PAGE_SIZE],
+  );
 
   useEffect(() => {
     const cancel = loadSubmissions();
@@ -723,6 +892,61 @@ export default function CandidateSubmissionsPage() {
     : null;
   const hasLatest = Boolean(latestDay2Item || latestDay3Item);
 
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(items.length / PAGE_SIZE)),
+    [PAGE_SIZE, items.length],
+  );
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    if (!showAll) return;
+    setPage(1);
+  }, [showAll]);
+
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    return items.slice(start, end);
+  }, [items, page, PAGE_SIZE]);
+
+  useEffect(() => {
+    if (!showAll) {
+      pageRequestRef.current?.abort();
+      return;
+    }
+    const missingIds = pagedItems
+      .map((it) => it.submissionId)
+      .filter((id) => !artifactsRef.current[id]);
+    if (!missingIds.length) return;
+
+    pageRequestRef.current?.abort();
+    const controller = new AbortController();
+    pageRequestRef.current = controller;
+    const requestId = ++pageRequestIdRef.current;
+
+    fetchArtifactsWithLimit(missingIds, {
+      signal: controller.signal,
+      cacheTtlMs: 10000,
+    })
+      .then((fetched) => {
+        if (controller.signal.aborted || pageRequestIdRef.current !== requestId)
+          return;
+        setArtifacts((prev) => {
+          const next = { ...prev, ...fetched };
+          artifactsRef.current = next;
+          return next;
+        });
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [showAll, pagedItems]);
+
   return (
     <div className="flex flex-col gap-4 py-8">
       <div className="flex items-center justify-between gap-4">
@@ -759,7 +983,7 @@ export default function CandidateSubmissionsPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => void loadSubmissions()}
+              onClick={() => void loadSubmissions({ skipCache: true })}
             >
               Retry
             </Button>
@@ -778,7 +1002,7 @@ export default function CandidateSubmissionsPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => void loadSubmissions()}
+              onClick={() => void loadSubmissions({ skipCache: true })}
             >
               Refresh
             </Button>
@@ -852,22 +1076,55 @@ export default function CandidateSubmissionsPage() {
               </Button>
             </div>
             {showAll ? (
-              <div className="mt-3 flex flex-col gap-3">
-                {items.map((it) => {
-                  const artifact = artifacts[it.submissionId];
-                  return artifact ? (
-                    <ArtifactCard key={it.submissionId} artifact={artifact} />
-                  ) : (
-                    <div
-                      key={it.submissionId}
-                      className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
+              <>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+                  <span>
+                    Showing{' '}
+                    {items.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
+                    {Math.min(items.length, page * PAGE_SIZE)} of {items.length}{' '}
+                    submissions
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
                     >
-                      Day {it.dayIndex} ({it.type}) — submission #
-                      {it.submissionId} content not available.
-                    </div>
-                  );
-                })}
-              </div>
+                      Previous
+                    </Button>
+                    <span className="text-gray-700">
+                      Page {page} / {totalPages}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        setPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={page >= totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col gap-3">
+                  {pagedItems.map((it) => {
+                    const artifact = artifacts[it.submissionId];
+                    return artifact ? (
+                      <ArtifactCard key={it.submissionId} artifact={artifact} />
+                    ) : (
+                      <div
+                        key={it.submissionId}
+                        className="rounded border border-gray-200 bg-white p-4 text-sm text-gray-700"
+                      >
+                        Day {it.dayIndex} ({it.type}) — submission #
+                        {it.submissionId} content not available.
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
               <div className="mt-2 text-sm text-gray-600">
                 Submission list collapsed for brevity.

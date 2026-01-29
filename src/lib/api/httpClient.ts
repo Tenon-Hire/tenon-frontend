@@ -20,6 +20,10 @@ type RequestOptions = {
   cache?: RequestCache;
   credentials?: RequestCredentials;
   signal?: AbortSignal;
+  skipCache?: boolean;
+  cacheTtlMs?: number;
+  dedupeKey?: string;
+  disableDedupe?: boolean;
 };
 
 const DEFAULT_BASE_PATH =
@@ -28,6 +32,133 @@ const BFF_CLIENT_OPTIONS: ApiClientOptions = {
   basePath: '/api',
   skipAuth: true,
 };
+
+const DEFAULT_CACHE_TTL_MS = 0;
+const MAX_CACHE_TTL_MS = 15000;
+const MAX_CACHE_ENTRIES = 150;
+
+const DEBUG_PERF =
+  (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase() === '1' ||
+  (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase() === 'true';
+
+type CacheEntry = { data: unknown; expiresAt: number };
+const responseCache = new Map<string, CacheEntry>();
+const inflightRequests = new Map<string, Promise<unknown>>();
+export function __resetHttpClientCache() {
+  responseCache.clear();
+  inflightRequests.clear();
+}
+
+function nowMs() {
+  if (
+    typeof performance !== 'undefined' &&
+    typeof performance.now === 'function'
+  ) {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+const SENSITIVE_KEYS = ['token', 'authorization', 'secret', 'code', 'password'];
+
+function sanitizePath(url: string): string {
+  try {
+    const parsed = new URL(url, 'http://localhost');
+    const safePath = parsed.pathname
+      .split('/')
+      .map((segment, index) =>
+        index === 0 || segment.length <= 32 ? segment : '[id]',
+      )
+      .join('/');
+
+    const params = new URLSearchParams(parsed.search);
+    params.forEach((value, key) => {
+      const lower = key.toLowerCase();
+      if (SENSITIVE_KEYS.some((s) => lower.includes(s))) {
+        params.set(key, '[redacted]');
+        return;
+      }
+      if (value.length > 48) {
+        params.set(key, '[id]');
+      }
+    });
+    const qs = params.toString();
+    return qs ? `${safePath}?${qs}` : safePath;
+  } catch {
+    const [pathPart, queryPart] = url.split('?');
+    const safePath = pathPart
+      .split('/')
+      .map((segment, index) =>
+        index === 0 || segment.length <= 32 ? segment : '[id]',
+      )
+      .join('/');
+    if (!queryPart) return safePath;
+    const safeQuery = queryPart.replace(/[A-Za-z0-9_-]{48,}/g, '[id]');
+    return `${safePath}?${safeQuery}`;
+  }
+}
+
+function normalizeForCache(targetUrl: string): string {
+  try {
+    const parsed = new URL(targetUrl, 'http://localhost');
+    parsed.hash = '';
+    const params = new URLSearchParams(parsed.search);
+    params.sort();
+    const qs = params.toString();
+    return `${parsed.origin}${parsed.pathname}${qs ? `?${qs}` : ''}`;
+  } catch {
+    return targetUrl;
+  }
+}
+
+function buildCacheKey(
+  method: HttpMethod,
+  targetUrl: string,
+  hasAuthToken: boolean,
+  dedupeKey?: string,
+) {
+  const normalized = normalizeForCache(targetUrl);
+  const suffix = dedupeKey ? `::${dedupeKey}` : '';
+  return `${method}::${normalized}::auth:${hasAuthToken ? '1' : '0'}${suffix}`;
+}
+
+function getCachedResponse<T>(key: string): T | null {
+  const cached = responseCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt > Date.now()) return cached.data as T;
+  responseCache.delete(key);
+  return null;
+}
+
+function setCachedResponse(key: string, data: unknown, ttlMs: number): void {
+  const expiresAt = Date.now() + Math.min(Math.max(ttlMs, 0), MAX_CACHE_TTL_MS);
+  responseCache.set(key, { data, expiresAt });
+  if (responseCache.size > MAX_CACHE_ENTRIES) {
+    const oldestKey = responseCache.keys().next().value as string | undefined;
+    if (oldestKey) responseCache.delete(oldestKey);
+  }
+}
+
+type PerfStatus = number | 'error' | 'network' | 'cache';
+
+function logRequestPerf(
+  method: HttpMethod,
+  targetUrl: string,
+  status: PerfStatus,
+  startedAt: number | null,
+  cacheMode?: string,
+) {
+  if (!DEBUG_PERF || startedAt === null) return;
+  const durationMs = Math.round(nowMs() - startedAt);
+  const safeUrl = sanitizePath(targetUrl);
+  const payload: Record<string, unknown> = {
+    status,
+    durationMs,
+  };
+  if (cacheMode) payload.cache = cacheMode;
+  // eslint-disable-next-line no-console
+  console.info(`[api][perf] ${method} ${safeUrl}`, payload);
+}
 
 function normalizeUrl(basePath: string, path: string): string {
   const base = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
@@ -101,6 +232,8 @@ async function request<TResponse = unknown>(
   const basePath = clientOptions.basePath ?? DEFAULT_BASE_PATH;
   const targetUrl = normalizeUrl(basePath, path);
   const sameOrigin = isSameOriginRequest(targetUrl);
+  const startedAt = DEBUG_PERF ? nowMs() : null;
+  let status: PerfStatus = 'error';
 
   const headers: Record<string, string> = {
     ...(options.headers ?? {}),
@@ -134,33 +267,99 @@ async function request<TResponse = unknown>(
   const credentials =
     options.credentials ?? (sameOrigin ? ('include' as const) : 'omit');
 
-  const response = await fetch(targetUrl, {
-    method: options.method ?? 'GET',
-    headers,
-    body:
-      options.body === undefined
-        ? undefined
-        : isFormData
-          ? (options.body as FormData)
-          : JSON.stringify(options.body),
-    credentials,
-    cache,
-    signal: options.signal,
-  });
+  const method = (options.method ?? 'GET') as HttpMethod;
+  const isGet = method === 'GET';
+  const skipCache = options.skipCache === true;
+  const isBrowser = typeof window !== 'undefined';
+  const dedupeEnabled =
+    isBrowser && isGet && options.disableDedupe !== true && !skipCache;
+  const cacheKey =
+    dedupeEnabled && isGet
+      ? buildCacheKey(
+          method,
+          targetUrl,
+          Boolean(token ?? clientOptions.authToken),
+          options.dedupeKey,
+        )
+      : null;
+  const cacheTtlMs =
+    typeof options.cacheTtlMs === 'number'
+      ? Math.min(Math.max(options.cacheTtlMs, 0), MAX_CACHE_TTL_MS)
+      : DEFAULT_CACHE_TTL_MS;
 
-  if (!response.ok) {
-    const errorBody = await parseResponseBody(response);
-    const error: ApiErrorShape = {
-      message: extractErrorMessage(errorBody, response.status),
-      status: response.status,
-      details: errorBody,
-    };
-    throw error;
+  if (cacheKey && !skipCache) {
+    if (isBrowser && cacheTtlMs > 0) {
+      const cached = getCachedResponse<TResponse>(cacheKey);
+      if (cached !== null) {
+        logRequestPerf(method, targetUrl, 'cache', startedAt, 'memory');
+        return Promise.resolve(cached);
+      }
+    }
+    const inflight = inflightRequests.get(cacheKey);
+    if (inflight) {
+      logRequestPerf(method, targetUrl, 'cache', startedAt, 'dedupe');
+      return inflight as Promise<TResponse>;
+    }
   }
 
-  if (response.status === 204) return undefined as TResponse;
+  try {
+    const execution = (async () => {
+      const response = await fetch(targetUrl, {
+        method,
+        headers,
+        body:
+          options.body === undefined
+            ? undefined
+            : isFormData
+              ? (options.body as FormData)
+              : JSON.stringify(options.body),
+        credentials,
+        cache,
+        signal: options.signal,
+      });
+      status = response.status;
 
-  return (await parseResponseBody(response)) as TResponse;
+      if (!response.ok) {
+        const errorBody = await parseResponseBody(response);
+        const error: ApiErrorShape = {
+          message: extractErrorMessage(errorBody, response.status),
+          status: response.status,
+          details: errorBody,
+        };
+        throw error;
+      }
+
+      if (response.status === 204) return undefined as TResponse;
+
+      const parsed = (await parseResponseBody(response)) as TResponse;
+      if (
+        cacheKey &&
+        dedupeEnabled &&
+        isBrowser &&
+        !skipCache &&
+        cacheTtlMs > 0
+      ) {
+        setCachedResponse(cacheKey, parsed, cacheTtlMs);
+      }
+      return parsed;
+    })();
+
+    if (cacheKey && dedupeEnabled) {
+      inflightRequests.set(cacheKey, execution);
+    }
+
+    return await execution;
+  } catch (err) {
+    status = (err as { status?: number })?.status ?? 'network';
+    throw err;
+  } finally {
+    if (cacheKey && dedupeEnabled) {
+      inflightRequests.delete(cacheKey);
+    }
+    const cacheLabel =
+      cache ?? (cacheKey && cacheTtlMs > 0 ? 'memory' : undefined);
+    logRequestPerf(method, targetUrl, status, startedAt, cacheLabel);
+  }
 }
 
 function buildScopedClient(defaultOptions: ApiClientOptions) {

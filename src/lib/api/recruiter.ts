@@ -45,13 +45,25 @@ const candidateCache = new Map<
     promise?: Promise<CandidateSession[]>;
   }
 >();
+export function __resetCandidateCache() {
+  candidateCache.clear();
+}
+
 type ListSimulationsOptions = {
   signal?: AbortSignal;
   cache?: RequestCache;
+  skipCache?: boolean;
+  cacheTtlMs?: number;
 };
 type CreateSimulationOptions = {
   signal?: AbortSignal;
   cache?: RequestCache;
+};
+type CandidateListOptions = {
+  signal?: AbortSignal;
+  cache?: RequestCache;
+  skipCache?: boolean;
+  cacheTtlMs?: number;
 };
 
 function normalizeSimulation(raw: unknown): SimulationListItem {
@@ -95,10 +107,12 @@ function normalizeSimulation(raw: unknown): SimulationListItem {
 export async function listSimulations(
   options?: ListSimulationsOptions,
 ): Promise<SimulationListItem[]> {
-  const data = await recruiterBffClient.get<unknown>(
-    '/simulations',
-    options ?? undefined,
-  );
+  const data = await recruiterBffClient.get<unknown>('/simulations', {
+    cache: options?.cache,
+    signal: options?.signal,
+    skipCache: options?.skipCache,
+    cacheTtlMs: options?.cacheTtlMs ?? 9000,
+  });
   if (!Array.isArray(data)) return [];
   return data.map(normalizeSimulation);
 }
@@ -321,14 +335,17 @@ export async function inviteCandidate(
 
 export function listSimulationCandidates(
   simulationId: string | number,
+  options?: CandidateListOptions,
 ): Promise<CandidateSession[]> {
   const safeId = simulationId == null ? '' : String(simulationId).trim();
   if (!safeId) return Promise.resolve([]);
 
   const now = Date.now();
-  const cached = candidateCache.get(safeId);
+  const cacheTtl = options?.cacheTtlMs ?? CANDIDATE_CACHE_TTL_MS;
+  const skipCache = options?.skipCache === true;
+  const cached = !skipCache ? candidateCache.get(safeId) : undefined;
   if (cached) {
-    if (cached.data && now - cached.ts < CANDIDATE_CACHE_TTL_MS) {
+    if (cached.data && now - cached.ts < cacheTtl) {
       return Promise.resolve(cached.data);
     }
     if (cached.promise) {
@@ -337,7 +354,12 @@ export function listSimulationCandidates(
   }
 
   const request = recruiterBffClient
-    .get<unknown>(`/simulations/${encodeURIComponent(safeId)}/candidates`)
+    .get<unknown>(`/simulations/${encodeURIComponent(safeId)}/candidates`, {
+      cache: options?.cache ?? 'no-store',
+      signal: options?.signal,
+      skipCache,
+      cacheTtlMs: cacheTtl,
+    })
     .then((data) => {
       const normalized = Array.isArray(data)
         ? data.map(normalizeCandidateSession)

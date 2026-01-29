@@ -15,15 +15,20 @@ import {
   copyToClipboard,
   errorToMessage,
 } from '@/features/recruiter/utils/formatters';
-import { normalizeCandidateSession } from '@/lib/api/recruiter';
+import {
+  listSimulationCandidates,
+  listSimulations,
+  normalizeCandidateSession,
+} from '@/lib/api/recruiter';
 import {
   buildLoginUrl,
   buildNotAuthorizedUrl,
   buildReturnTo,
 } from '@/lib/auth/routing';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { toUserMessage } from '@/lib/utils/errors';
+import { toStatus, toUserMessage } from '@/lib/utils/errors';
 import type { CandidateSession } from '@/types/recruiter';
+import { recruiterBffClient } from '@/lib/api/httpClient';
 
 type RowState = {
   resending?: boolean;
@@ -452,6 +457,8 @@ export default function RecruiterSimulationDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<CandidateSession[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [page, setPage] = useState(1);
   const [simulationTemplateKey, setSimulationTemplateKey] = useState<
     string | null
   >(null);
@@ -501,6 +508,13 @@ export default function RecruiterSimulationDetailPage() {
   }, []);
 
   useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 180);
+    return () => window.clearTimeout(handle);
+  }, [searchQuery]);
+
+  useEffect(() => {
     setCandidates([]);
     setRowStates({});
     setError(null);
@@ -509,6 +523,7 @@ export default function RecruiterSimulationDetailPage() {
     setSimulationPlan(null);
     setPlanLoading(true);
     setPlanError(null);
+    setPage(1);
   }, [simulationId]);
 
   useEffect(() => {
@@ -530,159 +545,138 @@ export default function RecruiterSimulationDetailPage() {
     }
   }, [rowStates]);
 
-  const loadCandidates = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/simulations/${simulationId}/candidates`, {
-        method: 'GET',
-        cache: 'no-store',
-      });
-
-      const parsed = await safeParseResponse(res);
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error('Session expired. Please sign in again.');
-        }
-        if (res.status === 403) {
-          throw new Error('You are not authorized to view candidates.');
-        }
-        const msg = toUserMessage(parsed, 'Request failed', {
-          includeDetail: true,
+  const loadCandidates = useCallback(
+    async (opts?: { skipCache?: boolean }) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await listSimulationCandidates(simulationId, {
+          skipCache: opts?.skipCache,
+          cache: 'no-store',
+          cacheTtlMs: 9000,
         });
-        throw new Error(msg || `Failed to load candidates (${res.status})`);
-      }
+        if (mountedRef.current) {
+          setCandidates(data);
+        }
+      } catch (e: unknown) {
+        if (!mountedRef.current) return;
+        const status = toStatus(e);
+        const details =
+          e && typeof e === 'object' && 'details' in (e as object)
+            ? (e as { details?: unknown }).details
+            : null;
 
-      const data = Array.isArray(parsed) ? parsed : [];
-      if (mountedRef.current) {
-        setCandidates(data.map(normalizeCandidateSession));
+        if (status === 401) {
+          setError('Session expired. Please sign in again.');
+          return;
+        }
+        if (status === 403) {
+          setError('You are not authorized to view candidates.');
+          return;
+        }
+
+        if (typeof details === 'string' && details.trim()) {
+          setError('Request failed');
+          return;
+        }
+
+        setError(
+          toUserMessage(e, 'Request failed', {
+            includeDetail: true,
+          }),
+        );
+      } finally {
+        if (mountedRef.current) setLoading(false);
       }
-    } catch (e: unknown) {
-      if (mountedRef.current)
-        setError(toUserMessage(e, 'Request failed', { includeDetail: true }));
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, [simulationId]);
+    },
+    [simulationId],
+  );
 
   useEffect(() => {
     void loadCandidates();
   }, [loadCandidates]);
 
-  const loadSimulationDetail = useCallback(async () => {
-    setPlanLoading(true);
-    setPlanError(null);
-    try {
-      const res = await fetch(`/api/simulations/${simulationId}`, {
-        method: 'GET',
-        cache: 'no-store',
-      });
-      const parsed = await safeParseResponse(res);
-
-      if (!res.ok) {
-        const status = res.status;
-        const returnTo = buildReturnTo();
-
-        if (status === 401) {
-          window.location.assign(buildLoginUrl('recruiter', returnTo));
-          return;
-        }
-
-        if (status === 403) {
-          window.location.assign(buildNotAuthorizedUrl('recruiter', returnTo));
-          return;
-        }
-
-        throw new Error(
-          toUserMessage(parsed, 'Failed to load simulation details.', {
-            includeDetail: true,
-          }),
+  const loadSimulationDetail = useCallback(
+    async (opts?: { skipCache?: boolean }) => {
+      setPlanLoading(true);
+      setPlanError(null);
+      try {
+        const parsed = await recruiterBffClient.get<unknown>(
+          `/simulations/${simulationId}`,
+          {
+            cache: 'no-store',
+            skipCache: opts?.skipCache,
+            cacheTtlMs: 12000,
+          },
         );
-      }
 
-      const detail = normalizeSimulationPlan(parsed);
-      if (mountedRef.current) {
-        setSimulationPlan(detail);
-        if (detail?.templateKey) setSimulationTemplateKey(detail.templateKey);
-        if (detail?.title) setSimulationTitle(detail.title);
-      }
-    } catch (caught: unknown) {
-      if (mountedRef.current) {
-        setPlanError(
-          toUserMessage(caught, 'Failed to load simulation details.', {
-            includeDetail: true,
-          }),
-        );
-        setSimulationPlan(null);
-      }
-    } finally {
-      if (mountedRef.current) setPlanLoading(false);
-    }
-  }, [simulationId]);
-
-  const loadSimulationMeta = useCallback(async () => {
-    try {
-      const res = await fetch('/api/simulations', {
-        method: 'GET',
-        cache: 'no-store',
-      });
-      const parsed = await safeParseResponse(res);
-
-      if (!res.ok) {
-        const status = res.status;
-        const returnTo = buildReturnTo();
-
-        if (status === 401) {
-          window.location.assign(buildLoginUrl('recruiter', returnTo));
-          return;
+        const detail = normalizeSimulationPlan(parsed);
+        if (mountedRef.current) {
+          setSimulationPlan(detail);
+          if (detail?.templateKey) setSimulationTemplateKey(detail.templateKey);
+          if (detail?.title) setSimulationTitle(detail.title);
         }
-
-        if (status === 403) {
-          window.location.assign(buildNotAuthorizedUrl('recruiter', returnTo));
-          return;
-        }
-
-        throw new Error(
-          toUserMessage(parsed, 'Failed to load simulation details.', {
-            includeDetail: true,
-          }),
-        );
-      }
-
-      const items = Array.isArray(parsed) ? parsed : [];
-      const match = items.find((item) => {
-        if (!item || typeof item !== 'object') return false;
-        const record = item as Record<string, unknown>;
-        const id =
-          record.id ?? record.simulationId ?? record.simulation_id ?? '';
-        return String(id) === String(simulationId);
-      }) as Record<string, unknown> | undefined;
-
-      const templateKey =
-        typeof match?.templateKey === 'string'
-          ? match.templateKey
-          : typeof match?.template_key === 'string'
-            ? match.template_key
+      } catch (caught: unknown) {
+        const status =
+          caught && typeof caught === 'object'
+            ? (caught as { status?: unknown }).status
             : null;
-      const title =
-        typeof match?.title === 'string'
-          ? match.title
-          : typeof match?.simulation_title === 'string'
-            ? match.simulation_title
-            : null;
+        if (
+          typeof window !== 'undefined' &&
+          (status === 401 || status === 403)
+        ) {
+          const returnTo = buildReturnTo();
+          const destination =
+            status === 401
+              ? buildLoginUrl('recruiter', returnTo)
+              : buildNotAuthorizedUrl('recruiter', returnTo);
+          window.location.assign(destination);
+          return;
+        }
 
-      if (mountedRef.current) {
-        setSimulationTemplateKey(templateKey);
-        setSimulationTitle(title);
+        if (mountedRef.current) {
+          setPlanError(
+            toUserMessage(caught, 'Failed to load simulation details.', {
+              includeDetail: true,
+            }),
+          );
+          setSimulationPlan(null);
+        }
+      } finally {
+        if (mountedRef.current) setPlanLoading(false);
       }
-    } catch {
-      if (mountedRef.current) {
-        setSimulationTemplateKey(null);
-        setSimulationTitle(null);
+    },
+    [simulationId],
+  );
+
+  const loadSimulationMeta = useCallback(
+    async (opts?: { skipCache?: boolean }) => {
+      try {
+        const items = await listSimulations({
+          cache: 'no-store',
+          skipCache: opts?.skipCache,
+          cacheTtlMs: 9000,
+        });
+        const match = items.find(
+          (item) => String(item.id) === String(simulationId),
+        );
+
+        const templateKey = match?.templateKey ?? null;
+        const title = match?.title ?? null;
+
+        if (mountedRef.current) {
+          setSimulationTemplateKey(templateKey);
+          setSimulationTitle(title);
+        }
+      } catch {
+        if (mountedRef.current) {
+          setSimulationTemplateKey(null);
+          setSimulationTitle(null);
+        }
       }
-    }
-  }, [simulationId]);
+    },
+    [simulationId],
+  );
 
   useEffect(() => {
     void loadSimulationMeta();
@@ -693,7 +687,7 @@ export default function RecruiterSimulationDetailPage() {
   }, [loadSimulationDetail]);
 
   const visibleCandidates = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const normalizedQuery = debouncedQuery.trim().toLowerCase();
     const filtered = normalizedQuery
       ? candidates.filter((candidate) => {
           const name = candidate.candidateName?.toLowerCase() ?? '';
@@ -732,7 +726,29 @@ export default function RecruiterSimulationDetailPage() {
         String(b.candidateSessionId),
       );
     });
-  }, [candidates, searchQuery]);
+  }, [candidates, debouncedQuery]);
+
+  const pageSize = 25;
+  const pageCount = useMemo(
+    () => Math.max(1, Math.ceil(visibleCandidates.length / pageSize)),
+    [pageSize, visibleCandidates.length],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, candidates.length]);
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const pagedCandidates = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return visibleCandidates.slice(start, end);
+  }, [page, pageSize, visibleCandidates]);
 
   const updateRowState = useCallback(
     (
@@ -890,7 +906,7 @@ export default function RecruiterSimulationDetailPage() {
             resending: false,
             error: 'Candidate not found — refreshing list.',
           }));
-          void loadCandidates();
+          void loadCandidates({ skipCache: true });
           return false;
         }
 
@@ -917,7 +933,7 @@ export default function RecruiterSimulationDetailPage() {
             ),
           );
         } else {
-          void loadCandidates();
+          void loadCandidates({ skipCache: true });
         }
 
         if (rateLimited) {
@@ -1064,7 +1080,7 @@ export default function RecruiterSimulationDetailPage() {
             : undefined,
       });
 
-      void loadCandidates();
+      void loadCandidates({ skipCache: true });
     },
     [inviteFlow, loadCandidates, notify, update],
   );
@@ -1340,7 +1356,7 @@ export default function RecruiterSimulationDetailPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => void loadCandidates()}
+              onClick={() => void loadCandidates({ skipCache: true })}
             >
               Retry
             </Button>
@@ -1381,8 +1397,34 @@ export default function RecruiterSimulationDetailPage() {
                   className="mt-1"
                 />
               </div>
-              <div className="text-xs text-gray-500">
-                Showing {visibleCandidates.length} of {candidates.length}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                <span>
+                  Showing {pagedCandidates.length} of {visibleCandidates.length}{' '}
+                  (total {candidates.length})
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page <= 1}
+                  >
+                    Prev
+                  </Button>
+                  <span className="min-w-[70px] text-center text-gray-600">
+                    Page {page} / {pageCount}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      setPage((prev) => Math.min(pageCount, prev + 1))
+                    }
+                    disabled={page >= pageCount}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -1406,7 +1448,7 @@ export default function RecruiterSimulationDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {visibleCandidates.map((c) => {
+                {pagedCandidates.map((c) => {
                   const display = c.candidateName || c.inviteEmail || 'Unnamed';
                   const rowState =
                     rowStates[candidateKey(c.candidateSessionId)] ?? {};

@@ -2,9 +2,14 @@ import { render, waitFor } from '@testing-library/react';
 import { useRecruiterProfile } from '@/features/recruiter/dashboard/hooks/useRecruiterProfile';
 import { useSimulations } from '@/features/recruiter/dashboard/hooks/useSimulations';
 import { listSimulations } from '@/lib/api/recruiter';
+import { recruiterBffClient } from '@/lib/api/httpClient';
 
 jest.mock('@/lib/api/recruiter', () => ({
   listSimulations: jest.fn(),
+}));
+
+jest.mock('@/lib/api/httpClient', () => ({
+  recruiterBffClient: { get: jest.fn() },
 }));
 
 function ProfileHarness({ fetchOnMount }: { fetchOnMount?: boolean }) {
@@ -30,7 +35,6 @@ function SimulationsHarness() {
 }
 
 describe('recruiter hooks', () => {
-  const realFetch = global.fetch;
   const originalLocation = window.location;
   const setLocation = (value: Location) => {
     Object.defineProperty(window, 'location', {
@@ -45,16 +49,14 @@ describe('recruiter hooks', () => {
   });
 
   afterEach(() => {
-    global.fetch = realFetch;
     setLocation(originalLocation);
   });
 
   it('loads recruiter profile successfully', async () => {
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ name: 'Recruiter', email: 'r@test.com' }),
-    }) as unknown as typeof fetch;
+    (recruiterBffClient.get as jest.Mock).mockResolvedValueOnce({
+      name: 'Recruiter',
+      email: 'r@test.com',
+    });
 
     const { getByTestId } = render(<ProfileHarness />);
 
@@ -66,9 +68,9 @@ describe('recruiter hooks', () => {
   });
 
   it('sets error when profile fetch fails', async () => {
-    global.fetch = jest
-      .fn()
-      .mockRejectedValueOnce(new Error('boom')) as unknown as typeof fetch;
+    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce(
+      new Error('boom'),
+    );
 
     const { getByTestId } = render(<ProfileHarness />);
 
@@ -110,11 +112,10 @@ describe('recruiter hooks', () => {
       origin: 'http://app.test',
     } as unknown as Location);
 
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: false,
+    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce({
       status: 401,
-      json: async () => ({ detail: 'unauthorized' }),
-    }) as unknown as typeof fetch;
+      details: { detail: 'unauthorized' },
+    });
 
     render(<ProfileHarness />);
 
@@ -129,11 +130,10 @@ describe('recruiter hooks', () => {
       origin: 'http://app.test',
     } as unknown as Location);
 
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: false,
+    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce({
       status: 403,
-      json: async () => ({ detail: 'forbidden' }),
-    }) as unknown as typeof fetch;
+      details: { detail: 'forbidden' },
+    });
 
     render(<ProfileHarness />);
 
@@ -142,10 +142,10 @@ describe('recruiter hooks', () => {
   });
 
   it('skips fetch on mount when disabled', async () => {
-    global.fetch = jest.fn() as unknown as typeof fetch;
+    (recruiterBffClient.get as jest.Mock).mockResolvedValueOnce(null);
     const { getByTestId } = render(<ProfileHarness fetchOnMount={false} />);
     expect(getByTestId('profile-loading').textContent).toBe('false');
-    expect((global.fetch as jest.Mock).mock.calls).toHaveLength(0);
+    expect((recruiterBffClient.get as jest.Mock).mock.calls).toHaveLength(0);
   });
 
   it('handles non-array simulation responses', async () => {

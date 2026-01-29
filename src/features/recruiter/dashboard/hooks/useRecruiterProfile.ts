@@ -6,6 +6,7 @@ import {
   buildNotAuthorizedUrl,
   buildReturnTo,
 } from '@/lib/auth/routing';
+import { recruiterBffClient } from '@/lib/api/httpClient';
 
 type Options = {
   initialProfile?: RecruiterProfile | null;
@@ -37,41 +38,42 @@ export function useRecruiterProfile(options?: Options): State {
     }
 
     let cancelled = false;
+    const controller = new AbortController();
     const run = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/auth/me', { cache: 'no-store' });
-        const parsed: unknown = await res.json().catch(() => null);
-
-        if (!res.ok) {
-          if (
-            typeof window !== 'undefined' &&
-            (res.status === 401 || res.status === 403)
-          ) {
-            const returnTo = buildReturnTo();
-            const mode = 'recruiter';
-            const destination =
-              res.status === 401
-                ? buildLoginUrl(mode, returnTo)
-                : buildNotAuthorizedUrl(mode, returnTo);
-            window.location.assign(destination);
-            return;
-          }
-          const message = toUserMessage(
-            parsed,
-            'Unable to load your profile right now.',
-            { includeDetail: true },
-          );
-          if (!cancelled) setError(message);
-          return;
-        }
+        const profileResp = await recruiterBffClient.get<RecruiterProfile>(
+          '/auth/me',
+          {
+            cache: 'no-store',
+            signal: controller.signal,
+            cacheTtlMs: 8000,
+          },
+        );
 
         if (!cancelled) {
-          setProfile(parsed as RecruiterProfile);
+          setProfile(profileResp);
           setError(null);
         }
       } catch (err: unknown) {
+        const status =
+          err && typeof err === 'object'
+            ? (err as { status?: unknown }).status
+            : null;
+        if (
+          typeof window !== 'undefined' &&
+          (status === 401 || status === 403)
+        ) {
+          const returnTo = buildReturnTo();
+          const mode = 'recruiter';
+          const destination =
+            status === 401
+              ? buildLoginUrl(mode, returnTo)
+              : buildNotAuthorizedUrl(mode, returnTo);
+          window.location.assign(destination);
+          return;
+        }
         if (!cancelled) {
           setError(
             toUserMessage(err, 'Unable to load your profile right now.'),
@@ -86,6 +88,7 @@ export function useRecruiterProfile(options?: Options): State {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

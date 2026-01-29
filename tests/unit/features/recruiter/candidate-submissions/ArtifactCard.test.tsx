@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ArtifactCard } from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 
 const baseArtifact = {
@@ -16,20 +17,26 @@ const baseArtifact = {
 };
 
 describe('ArtifactCard', () => {
-  it('renders markdown-formatted content', () => {
+  it('renders markdown-formatted content', async () => {
+    const user = userEvent.setup();
+    const longContent = '# Heading\n\n- item one';
+    const filler = ' filler text '.repeat(60);
     render(
       <ArtifactCard
         artifact={{
           ...baseArtifact,
-          contentText: '# Heading\n\n- item one',
+          contentText: `${longContent}\n\n${filler}`,
         }}
       />,
     );
 
+    const expand = await screen.findByRole('button', { name: /expand/i });
+    await user.click(expand);
+
     expect(
-      screen.getByRole('heading', { name: 'Heading', level: 1 }),
+      await screen.findByRole('heading', { name: 'Heading', level: 1 }),
     ).toBeInTheDocument();
-    expect(screen.getByText('item one')).toBeInTheDocument();
+    expect(await screen.findByText('item one')).toBeInTheDocument();
   });
 
   it('handles missing content', () => {
@@ -55,7 +62,7 @@ describe('ArtifactCard', () => {
       />,
     );
 
-    expect(screen.getByText('Line 1')).toBeInTheDocument();
-    expect(screen.getByText('Line 2')).toBeInTheDocument();
+    expect(screen.getByText(/Line 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Line 2/)).toBeInTheDocument();
   });
 });

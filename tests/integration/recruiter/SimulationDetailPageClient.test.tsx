@@ -2,6 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
 import { NotificationsProvider } from '@/features/shared/notifications';
+import { __resetCandidateCache } from '@/lib/api/recruiter';
+import { __resetHttpClientCache } from '@/lib/api/httpClient';
 import { jsonResponse, type MockResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1' };
@@ -83,11 +85,12 @@ const renderPage = () =>
 beforeEach(() => {
   fetchMock.mockReset();
   global.fetch = fetchMock as unknown as typeof fetch;
+  params.id = 'sim-1';
+  __resetCandidateCache();
+  __resetHttpClientCache();
 });
 
-afterEach(() => {
-  params.id = 'sim-1';
-});
+afterEach(() => {});
 
 afterAll(() => {
   global.fetch = realFetch;

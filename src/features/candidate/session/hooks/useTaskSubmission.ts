@@ -20,7 +20,7 @@ type Params = {
   currentTask: Task | null;
   clearTaskError: () => void;
   setTaskError: (msg: string) => void;
-  refreshTask: () => Promise<void>;
+  refreshTask: (opts?: { skipCache?: boolean }) => Promise<void>;
 };
 
 export function useTaskSubmission({
@@ -77,7 +77,7 @@ export function useTaskSubmission({
           window.clearTimeout(refreshTimerRef.current);
         }
         refreshTimerRef.current = window.setTimeout(() => {
-          void refreshTask();
+          void refreshTask({ skipCache: true });
         }, 900);
         notify({
           id: `submit-${currentTask.id}`,
