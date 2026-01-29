@@ -48,10 +48,12 @@ jest.mock('next/server', () => {
 import { NextResponse } from 'next/server';
 
 const mockAuth0Instance = {
-  middleware: jest.fn(async (_req?: unknown) => NextResponse.next()),
+  middleware: jest.fn(async () => NextResponse.next()),
   getSession: jest.fn(),
   getAccessToken: jest.fn(),
 };
+// Silence intentional callback warnings
+const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
 const Auth0ClientMock = jest.fn(() => mockAuth0Instance);
 
@@ -95,10 +97,11 @@ describe('lib/auth0 wrapper', () => {
 
   afterAll(() => {
     Object.assign(process.env, originalEnv);
+    consoleWarnSpy.mockRestore();
   });
 
   it('constructs Auth0 client with callbacks and normalizes session', async () => {
-    const { auth0, getSessionNormalized } = await import('@/lib/auth0');
+    const { getSessionNormalized } = await import('@/lib/auth0');
 
     expect(Auth0ClientMock).toHaveBeenCalled();
     const config = Auth0ClientMock.mock.calls[0][0];
@@ -136,10 +139,7 @@ describe('lib/auth0 wrapper', () => {
     const payload = Buffer.from(
       JSON.stringify({ permissions: ['token:perm'], roles: ['Recruiter'] }),
     ).toString('base64url');
-    const result = await config.beforeSessionSaved(
-      session,
-      `x.${payload}.y`,
-    );
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
     expect(result.user.permissions).toContain('token:perm');
     expect(result.user.roles).toContain('Recruiter');
   });
@@ -149,6 +149,8 @@ describe('lib/auth0 wrapper', () => {
     const { auth0, getAccessToken } = await import('@/lib/auth0');
 
     await expect(auth0.middleware()).resolves.toBeDefined();
-    await expect(getAccessToken()).rejects.toThrow(/Auth0 env vars are missing/);
+    await expect(getAccessToken()).rejects.toThrow(
+      /Auth0 env vars are missing/,
+    );
   });
 });

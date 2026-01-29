@@ -50,7 +50,8 @@ describe('authPaths helpers', () => {
 
   it('falls back to base logout when origin cannot be resolved', () => {
     delete process.env.NEXT_PUBLIC_TENON_APP_BASE_URL;
-    delete (global as any).window;
+    const globalWithWindow = globalThis as { window?: unknown };
+    delete globalWithWindow.window;
     const href = buildLogoutHref('/any');
     expect(href).toBe('/auth/logout');
   });

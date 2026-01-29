@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { WorkspacePanel } from '@/features/candidate/session/task/components/WorkspacePanel';
 
@@ -25,14 +25,16 @@ describe('WorkspacePanel', () => {
     notifyMock.mockReset();
   });
 
-  const renderPanel = (opts?: Partial<{ token: string | null; dayIndex: number }>) =>
+  const renderPanel = (
+    opts?: Partial<{ token: string | null; dayIndex: number }>,
+  ) =>
     render(
       <WorkspacePanel
         taskId={1}
         candidateSessionId={2}
         token={
           opts && Object.prototype.hasOwnProperty.call(opts, 'token')
-            ? opts.token ?? null
+            ? (opts.token ?? null)
             : 'tok'
         }
         dayIndex={opts?.dayIndex ?? 2}
@@ -138,8 +140,6 @@ describe('WorkspacePanel', () => {
   it('renders day index in header', async () => {
     getStatusMock.mockResolvedValue(null);
     renderPanel({ dayIndex: 3 });
-    expect(
-      await screen.findByText(/Day 3 workspace/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Day 3 workspace/i)).toBeInTheDocument();
   });
 });

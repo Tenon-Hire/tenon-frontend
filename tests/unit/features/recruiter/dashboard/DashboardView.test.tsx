@@ -6,24 +6,30 @@ const notifyMock = jest.fn();
 const updateMock = jest.fn();
 const inviteFlowResetMock = jest.fn();
 const inviteFlowSubmitMock = jest.fn();
-const capturedModalProps: { current: unknown } = { current: null };
+const captureModalProps = jest.fn();
 
 jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
 }));
 
-jest.mock('@/features/recruiter/dashboard/hooks/useInviteCandidateFlow', () => ({
-  useInviteCandidateFlow: () => ({
-    state: { status: 'idle' },
-    submit: inviteFlowSubmitMock,
-    reset: inviteFlowResetMock,
+jest.mock(
+  '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow',
+  () => ({
+    useInviteCandidateFlow: () => ({
+      state: { status: 'idle' },
+      submit: inviteFlowSubmitMock,
+      reset: inviteFlowResetMock,
+    }),
   }),
-}));
+);
 
 jest.mock('next/dynamic', () => {
-  return (_importer: () => Promise<unknown>, opts: { loading?: () => JSX.Element }) => {
+  return (
+    _importer: () => Promise<unknown>,
+    opts: { loading?: () => JSX.Element },
+  ) => {
     const Mock = (props: Record<string, unknown>) => {
-      capturedModalProps.current = props;
+      captureModalProps(props);
       return <div data-testid="invite-modal" />;
     };
     (Mock as { loading?: () => JSX.Element }).loading = opts?.loading;
@@ -37,32 +43,51 @@ jest.mock('@/features/recruiter/dashboard/components/ProfileCard', () => ({
   ),
 }));
 
-jest.mock('@/features/recruiter/dashboard/components/SimulationSection', () => ({
-  SimulationSection: (props: any) => (
-    <div data-testid="simulation-section">
-      <button onClick={() => props.onInvite?.({ id: '1', title: 'Sim 1' })}>
-        invite
-      </button>
-      {JSON.stringify({ simulations: props.simulations, loading: props.loading, error: props.error })}
-    </div>
-  ),
-}));
+jest.mock(
+  '@/features/recruiter/dashboard/components/SimulationSection',
+  () => ({
+    SimulationSection: (props: {
+      simulations: Array<{ id: string; title: string; status: string }>;
+      loading: boolean;
+      error: string | null;
+      onInvite?: (sim: { id: string; title: string }) => void;
+    }) => {
+      const { simulations, loading, error, onInvite } = props;
+      return (
+        <div data-testid="simulation-section">
+          <button onClick={() => onInvite?.({ id: '1', title: 'Sim 1' })}>
+            invite
+          </button>
+          {JSON.stringify({ simulations, loading, error })}
+        </div>
+      );
+    },
+  }),
+);
 
 jest.mock('@/features/recruiter/utils/formatters', () => ({
   copyToClipboard: jest.fn(async () => true),
 }));
 
+type Simulation = { id: string; title: string; status: string };
+
 const baseProps = () => ({
   profile: { name: 'Recruiter', email: 'r@test.com', role: 'Admin' },
   error: null,
   profileLoading: false,
-  simulations: [{ id: '1', title: 'Sim', status: 'Draft' }] as any,
+  simulations: [{ id: '1', title: 'Sim', status: 'Draft' } as Simulation],
   simulationsError: null,
   simulationsLoading: false,
   onRefresh: jest.fn(),
 });
 
 describe('DashboardView', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     inviteFlowSubmitMock.mockResolvedValue({
@@ -74,8 +99,14 @@ describe('DashboardView', () => {
     });
   });
 
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it('renders profile, simulations, and header', () => {
-    render(<DashboardView {...baseProps()} />);
+    act(() => {
+      render(<DashboardView {...baseProps()} />);
+    });
     expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
     expect(screen.getByTestId('profile-card')).toHaveTextContent('Recruiter');
     expect(screen.getByTestId('simulation-section')).toBeInTheDocument();
@@ -90,13 +121,17 @@ describe('DashboardView', () => {
 
     props.profileLoading = false;
     props.error = 'profile failed';
-    render(<DashboardView {...props} />);
+    act(() => {
+      render(<DashboardView {...props} />);
+    });
     expect(screen.getByText(/profile failed/)).toBeInTheDocument();
   });
 
   it('opens invite modal and triggers invite submission', async () => {
     const props = baseProps();
-    render(<DashboardView {...props} />);
+    await act(async () => {
+      render(<DashboardView {...props} />);
+    });
 
     // simulate child onInvite call
     act(() =>
@@ -106,8 +141,12 @@ describe('DashboardView', () => {
     expect(inviteFlowResetMock).toHaveBeenCalled();
     expect(screen.getByTestId('invite-modal')).toBeInTheDocument();
 
-    const modalProps = capturedModalProps.current as { onSubmit: (n: string, e: string) => Promise<void> } | null;
-    expect(modalProps).toBeTruthy();
+    const modalProps = captureModalProps.mock.calls[0]?.[0] as
+      | {
+          onSubmit: (n: string, e: string) => Promise<void>;
+        }
+      | undefined;
+    expect(modalProps).toBeDefined();
     await act(async () => {
       await modalProps?.onSubmit('Ann', 'a@test.com');
     });

@@ -1,6 +1,14 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 
+jest.mock('react', () => {
+  const actual = jest.requireActual('react');
+  return {
+    ...actual,
+    useCallback: (fn: (...args: unknown[]) => unknown) => fn,
+  };
+});
+
 const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
 const useReportWebVitalsMock = jest.fn();
 
@@ -10,12 +18,12 @@ jest.mock('next/web-vitals', () => ({
 
 describe('WebVitalsLogger', () => {
   const originalEnv = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF;
+  const importLogger = () =>
+    import('@/features/shared/analytics/WebVitalsLogger');
 
   beforeEach(() => {
     jest.clearAllMocks();
-    delete require.cache[
-      require.resolve('@/features/shared/analytics/WebVitalsLogger')
-    ];
+    jest.resetModules();
   });
 
   afterAll(() => {
@@ -23,14 +31,16 @@ describe('WebVitalsLogger', () => {
     consoleInfoSpy.mockRestore();
   });
 
-  it('logs watched metrics when debug flag enabled', () => {
+  it('logs watched metrics when debug flag enabled', async () => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
-    const { WebVitalsLogger } = require('@/features/shared/analytics/WebVitalsLogger');
+    const { WebVitalsLogger } = await importLogger();
     render(<WebVitalsLogger />);
 
-    const handler = useReportWebVitalsMock.mock.calls[0][0] as (
-      metric: any,
-    ) => void;
+    const handler = useReportWebVitalsMock.mock.calls[0][0] as (metric: {
+      id: string;
+      name: string;
+      value: number;
+    }) => void;
 
     handler({ id: '1', name: 'LCP', value: 1234.56 });
     handler({ id: '2', name: 'CLS', value: 0.123456 });
@@ -44,13 +54,15 @@ describe('WebVitalsLogger', () => {
     expect(clsPayload.value).toBeCloseTo(0.1235);
   });
 
-  it('ignores untracked metrics and when debug disabled', () => {
+  it('ignores untracked metrics and when debug disabled', async () => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '0';
-    const { WebVitalsLogger } = require('@/features/shared/analytics/WebVitalsLogger');
+    const { WebVitalsLogger } = await importLogger();
     render(<WebVitalsLogger />);
-    const handler = useReportWebVitalsMock.mock.calls[0][0] as (
-      metric: any,
-    ) => void;
+    const handler = useReportWebVitalsMock.mock.calls[0][0] as (metric: {
+      id: string;
+      name: string;
+      value: number;
+    }) => void;
     handler({ id: 'x', name: 'FCP', value: 10 });
     expect(consoleInfoSpy).not.toHaveBeenCalled();
   });

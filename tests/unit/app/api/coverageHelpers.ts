@@ -29,7 +29,9 @@ const resolveCoverageKey = (modulePath: string) => {
 export const markMetadataCovered = (modulePath: string) => {
   const key = resolveCoverageKey(modulePath);
   if (!key) return;
-  const cov = (globalThis as { __coverage__?: CoverageMap }).__coverage__?.[key];
+  const cov = (globalThis as { __coverage__?: CoverageMap }).__coverage__?.[
+    key
+  ];
   if (!cov?.statementMap || !cov.s) return;
   Object.entries(cov.statementMap).forEach(([k, loc]) => {
     const start = loc.start?.line;

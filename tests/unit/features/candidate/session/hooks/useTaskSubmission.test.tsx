@@ -4,7 +4,9 @@ import { useTaskSubmission } from '@/features/candidate/session/hooks/useTaskSub
 
 const submitCandidateTaskMock = jest.fn();
 const notifyMock = jest.fn();
-const normalizeApiErrorMock = jest.fn((err, fallback) => ({ message: fallback ?? String(err) }));
+const normalizeApiErrorMock = jest.fn((err, fallback) => ({
+  message: fallback ?? String(err),
+}));
 
 jest.mock('@/lib/api/candidate', () => ({
   HttpError: class HttpError extends Error {
@@ -31,26 +33,37 @@ type HookReturn = ReturnType<typeof useTaskSubmission>;
 type HarnessProps = {
   token: string | null;
   candidateSessionId: number | null;
-  currentTask: any;
+  currentTask: {
+    id: number;
+    dayIndex: number;
+    type: string;
+    title: string;
+    description: string;
+  } | null;
   clearTaskError: jest.Mock;
   setTaskError: jest.Mock;
   refreshTask: jest.Mock;
 };
 
-const HookHarness = forwardRef<HookReturn, HarnessProps>(function HookHarness(
-  props,
-  ref,
-) {
-  const hook = useTaskSubmission(props);
-  useImperativeHandle(ref, () => hook, [hook]);
-  return null;
-});
+const HookHarness = forwardRef<HookReturn, HarnessProps>(
+  function HookHarness(props, ref) {
+    const hook = useTaskSubmission(props);
+    useImperativeHandle(ref, () => hook, [hook]);
+    return null;
+  },
+);
 
 describe('useTaskSubmission', () => {
   const baseProps = () => ({
     token: 'tok',
     candidateSessionId: 11,
-    currentTask: { id: 1, dayIndex: 1, type: 'design', title: 'Design', description: '' },
+    currentTask: {
+      id: 1,
+      dayIndex: 1,
+      type: 'design',
+      title: 'Design',
+      description: '',
+    },
     clearTaskError: jest.fn(),
     setTaskError: jest.fn(),
     refreshTask: jest.fn(),
@@ -98,7 +111,13 @@ describe('useTaskSubmission', () => {
 
   it('submits code task, schedules refresh, and sends success toast', async () => {
     const props = baseProps();
-    props.currentTask = { id: 2, dayIndex: 2, type: 'code', title: 'Code', description: '' };
+    props.currentTask = {
+      id: 2,
+      dayIndex: 2,
+      type: 'code',
+      title: 'Code',
+      description: '',
+    };
     const ref = React.createRef<HookReturn>();
     submitCandidateTaskMock.mockResolvedValue({ ok: true });
 
@@ -126,7 +145,13 @@ describe('useTaskSubmission', () => {
 
   it('wraps submit errors and notifies', async () => {
     const props = baseProps();
-    props.currentTask = { id: 3, dayIndex: 1, type: 'design', title: 'Design', description: '' };
+    props.currentTask = {
+      id: 3,
+      dayIndex: 1,
+      type: 'design',
+      title: 'Design',
+      description: '',
+    };
     const ref = React.createRef<HookReturn>();
     submitCandidateTaskMock.mockImplementation(() =>
       Promise.reject({ status: 409 }),
@@ -150,7 +175,13 @@ describe('useTaskSubmission', () => {
 
   it('clears pending refresh timer on unmount', async () => {
     const props = baseProps();
-    props.currentTask = { id: 5, dayIndex: 5, type: 'debug', title: 'Dbg', description: '' };
+    props.currentTask = {
+      id: 5,
+      dayIndex: 5,
+      type: 'debug',
+      title: 'Dbg',
+      description: '',
+    };
     const ref = React.createRef<HookReturn>();
     submitCandidateTaskMock.mockResolvedValue({ ok: true });
     const clearSpy = jest.spyOn(window, 'clearTimeout');

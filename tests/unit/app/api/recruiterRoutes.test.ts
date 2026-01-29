@@ -7,9 +7,8 @@ const parseUpstreamBodyMock = jest.fn();
 const forwardJsonMock = jest.fn();
 
 jest.mock('next/server', () => {
-  const { MockNextRequest, MockNextResponse } = jest.requireActual(
-    './mockNext',
-  );
+  const { MockNextRequest, MockNextResponse } =
+    jest.requireActual('./mockNext');
   return {
     NextRequest: MockNextRequest,
     NextResponse: MockNextResponse,
@@ -18,7 +17,8 @@ jest.mock('next/server', () => {
 
 jest.mock('@/lib/server/bffAuth', () => ({
   requireBffAuth: (...args: unknown[]) => requireBffAuthMock(...args),
-  mergeResponseCookies: (...args: unknown[]) => mergeResponseCookiesMock(...args),
+  mergeResponseCookies: (...args: unknown[]) =>
+    mergeResponseCookiesMock(...args),
 }));
 
 jest.mock('@/lib/server/bff', () => ({
@@ -156,7 +156,9 @@ describe('recruiter API routes', () => {
       const resp = await GET(new MockNextRequest('http://localhost/api/dash'));
 
       expect(resp.status).toBe(200);
-      expect(resp.headers.get('Server-Timing')).toContain('retry;desc="count=1"');
+      expect(resp.headers.get('Server-Timing')).toContain(
+        'retry;desc="count=1"',
+      );
       expect(resp.headers.get('x-tenon-bff')).toBe('dashboard');
     });
   });
@@ -183,7 +185,9 @@ describe('recruiter API routes', () => {
         method: 'POST',
         bodyText: 'not-json',
       });
-      const resp = await POST(req, { params: Promise.resolve({}) as any });
+      const resp = await POST(req, {
+        params: Promise.resolve({} as Record<string, never>),
+      });
       expect(resp.status).toBe(400);
     });
 
@@ -194,7 +198,9 @@ describe('recruiter API routes', () => {
         method: 'POST',
         bodyText: JSON.stringify({ title: 'New Sim' }),
       });
-      const resp = await POST(req, { params: Promise.resolve({}) as any });
+      const resp = await POST(req, {
+        params: Promise.resolve({} as Record<string, never>),
+      });
 
       expect(resp.status).toBe(200);
       expect(forwardJsonMock).toHaveBeenCalledWith(
@@ -222,9 +228,8 @@ describe('recruiter API routes', () => {
 
     it('GET /api/simulations/[id]/candidates forwards correctly', async () => {
       forwardJsonMock.mockResolvedValue(new MockNextResponse({ ok: true }));
-      const { GET } = await import(
-        '@/app/api/simulations/[id]/candidates/route'
-      );
+      const { GET } =
+        await import('@/app/api/simulations/[id]/candidates/route');
       await GET(new MockNextRequest('http://x'), {
         params: Promise.resolve({ id: 'sim-9' }),
       });
@@ -253,9 +258,8 @@ describe('recruiter API routes', () => {
 
     it('resend invite forwards to candidate-specific path', async () => {
       forwardJsonMock.mockResolvedValue(new MockNextResponse({ ok: true }));
-      const { POST } = await import(
-        '@/app/api/simulations/[id]/candidates/[candidateSessionId]/invite/resend/route'
-      );
+      const { POST } =
+        await import('@/app/api/simulations/[id]/candidates/[candidateSessionId]/invite/resend/route');
       await POST(new MockNextRequest('http://x'), {
         params: Promise.resolve({ id: 'sim-1', candidateSessionId: 'cand-7' }),
       });
@@ -284,7 +288,8 @@ describe('recruiter API routes', () => {
     });
 
     it('returns error response when submissionId is missing', async () => {
-      const { GET } = await import('@/app/api/submissions/[submissionId]/route');
+      const { GET } =
+        await import('@/app/api/submissions/[submissionId]/route');
       const resp = await GET(new MockNextRequest('http://x'), {
         params: Promise.resolve({ submissionId: '' }),
       });
@@ -294,7 +299,8 @@ describe('recruiter API routes', () => {
 
     it('forwards submission detail when id present', async () => {
       forwardJsonMock.mockResolvedValue(new MockNextResponse({ ok: true }));
-      const { GET } = await import('@/app/api/submissions/[submissionId]/route');
+      const { GET } =
+        await import('@/app/api/submissions/[submissionId]/route');
       const resp = await GET(new MockNextRequest('http://x'), {
         params: Promise.resolve({ submissionId: '42' }),
       });
@@ -304,7 +310,8 @@ describe('recruiter API routes', () => {
         }),
       );
       expect(
-        (forwardJsonMock.mock.calls[0]?.[0] as { accessToken?: string })?.accessToken,
+        (forwardJsonMock.mock.calls[0]?.[0] as { accessToken?: string })
+          ?.accessToken,
       ).toBe('token-123');
       expect(resp.headers.get('x-tenon-bff')).toBe('submission-detail');
     });

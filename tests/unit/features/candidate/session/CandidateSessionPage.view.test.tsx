@@ -1,5 +1,11 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  act,
+} from '@testing-library/react';
 import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 
 const useCandidateSessionMock = jest.fn();
@@ -27,9 +33,7 @@ jest.mock(
   () => ({
     __esModule: true,
     WorkspacePanel: (props: Record<string, unknown>) => (
-      <div data-testid="workspace-panel">
-        {JSON.stringify(props)}
-      </div>
+      <div data-testid="workspace-panel">{JSON.stringify(props)}</div>
     ),
   }),
 );
@@ -71,8 +75,7 @@ const getCurrentTaskMock = jest.fn();
 jest.mock('@/lib/api/candidate', () => ({
   resolveCandidateInviteToken: (...args: unknown[]) =>
     resolveInviteMock(...args),
-  getCandidateCurrentTask: (...args: unknown[]) =>
-    getCurrentTaskMock(...args),
+  getCandidateCurrentTask: (...args: unknown[]) => getCurrentTaskMock(...args),
   pollCandidateTestRun: jest.fn(),
   startCandidateTestRun: jest.fn(),
 }));
@@ -130,6 +133,12 @@ const baseState = () => ({
 });
 
 describe('CandidateSessionPage view rendering', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     resolveInviteMock.mockResolvedValue({
@@ -150,10 +159,16 @@ describe('CandidateSessionPage view rendering', () => {
     });
   });
 
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it('renders running view with workspace and tests for day 2 code task', async () => {
     useCandidateSessionMock.mockReturnValue(buildState());
 
-    render(<CandidateSessionPage token="inv" />);
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
 
     await waitFor(() =>
       expect(screen.getByTestId('run-tests-panel')).toBeInTheDocument(),
@@ -183,9 +198,13 @@ describe('CandidateSessionPage view rendering', () => {
       }),
     );
 
-    render(<CandidateSessionPage token="inv" />);
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
     await waitFor(() =>
-      expect(screen.getByTestId('resource-day-4-recording')).toBeInTheDocument(),
+      expect(
+        screen.getByTestId('resource-day-4-recording'),
+      ).toBeInTheDocument(),
     );
 
     useCandidateSessionMock.mockReturnValue(
@@ -206,7 +225,9 @@ describe('CandidateSessionPage view rendering', () => {
       }),
     );
 
-    render(<CandidateSessionPage token="inv" />);
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
     await waitFor(() =>
       expect(
         screen.getByTestId('resource-day-5-documentation'),
@@ -245,8 +266,12 @@ describe('CandidateSessionPage view rendering', () => {
       }),
     );
 
-    render(<CandidateSessionPage token="inv" />);
-    const retryButtons = await screen.findAllByRole('button', { name: /Retry/i });
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
+    const retryButtons = await screen.findAllByRole('button', {
+      name: /Retry/i,
+    });
     fireEvent.click(retryButtons[0]);
     await waitFor(() => expect(getCurrentTaskMock).toHaveBeenCalled());
   });

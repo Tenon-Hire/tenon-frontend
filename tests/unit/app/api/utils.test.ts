@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { markMetadataCovered } from './coverageHelpers';
 
 const mockRequireBffAuth = jest.fn();
@@ -8,7 +8,8 @@ const mockResolveRequestId = jest.fn(() => 'req-utils');
 
 jest.mock('@/lib/server/bffAuth', () => ({
   requireBffAuth: (...args: unknown[]) => mockRequireBffAuth(...args),
-  mergeResponseCookies: (...args: unknown[]) => mockMergeResponseCookies(...args),
+  mergeResponseCookies: (...args: unknown[]) =>
+    mockMergeResponseCookies(...args),
 }));
 
 jest.mock('@/lib/server/bff', () => ({
@@ -19,9 +20,14 @@ jest.mock('@/lib/server/bff', () => ({
 
 jest.mock('next/server', () => ({
   NextResponse: {
-    json: (body: unknown, init?: { status?: number; headers?: Record<string, string> }) => {
+    json: (
+      body: unknown,
+      init?: { status?: number; headers?: Record<string, string> },
+    ) => {
       const headers = new Map<string, string>();
-      Object.entries(init?.headers ?? {}).forEach(([k, v]) => headers.set(k, String(v)));
+      Object.entries(init?.headers ?? {}).forEach(([k, v]) =>
+        headers.set(k, String(v)),
+      );
       return {
         status: init?.status ?? 200,
         headers: {
@@ -50,7 +56,10 @@ describe('api utils helpers', () => {
     });
     const { forwardWithAuth } = await importUtils();
     markMetadataCovered('@/app/api/utils.ts');
-    const resp = await forwardWithAuth({ path: '/api/thing' }, {} as any);
+    const resp = await forwardWithAuth(
+      { path: '/api/thing' },
+      {} as unknown as NextRequest,
+    );
     expect(resp.status).toBe(401);
     expect(resp.headers.get('x-request-id')).toBe('req-utils');
     expect(mockMergeResponseCookies).toHaveBeenCalled();
@@ -68,7 +77,7 @@ describe('api utils helpers', () => {
     const { forwardWithAuth, BFF_HEADER } = await importUtils();
     const resp = await forwardWithAuth(
       { path: '/api/ok', tag: 'dash', cache: 'force-cache' },
-      {} as any,
+      {} as unknown as NextRequest,
     );
     expect(mockForwardJson).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -89,7 +98,10 @@ describe('api utils helpers', () => {
     });
     mockForwardJson.mockRejectedValue(new Error('boom'));
     const { forwardWithAuth } = await importUtils();
-    const resp = await forwardWithAuth({ path: '/api/fail' }, {} as any);
+    const resp = await forwardWithAuth(
+      { path: '/api/fail' },
+      {} as unknown as NextRequest,
+    );
     expect(resp.status).toBe(500);
     expect(resp.headers.get('x-request-id')).toBe('req-utils');
   });
@@ -101,7 +113,11 @@ describe('api utils helpers', () => {
       cookies: [],
     });
     const { withRecruiterAuth } = await importUtils();
-    const resp = await withRecruiterAuth({} as any, { tag: 'dash' }, jest.fn());
+    const resp = await withRecruiterAuth(
+      {} as unknown as NextRequest,
+      { tag: 'dash' },
+      jest.fn(),
+    );
     expect(resp.status).toBe(403);
     expect(resp.headers.get('x-request-id')).toBe('req-utils');
   });
@@ -116,7 +132,11 @@ describe('api utils helpers', () => {
       NextResponse.json({ ok: true }, { headers: { existing: 'yes' } }),
     );
     const { withRecruiterAuth, BFF_HEADER } = await importUtils();
-    const resp = await withRecruiterAuth({} as any, { tag: 'sim' }, handler);
+    const resp = await withRecruiterAuth(
+      {} as unknown as NextRequest,
+      { tag: 'sim' },
+      handler,
+    );
     expect(handler).toHaveBeenCalled();
     expect(resp.headers.get(BFF_HEADER)).toBe('sim');
     expect(resp.headers.get('x-request-id')).toBe('req-utils');
@@ -132,7 +152,11 @@ describe('api utils helpers', () => {
       throw new Error('boom');
     });
     const { withRecruiterAuth, BFF_HEADER } = await importUtils();
-    const resp = await withRecruiterAuth({} as any, { tag: 'sim' }, handler);
+    const resp = await withRecruiterAuth(
+      {} as unknown as NextRequest,
+      { tag: 'sim' },
+      handler,
+    );
     expect(resp.status).toBe(500);
     expect(resp.headers.get(BFF_HEADER)).toBe('sim');
     expect(resp.headers.get('x-request-id')).toBe('req-utils');

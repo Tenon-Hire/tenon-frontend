@@ -1,12 +1,22 @@
 import React from 'react';
-import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 
 const listSimulationCandidatesMock = jest.fn();
 const recruiterGetMock = jest.fn();
+const useParamsMock = jest.fn(() => ({
+  id: 'sim-1',
+  candidateSessionId: '123',
+}));
 
 jest.mock('next/navigation', () => ({
-  useParams: () => ({ id: 'sim-1', candidateSessionId: '123' }),
+  useParams: () => useParamsMock(),
 }));
 
 jest.mock('@/lib/api/recruiter', () => ({
@@ -21,10 +31,18 @@ jest.mock('@/lib/api/httpClient', () => ({
 }));
 
 jest.mock('next/dynamic', () => {
-  return (importer: () => Promise<any>, opts: any) => {
-    const Mock = (props: any) => <div data-testid="md-preview">{props.content}</div>;
-    (Mock as any).loading = opts?.loading;
-    return Mock;
+  return (
+    _importer: () => Promise<unknown>,
+    opts: { loading?: () => JSX.Element },
+  ) => {
+    const Mock: React.FC<{ content?: string }> = (props) => (
+      <div data-testid="md-preview">{props.content}</div>
+    );
+    const mockWithStatics = Mock as React.FC<{ content?: string }> & {
+      loading?: () => JSX.Element;
+    };
+    mockWithStatics.loading = opts?.loading;
+    return mockWithStatics;
   };
 });
 
@@ -58,12 +76,12 @@ const buildArtifact = (id: number, dayIndex: number) => ({
 });
 
 describe('CandidateSubmissionsPage', () => {
-  const originalUseParams = (require('next/navigation') as any).useParams;
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    useParamsMock.mockReturnValue({ id: 'sim-1', candidateSessionId: '123' });
     listSimulationCandidatesMock.mockResolvedValue([
       {
         candidateSessionId: 123,
@@ -106,15 +124,11 @@ describe('CandidateSubmissionsPage', () => {
   });
 
   afterEach(() => {
-    (require('next/navigation') as any).useParams = originalUseParams;
     consoleErrorSpy.mockRestore();
   });
 
   it('shows error for invalid candidate id', async () => {
-    (require('next/navigation') as any).useParams = () => ({
-      id: 'sim-1',
-      candidateSessionId: 'bad',
-    });
+    useParamsMock.mockReturnValue({ id: 'sim-1', candidateSessionId: 'bad' });
     await act(async () => {
       render(<CandidateSubmissionsPage />);
     });
@@ -124,24 +138,16 @@ describe('CandidateSubmissionsPage', () => {
   });
 
   it('shows candidate not found error', async () => {
-    (require('next/navigation') as any).useParams = () => ({
-      id: 'sim-1',
-      candidateSessionId: '123',
-    });
+    useParamsMock.mockReturnValue({ id: 'sim-1', candidateSessionId: '123' });
     listSimulationCandidatesMock.mockResolvedValueOnce([]);
     await act(async () => {
       render(<CandidateSubmissionsPage />);
     });
-    expect(
-      await screen.findByText(/Candidate not found/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Candidate not found/i)).toBeInTheDocument();
   });
 
   it('renders submissions, latest artifacts, and toggles show all', async () => {
-    (require('next/navigation') as any).useParams = () => ({
-      id: 'sim-1',
-      candidateSessionId: '123',
-    });
+    useParamsMock.mockReturnValue({ id: 'sim-1', candidateSessionId: '123' });
     await act(async () => {
       render(<CandidateSubmissionsPage />);
     });
@@ -153,28 +159,23 @@ describe('CandidateSubmissionsPage', () => {
 
     const showAllBtn = await screen.findByRole('button', { name: /Show all/i });
     fireEvent.click(showAllBtn);
-    await waitFor(() =>
-      expect(screen.getByText(/Page 1/)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/Page 1/)).toBeInTheDocument());
     expect(recruiterGetMock).toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: /Hide list/i }));
-    expect(
-      screen.getByText(/Submission list collapsed/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Submission list collapsed/i)).toBeInTheDocument();
   });
 
   it('handles empty submissions and refresh', async () => {
     recruiterGetMock.mockImplementationOnce((path: string) => {
-      if (path.startsWith('/submissions?')) return Promise.resolve({ items: [] });
+      if (path.startsWith('/submissions?'))
+        return Promise.resolve({ items: [] });
       return Promise.resolve({});
     });
     await act(async () => {
       render(<CandidateSubmissionsPage />);
     });
-    expect(
-      await screen.findByText(/No submissions yet/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No submissions yet/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
   });
 });

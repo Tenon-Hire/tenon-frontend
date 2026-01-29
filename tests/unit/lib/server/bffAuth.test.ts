@@ -39,14 +39,11 @@ import { requireBffAuth, mergeResponseCookies } from '@/lib/server/bffAuth';
 const getSessionNormalizedMock = jest.fn();
 let auth0Mock: { getAccessToken: jest.Mock };
 
-jest.mock('@/lib/auth0', () => {
-  auth0Mock = { getAccessToken: jest.fn() };
-  return {
-    auth0: auth0Mock,
-    getSessionNormalized: (...args: unknown[]) =>
-      getSessionNormalizedMock(...args),
-  };
-});
+jest.mock('@/lib/auth0', () => ({
+  auth0: { getAccessToken: jest.fn() },
+  getSessionNormalized: (...args: unknown[]) =>
+    getSessionNormalizedMock(...args),
+}));
 
 jest.mock('@/lib/auth0-claims', () => {
   const actual = jest.requireActual('@/lib/auth0-claims');
@@ -63,6 +60,9 @@ describe('bffAuth utilities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     delete process.env.TENON_DEBUG_PERF;
+    auth0Mock = jest.requireMock('@/lib/auth0').auth0 as {
+      getAccessToken: jest.Mock;
+    };
   });
 
   it('merges response cookies', () => {
@@ -126,4 +126,3 @@ describe('bffAuth utilities', () => {
     if (!res.ok) expect(res.response.status).toBe(401);
   });
 });
-/* eslint-disable @typescript-eslint/no-explicit-any */

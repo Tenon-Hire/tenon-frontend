@@ -3,17 +3,23 @@ import { render, act } from '@testing-library/react';
 import { useCandidateBootstrap } from '@/features/candidate/session/hooks/useCandidateBootstrap';
 
 const resolveCandidateInviteTokenMock = jest.fn();
-const friendlyBootstrapErrorMock = jest.fn((err) => `friendly-${(err as any)?.status ?? 'unknown'}`);
+const friendlyBootstrapErrorMock = jest.fn(
+  (err: { status?: number } | null) => `friendly-${err?.status ?? 'unknown'}`,
+);
 
 jest.mock('@/lib/api/candidate', () => ({
-  resolveCandidateInviteToken: (...args: unknown[]) => resolveCandidateInviteTokenMock(...args),
+  resolveCandidateInviteToken: (...args: unknown[]) =>
+    resolveCandidateInviteTokenMock(...args),
 }));
 
 jest.mock('@/features/candidate/session/utils/errorMessages', () => {
-  const actual = jest.requireActual('@/features/candidate/session/utils/errorMessages');
+  const actual = jest.requireActual(
+    '@/features/candidate/session/utils/errorMessages',
+  );
   return {
     ...actual,
-    friendlyBootstrapError: (...args: unknown[]) => friendlyBootstrapErrorMock(...args),
+    friendlyBootstrapError: (...args: unknown[]) =>
+      friendlyBootstrapErrorMock(...args),
   };
 });
 
@@ -26,14 +32,13 @@ type HarnessProps = {
   onSetInviteToken?: jest.Mock;
 };
 
-const HookHarness = forwardRef<HookReturn, HarnessProps>(function HookHarness(
-  props,
-  ref,
-) {
-  const hook = useCandidateBootstrap(props);
-  useImperativeHandle(ref, () => hook, [hook]);
-  return null;
-});
+const HookHarness = forwardRef<HookReturn, HarnessProps>(
+  function HookHarness(props, ref) {
+    const hook = useCandidateBootstrap(props);
+    useImperativeHandle(ref, () => hook, [hook]);
+    return null;
+  },
+);
 
 const makeRef = () => React.createRef<HookReturn>();
 
@@ -89,7 +94,9 @@ describe('useCandidateBootstrap', () => {
     const pending = new Promise((res) => {
       resolvePromise = res;
     });
-    resolveCandidateInviteTokenMock.mockReturnValueOnce(pending as unknown as Promise<unknown>);
+    resolveCandidateInviteTokenMock.mockReturnValueOnce(
+      pending as unknown as Promise<unknown>,
+    );
 
     render(
       <HookHarness
@@ -121,7 +128,10 @@ describe('useCandidateBootstrap', () => {
 
   it('captures friendly error message and status on failure', async () => {
     const ref = makeRef();
-    resolveCandidateInviteTokenMock.mockRejectedValue({ status: 410, message: 'expired' });
+    resolveCandidateInviteTokenMock.mockRejectedValue({
+      status: 410,
+      message: 'expired',
+    });
 
     render(
       <HookHarness

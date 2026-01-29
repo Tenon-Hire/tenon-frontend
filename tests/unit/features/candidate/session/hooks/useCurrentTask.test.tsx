@@ -6,11 +6,14 @@ const getCandidateCurrentTaskMock = jest.fn();
 const friendlyTaskErrorMock = jest.fn(() => 'friendly-task-error');
 
 jest.mock('@/lib/api/candidate', () => ({
-  getCandidateCurrentTask: (...args: unknown[]) => getCandidateCurrentTaskMock(...args),
+  getCandidateCurrentTask: (...args: unknown[]) =>
+    getCandidateCurrentTaskMock(...args),
 }));
 
 jest.mock('@/features/candidate/session/utils/errorMessages', () => {
-  const actual = jest.requireActual('@/features/candidate/session/utils/errorMessages');
+  const actual = jest.requireActual(
+    '@/features/candidate/session/utils/errorMessages',
+  );
   return {
     ...actual,
     friendlyTaskError: (...args: unknown[]) => friendlyTaskErrorMock(...args),
@@ -28,14 +31,13 @@ type HarnessProps = {
   clearTaskError: jest.Mock;
 };
 
-const HookHarness = forwardRef<HookReturn, HarnessProps>(function HookHarness(
-  props,
-  ref,
-) {
-  const hook = useCurrentTask(props);
-  useImperativeHandle(ref, () => hook, [hook]);
-  return null;
-});
+const HookHarness = forwardRef<HookReturn, HarnessProps>(
+  function HookHarness(props, ref) {
+    const hook = useCurrentTask(props);
+    useImperativeHandle(ref, () => hook, [hook]);
+    return null;
+  },
+);
 
 describe('useCurrentTask', () => {
   const baseProps = () => ({
@@ -87,7 +89,13 @@ describe('useCurrentTask', () => {
       resolveTask?.({
         isComplete: false,
         completedTaskIds: [1],
-        currentTask: { id: 1, dayIndex: 2, type: 'code', title: 't', description: 'd' },
+        currentTask: {
+          id: 1,
+          dayIndex: 2,
+          type: 'code',
+          title: 't',
+          description: 'd',
+        },
       });
     });
   });
@@ -98,7 +106,13 @@ describe('useCurrentTask', () => {
     const dto = {
       isComplete: true,
       progress: { completedTaskIds: [3, 4] },
-      currentTask: { id: 7, dayIndex: 3, type: 'design', title: 'Design', description: 'desc' },
+      currentTask: {
+        id: 7,
+        dayIndex: 3,
+        type: 'design',
+        title: 'Design',
+        description: 'desc',
+      },
     };
     getCandidateCurrentTaskMock.mockResolvedValue(dto);
 
@@ -126,7 +140,10 @@ describe('useCurrentTask', () => {
   it('sets friendly error on failure', async () => {
     const props = baseProps();
     const ref = React.createRef<HookReturn>();
-    getCandidateCurrentTaskMock.mockRejectedValue({ status: 410, message: 'expired' });
+    getCandidateCurrentTaskMock.mockRejectedValue({
+      status: 410,
+      message: 'expired',
+    });
 
     render(<HookHarness ref={ref} {...props} />);
 

@@ -11,7 +11,9 @@ import {
 } from '@/lib/brand';
 
 const makeJwt = (claims: Record<string, unknown>) => {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const header = Buffer.from(
+    JSON.stringify({ alg: 'HS256', typ: 'JWT' }),
+  ).toString('base64url');
   const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
   return `${header}.${payload}.sig`;
 };

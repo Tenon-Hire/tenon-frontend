@@ -19,16 +19,13 @@ type HarnessProps = {
   simulation: { simulationId: string; simulationTitle: string } | null;
 };
 
-const HookHarness = forwardRef<HookReturn, HarnessProps>(function Harness(
-  props,
-  ref,
-) {
-  const hook = useInviteCandidateFlow(
-    props.simulation as any,
-  );
-  useImperativeHandle(ref, () => hook, [hook]);
-  return null;
-});
+const HookHarness = forwardRef<HookReturn, HarnessProps>(
+  function Harness(props, ref) {
+    const hook = useInviteCandidateFlow(props.simulation);
+    useImperativeHandle(ref, () => hook, [hook]);
+    return null;
+  },
+);
 
 describe('useInviteCandidateFlow', () => {
   beforeEach(() => {
@@ -55,9 +52,7 @@ describe('useInviteCandidateFlow', () => {
       const res = await ref.current?.submit('', '');
       expect(res).toBeNull();
     });
-    await waitFor(() =>
-      expect(ref.current?.state.status).toBe('error'),
-    );
+    await waitFor(() => expect(ref.current?.state.status).toBe('error'));
     expect(ref.current?.state.message).toContain('required');
   });
 

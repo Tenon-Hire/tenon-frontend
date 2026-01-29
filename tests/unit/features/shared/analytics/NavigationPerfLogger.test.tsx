@@ -1,5 +1,13 @@
-import path from 'path';
+import React from 'react';
 import { render } from '@testing-library/react';
+
+jest.mock('react', () => {
+  const actual = jest.requireActual('react');
+  return {
+    ...actual,
+    useEffect: (fn: () => void) => fn(),
+  };
+});
 
 const usePathnameMock = jest.fn();
 jest.mock('next/navigation', () => ({
@@ -9,15 +17,12 @@ jest.mock('next/navigation', () => ({
 describe('NavigationPerfLogger', () => {
   const originalEnv = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF;
   const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-  // Walk back to repo root from tests/unit/features/shared/analytics
-  const modulePath = path.join(
-    __dirname,
-    '../../../../../src/features/shared/analytics/NavigationPerfLogger.tsx',
-  );
+  const importLogger = () =>
+    import('@/features/shared/analytics/NavigationPerfLogger');
 
   beforeEach(() => {
     jest.clearAllMocks();
-    delete require.cache[modulePath];
+    jest.resetModules();
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '0';
     usePathnameMock.mockReturnValue('/dashboard');
     Object.defineProperty(globalThis, 'performance', {
@@ -38,14 +43,14 @@ describe('NavigationPerfLogger', () => {
 
   it('logs navigation performance when debug flag enabled', async () => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
-    const { NavigationPerfLogger } = require(modulePath);
+    const { NavigationPerfLogger } = await importLogger();
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).toHaveBeenCalled();
   });
 
   it('skips logging when debug flag disabled', async () => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'false';
-    const { NavigationPerfLogger } = require(modulePath);
+    const { NavigationPerfLogger } = await importLogger();
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });
@@ -54,7 +59,7 @@ describe('NavigationPerfLogger', () => {
     const globalWithPerf = globalThis as { performance?: Performance };
     delete globalWithPerf.performance;
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
-    const { NavigationPerfLogger } = require(modulePath);
+    const { NavigationPerfLogger } = await importLogger();
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });

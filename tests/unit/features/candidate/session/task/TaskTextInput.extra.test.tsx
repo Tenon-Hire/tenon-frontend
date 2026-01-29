@@ -40,9 +40,7 @@ describe('TaskTextInput additional coverage', () => {
         savedAt={null}
       />,
     );
-    expect(
-      screen.getByPlaceholderText(/Write your response/),
-    ).toBeDisabled();
+    expect(screen.getByPlaceholderText(/Write your response/)).toBeDisabled();
   });
 
   it('shows preview placeholder and character count when empty', async () => {
@@ -59,7 +57,9 @@ describe('TaskTextInput additional coverage', () => {
       previewBtn.click();
     });
     expect(
-      await screen.findByText(/Add content to preview your Markdown formatting/i),
+      await screen.findByText(
+        /Add content to preview your Markdown formatting/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(/0 characters/i)).toBeInTheDocument();
   });

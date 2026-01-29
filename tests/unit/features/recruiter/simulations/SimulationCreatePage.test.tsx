@@ -69,15 +69,11 @@ describe('SimulationCreatePage', () => {
     fillForm();
     createSimulationMock.mockResolvedValue({ ok: false, status: 401 });
     fireEvent.click(screen.getByRole('button', { name: /Create simulation/i }));
-    await waitFor(() =>
-      expect(createSimulationMock).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(createSimulationMock).toHaveBeenCalled());
 
     createSimulationMock.mockResolvedValue({ ok: false, status: 403 });
     fireEvent.click(screen.getByRole('button', { name: /Create simulation/i }));
-    await waitFor(() =>
-      expect(createSimulationMock).toHaveBeenCalledTimes(2),
-    );
+    await waitFor(() => expect(createSimulationMock).toHaveBeenCalledTimes(2));
   });
 
   it('shows form error when backend returns message', async () => {
@@ -97,6 +93,8 @@ describe('SimulationCreatePage', () => {
     fillForm();
     createSimulationMock.mockResolvedValue({ ok: true, id: 'sim-1' });
     fireEvent.click(screen.getByRole('button', { name: /Create simulation/i }));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard/simulations/sim-1'));
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith('/dashboard/simulations/sim-1'),
+    );
   });
 });

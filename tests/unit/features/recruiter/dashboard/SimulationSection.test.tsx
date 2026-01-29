@@ -2,17 +2,23 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SimulationSection } from '@/features/recruiter/dashboard/components/SimulationSection';
 
+type Simulation = { id: string; title: string; status: string };
+
 jest.mock('@/features/recruiter/simulations/SimulationList', () => ({
-  SimulationList: ({ simulations, onInvite }: any) => (
+  SimulationList: ({
+    simulations,
+    onInvite,
+  }: {
+    simulations: Simulation[];
+    onInvite: (sim: Simulation) => void;
+  }) => (
     <div data-testid="sim-list" onClick={() => onInvite(simulations[0])}>
       list-{simulations.length}
     </div>
   ),
 }));
 
-const sample = [
-  { id: '1', title: 'Sim 1', status: 'Draft' },
-] as any;
+const sample: Simulation[] = [{ id: '1', title: 'Sim 1', status: 'Draft' }];
 
 describe('SimulationSection', () => {
   it('renders loading skeleton when loading with no data', () => {

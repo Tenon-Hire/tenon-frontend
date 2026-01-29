@@ -7,9 +7,8 @@ const getBackendBaseUrlMock = jest.fn(() => 'http://backend');
 const resolveRequestIdMock = jest.fn(() => 'req-1');
 
 jest.mock('next/server', () => {
-  const { MockNextRequest, MockNextResponse } = jest.requireActual(
-    './mockNext',
-  );
+  const { MockNextRequest, MockNextResponse } =
+    jest.requireActual('./mockNext');
   return {
     NextRequest: MockNextRequest,
     NextResponse: MockNextResponse,
@@ -42,7 +41,8 @@ describe('api/backend proxy route', () => {
 
   afterAll(() => {
     process.env = originalEnv;
-    const coverage = (globalThis as { __coverage__?: Record<string, unknown> }).__coverage__;
+    const coverage = (globalThis as { __coverage__?: Record<string, unknown> })
+      .__coverage__;
     const cov = coverage?.[require.resolve(modulePath)];
     if (cov?.s) {
       ['48', '120'].forEach((k) => {
@@ -239,14 +239,19 @@ describe('api/backend proxy route', () => {
       method: 'POST',
       bodyText: 'a',
     });
-    const resp = await POST(req, { params: Promise.resolve({ path: ['tasks', '1', 'run'] }) });
+    const resp = await POST(req, {
+      params: Promise.resolve({ path: ['tasks', '1', 'run'] }),
+    });
     expect(resp.status).toBe(200);
     global.Buffer = originalBuffer;
   });
 
   it('handles string rawPath param and empty path', async () => {
     upstreamRequestMock.mockResolvedValue(
-      makeResponse('ok', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      makeResponse('ok', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      }),
     );
     const { GET } = await importRoute();
     const req = new MockNextRequest('http://localhost/api/backend/raw');
@@ -257,16 +262,37 @@ describe('api/backend proxy route', () => {
 
   it('uses long timeout for codespace init/status endpoints', async () => {
     upstreamRequestMock.mockResolvedValue(
-      makeResponse('ok', { status: 200, headers: { 'content-type': 'application/json' } }),
+      makeResponse('ok', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     );
     const { POST, GET } = await importRoute();
-    await POST(new MockNextRequest('http://localhost/api/backend/tasks/x/codespace/init', {
-      method: 'POST',
-      bodyText: '{}',
-    }), { params: Promise.resolve({ path: ['tasks', 'x', 'codespace', 'init'] }) });
-    await GET(new MockNextRequest('http://localhost/api/backend/tasks/x/codespace/status', {
-      method: 'GET',
-    }), { params: Promise.resolve({ path: ['tasks', 'x', 'codespace', 'status'] }) });
+    await POST(
+      new MockNextRequest(
+        'http://localhost/api/backend/tasks/x/codespace/init',
+        {
+          method: 'POST',
+          bodyText: '{}',
+        },
+      ),
+      {
+        params: Promise.resolve({ path: ['tasks', 'x', 'codespace', 'init'] }),
+      },
+    );
+    await GET(
+      new MockNextRequest(
+        'http://localhost/api/backend/tasks/x/codespace/status',
+        {
+          method: 'GET',
+        },
+      ),
+      {
+        params: Promise.resolve({
+          path: ['tasks', 'x', 'codespace', 'status'],
+        }),
+      },
+    );
     expect(upstreamRequestMock).toHaveBeenCalledWith(
       expect.objectContaining({ timeoutMs: 90000 }),
     );
@@ -274,7 +300,10 @@ describe('api/backend proxy route', () => {
 
   it('leaves body undefined when empty payload provided', async () => {
     upstreamRequestMock.mockResolvedValue(
-      makeResponse('ok', { status: 200, headers: { 'content-type': 'application/json' } }),
+      makeResponse('ok', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     );
     const { POST } = await importRoute();
     await POST(
@@ -341,16 +370,23 @@ describe('api/backend proxy route', () => {
       new MockNextRequest('http://localhost/api/backend/meta'),
       { params: Promise.resolve({ path: [] }) },
     );
-    expect(resp.headers.get('Server-Timing')).toContain('retry;desc=\"count=0\"');
+    expect(resp.headers.get('Server-Timing')).toContain(
+      'retry;desc=\"count=0\"',
+    );
   });
 
   it('handles nullish search param on request', async () => {
     upstreamRequestMock.mockResolvedValue(
-      makeResponse('ok', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      makeResponse('ok', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      }),
     );
     const { GET } = await importRoute();
     const req = new MockNextRequest('http://localhost/api/backend/search');
-    (req as unknown as { nextUrl: { search?: string; pathname: string } }).nextUrl = {
+    (
+      req as unknown as { nextUrl: { search?: string; pathname: string } }
+    ).nextUrl = {
       search: undefined,
       pathname: '/api/backend/search',
     };
@@ -362,7 +398,10 @@ describe('api/backend proxy route', () => {
 
   it('retains non hop-by-hop headers when forwarding', async () => {
     upstreamRequestMock.mockResolvedValue(
-      makeResponse('ok', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      makeResponse('ok', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      }),
     );
     const { GET } = await importRoute();
     const req = new MockNextRequest('http://localhost/api/backend/echo', {
@@ -383,7 +422,10 @@ describe('api/backend proxy route', () => {
       getReader: () => ({
         read: jest
           .fn()
-          .mockResolvedValueOnce({ done: false, value: new Uint8Array([1, 2, 3]) })
+          .mockResolvedValueOnce({
+            done: false,
+            value: new Uint8Array([1, 2, 3]),
+          })
           .mockResolvedValueOnce({ done: true, value: undefined }),
       }),
     };
@@ -416,7 +458,10 @@ describe('api/backend proxy route', () => {
         getReader: () => ({
           read: jest
             .fn()
-            .mockResolvedValueOnce({ done: false, value: new Uint8Array(badBuffer) })
+            .mockResolvedValueOnce({
+              done: false,
+              value: new Uint8Array(badBuffer),
+            })
             .mockResolvedValueOnce({ done: true, value: undefined }),
         }),
       },
@@ -569,15 +614,24 @@ describe('api/backend proxy route', () => {
 
   it('routes all HTTP verbs through proxy', async () => {
     upstreamRequestMock.mockResolvedValue(
-      makeResponse('ok', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      makeResponse('ok', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      }),
     );
     const mod = await importRoute();
     const ctx = { params: Promise.resolve({ path: [] as string[] }) };
     await mod.HEAD(new MockNextRequest('http://x', { method: 'HEAD' }), ctx);
     await mod.PUT(new MockNextRequest('http://x', { method: 'PUT' }), ctx);
     await mod.PATCH(new MockNextRequest('http://x', { method: 'PATCH' }), ctx);
-    await mod.DELETE(new MockNextRequest('http://x', { method: 'DELETE' }), ctx);
-    await mod.OPTIONS(new MockNextRequest('http://x', { method: 'OPTIONS' }), ctx);
+    await mod.DELETE(
+      new MockNextRequest('http://x', { method: 'DELETE' }),
+      ctx,
+    );
+    await mod.OPTIONS(
+      new MockNextRequest('http://x', { method: 'OPTIONS' }),
+      ctx,
+    );
     expect(upstreamRequestMock).toHaveBeenCalledTimes(5);
   });
 });

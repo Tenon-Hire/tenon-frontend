@@ -6,7 +6,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 
 jest.mock('next/dynamic', () => {
   return (
-    _importer: () => Promise<any>,
+    _importer: () => Promise<unknown>,
     opts: { loading?: () => React.ReactElement },
   ) => {
     const Fallback = opts?.loading;
