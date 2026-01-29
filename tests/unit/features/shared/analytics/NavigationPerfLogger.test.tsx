@@ -50,4 +50,13 @@ describe('NavigationPerfLogger', () => {
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });
+
+  it('does nothing when performance API is unavailable', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (global as any).performance;
+    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
+    const { NavigationPerfLogger } = require(modulePath);
+    render(<NavigationPerfLogger />);
+    expect(consoleLogSpy).not.toHaveBeenCalled();
+  });
 });

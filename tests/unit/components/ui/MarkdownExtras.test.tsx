@@ -31,6 +31,12 @@ describe('MarkdownPreview extras', () => {
     render(<MarkdownPreview content="# Title" />);
     expect(screen.getByTestId('react-markdown')).toBeInTheDocument();
   });
+
+  it('treats non-string content as empty and shows default placeholder', () => {
+    // @ts-expect-error intentional null to hit safeContent branch
+    render(<MarkdownPreview content={null} />);
+    expect(screen.getByText(/Nothing to preview yet/i)).toBeInTheDocument();
+  });
 });
 
 describe('LazyMarkdownPreview loading fallback', () => {

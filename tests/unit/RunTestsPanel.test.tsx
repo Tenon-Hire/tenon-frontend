@@ -1,8 +1,10 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RunTestsPanel } from '@/features/candidate/session/task/components/RunTestsPanel';
 
 const realConsoleError = console.error;
+const originalNavigator = global.navigator;
+const notifyMock = jest.fn();
 const baseResult = {
   passed: null,
   failed: null,
@@ -15,6 +17,10 @@ const baseResult = {
 
 const getTestsButton = () =>
   screen.getByRole('button', { name: /^(run|re-run|retry|running)\s+tests/i });
+
+jest.mock('@/features/shared/notifications', () => ({
+  useNotifications: () => ({ notify: notifyMock }),
+}));
 
 let timersAreFake = false;
 const useFakeTimers = () => {
@@ -48,6 +54,17 @@ describe('RunTestsPanel', () => {
     }
     act(() => {});
     restoreRealTimers();
+    notifyMock.mockReset();
+    try {
+      sessionStorage.clear();
+    } catch {}
+    // restore navigator after clipboard overrides
+    // @ts-expect-error readonly in jsdom, redefine for tests
+    global.navigator = originalNavigator;
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
   });
 
   it('starts a run and polls until success', async () => {
@@ -412,5 +429,109 @@ describe('RunTestsPanel', () => {
     ).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: /show full stdout/i }));
     expect(await screen.findByText(longStdout)).toBeInTheDocument();
+  });
+
+  it('restores in-flight run from sessionStorage when present', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    sessionStorage.setItem('stored-run', 'run-resume');
+    const onPoll = jest
+      .fn()
+      .mockResolvedValueOnce({ ...baseResult, status: 'running' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const });
+
+    render(
+      <RunTestsPanel
+        onStart={jest.fn()}
+        onPoll={onPoll}
+        storageKey="stored-run"
+        pollIntervalMs={100}
+      />,
+    );
+
+    await act(async () => {
+      jest.runAllTimers();
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByText(/Tests are running\. This can take a minute\./i),
+    ).toBeInTheDocument();
+  });
+
+  it('resumes pending poll when tab becomes visible', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+    const onStart = jest.fn().mockResolvedValue({ runId: 'pending-1' });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValueOnce({ ...baseResult, status: 'running' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const });
+
+    render(
+      <RunTestsPanel
+        onStart={onStart}
+        onPoll={onPoll}
+        pollIntervalMs={50}
+        maxPollIntervalMs={50}
+      />,
+    );
+
+    await user.click(screen.getByRole('button'));
+    expect(onPoll).not.toHaveBeenCalled();
+
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1100);
+      await Promise.resolve();
+    });
+    expect(onPoll).toHaveBeenCalledWith('pending-1');
+  });
+
+  it('handles clipboard failures and missing clipboard gracefully', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onStart = jest.fn().mockResolvedValue({ runId: 'copy-run' });
+    const onPoll = jest.fn().mockResolvedValueOnce({
+      ...baseResult,
+      status: 'failed' as const,
+      stdout: 'short',
+      stderr: 'err',
+      failed: 1,
+      total: 1,
+    });
+
+    // Clipboard rejecting
+    const writeMock = jest.fn().mockRejectedValue(new Error('nope'));
+    Object.defineProperty(global.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeMock },
+    });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={10} />,
+    );
+    await user.click(screen.getByRole('button'));
+    await act(async () => {
+      jest.advanceTimersByTime(1100);
+      await Promise.resolve();
+    });
+    const copyButtons = await screen.findAllByRole('button', { name: /Copy/i });
+    await user.click(copyButtons[0]);
+    expect(writeMock).toHaveBeenCalled();
+
+    // Clipboard unavailable path
+    // @ts-expect-error remove clipboard
+    delete (global as any).navigator.clipboard;
+    await user.click(copyButtons[1]);
   });
 });
