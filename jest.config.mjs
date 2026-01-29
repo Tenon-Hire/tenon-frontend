@@ -30,6 +30,7 @@ const customJestConfig = {
     },
   },
   coverageReporters: ['text', 'lcov', 'json', 'json-summary'],
+  coverageProvider: 'babel',
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',

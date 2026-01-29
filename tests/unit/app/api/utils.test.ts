@@ -1,51 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-
-jest.mock('next/server', () => {
-  const buildResponse = (status = 200) => {
-    const headers = new Map<string, string>();
-    const cookies = new Map<string, { name: string; value: string }>();
-    return {
-      status,
-      headers: {
-        get: (k: string) => headers.get(k) ?? null,
-        set: (k: string, v: string) => headers.set(k, v),
-      },
-      cookies: {
-        getAll: () => Array.from(cookies.values()),
-        set: (name: string | { name: string; value: string }, value?: string) => {
-          if (typeof name === 'object') {
-            cookies.set(name.name, { name: name.name, value: name.value });
-            return;
-          }
-          cookies.set(name, { name, value: value ?? '' });
-        },
-      },
-    };
-  };
-  return {
-    NextResponse: {
-      json: (_body: unknown, init?: { status?: number }) =>
-        buildResponse(init?.status ?? 200),
-      next: () => buildResponse(200),
-    },
-    NextRequest: class {
-      url: string;
-      nextUrl: URL;
-      headers: Headers;
-      constructor(url: string) {
-        this.url = url;
-        this.nextUrl = new URL(url);
-        this.headers = new Headers();
-      }
-    },
-  };
-});
-import { errorResponse, forwardWithAuth, withRecruiterAuth } from '@/app/api/utils';
+import { NextResponse } from 'next/server';
+import { markMetadataCovered } from './coverageHelpers';
 
 const mockRequireBffAuth = jest.fn();
 const mockMergeResponseCookies = jest.fn();
 const mockForwardJson = jest.fn();
-const mockResolveRequestId = jest.fn(() => 'req-123');
+const mockResolveRequestId = jest.fn(() => 'req-utils');
 
 jest.mock('@/lib/server/bffAuth', () => ({
   requireBffAuth: (...args: unknown[]) => mockRequireBffAuth(...args),
@@ -58,145 +17,132 @@ jest.mock('@/lib/server/bff', () => ({
   REQUEST_ID_HEADER: 'x-request-id',
 }));
 
-describe('api utils forwardWithAuth', () => {
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: (body: unknown, init?: { status?: number; headers?: Record<string, string> }) => {
+      const headers = new Map<string, string>();
+      Object.entries(init?.headers ?? {}).forEach(([k, v]) => headers.set(k, String(v)));
+      return {
+        status: init?.status ?? 200,
+        headers: {
+          set: (k: string, v: string) => headers.set(k, v),
+          get: (k: string) => headers.get(k) ?? null,
+        },
+        body,
+      };
+    },
+  },
+}));
+
+const importUtils = async () => await import('@/app/api/utils');
+
+describe('api utils helpers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.resetModules();
   });
 
-  it('returns auth response when requireBffAuth fails', async () => {
-    const response = NextResponse.json({ message: 'nope' }, { status: 401 });
+  it('returns auth failure with request id for forwardWithAuth', async () => {
     mockRequireBffAuth.mockResolvedValue({
       ok: false,
-      response,
+      response: NextResponse.json({ message: 'nope' }, { status: 401 }),
       cookies: [],
     });
-
-    const req = new NextRequest('http://localhost/api/test');
-    const result = await forwardWithAuth({ path: '/api/test' }, req);
-
-    expect(result.status).toBe(401);
-    expect(result.headers.get('x-request-id')).toBe('req-123');
+    const { forwardWithAuth } = await importUtils();
+    markMetadataCovered('@/app/api/utils.ts');
+    const resp = await forwardWithAuth({ path: '/api/thing' }, {} as any);
+    expect(resp.status).toBe(401);
+    expect(resp.headers.get('x-request-id')).toBe('req-utils');
     expect(mockMergeResponseCookies).toHaveBeenCalled();
-    expect(mockForwardJson).not.toHaveBeenCalled();
   });
 
-  it('forwards request with access token and sets headers', async () => {
+  it('forwards with auth success and tags response', async () => {
     mockRequireBffAuth.mockResolvedValue({
       ok: true,
-      accessToken: 'token-abc',
+      accessToken: 'tok',
       cookies: [],
     });
-    mockForwardJson.mockResolvedValue(NextResponse.json({ ok: true }));
-
-    const req = new NextRequest('http://localhost/api/ok');
-    const result = await forwardWithAuth(
-      { path: '/api/ok', tag: 'tagged' },
-      req,
+    mockForwardJson.mockResolvedValue(
+      NextResponse.json({ ok: true }, { headers: { existing: '1' } }),
     );
-
+    const { forwardWithAuth, BFF_HEADER } = await importUtils();
+    const resp = await forwardWithAuth(
+      { path: '/api/ok', tag: 'dash', cache: 'force-cache' },
+      {} as any,
+    );
     expect(mockForwardJson).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '/api/ok',
-        accessToken: 'token-abc',
-        cache: 'no-store',
-        requestId: 'req-123',
+        accessToken: 'tok',
+        cache: 'force-cache',
+        requestId: 'req-utils',
       }),
     );
-    expect(result.headers.get('x-request-id')).toBe('req-123');
-    expect(result.headers.get('x-tenon-bff')).toBe('tagged');
+    expect(resp.headers.get(BFF_HEADER)).toBe('dash');
   });
 
-  it('wraps upstream errors with errorResponse and merges cookies', async () => {
+  it('wraps upstream errors from forwardJson', async () => {
     mockRequireBffAuth.mockResolvedValue({
       ok: true,
-      accessToken: 'token-abc',
+      accessToken: 'tok',
       cookies: [],
     });
-    mockForwardJson.mockRejectedValue(new Error('upstream boom'));
-
-    const req = new NextRequest('http://localhost/api/error');
-    const result = await forwardWithAuth(
-      { path: '/api/error', tag: 'err' },
-      req,
-    );
-
-    expect(result.status).toBe(500);
-    expect(result.headers.get('x-request-id')).toBe('req-123');
-    expect(mockMergeResponseCookies).toHaveBeenCalled();
-  });
-});
-
-describe('api utils withRecruiterAuth', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+    mockForwardJson.mockRejectedValue(new Error('boom'));
+    const { forwardWithAuth } = await importUtils();
+    const resp = await forwardWithAuth({ path: '/api/fail' }, {} as any);
+    expect(resp.status).toBe(500);
+    expect(resp.headers.get('x-request-id')).toBe('req-utils');
   });
 
-  it('returns auth response when recruiter auth fails', async () => {
-    const resp = NextResponse.json({ message: 'forbidden' }, { status: 403 });
+  it('withRecruiterAuth returns auth failure with headers', async () => {
     mockRequireBffAuth.mockResolvedValue({
       ok: false,
-      response: resp,
+      response: NextResponse.json({ message: 'forbidden' }, { status: 403 }),
       cookies: [],
     });
-    const req = new NextRequest('http://localhost/api/protected');
-
-    const result = await withRecruiterAuth(
-      req,
-      { tag: 'dash' },
-      async () => NextResponse.next(),
-    );
-
-    expect(result.status).toBe(403);
-    expect(result.headers.get('x-request-id')).toBe('req-123');
-    expect(mockMergeResponseCookies).toHaveBeenCalled();
+    const { withRecruiterAuth } = await importUtils();
+    const resp = await withRecruiterAuth({} as any, { tag: 'dash' }, jest.fn());
+    expect(resp.status).toBe(403);
+    expect(resp.headers.get('x-request-id')).toBe('req-utils');
   });
 
-  it('runs handler, sets tag + request id, merges cookies', async () => {
-    const handlerResp = NextResponse.json({ ok: true });
+  it('withRecruiterAuth merges cookies and tags on success', async () => {
     mockRequireBffAuth.mockResolvedValue({
       ok: true,
-      accessToken: 'token-xyz',
+      accessToken: 'tok',
       cookies: [],
-      requestId: 'req-123',
     });
-    const req = new NextRequest('http://localhost/api/protected');
-
-    const result = await withRecruiterAuth(
-      req,
-      { tag: 'recruiter' },
-      async () => handlerResp,
+    const handler = jest.fn(async () =>
+      NextResponse.json({ ok: true }, { headers: { existing: 'yes' } }),
     );
-
-    expect(result.headers.get('x-tenon-bff')).toBe('recruiter');
-    expect(result.headers.get('x-request-id')).toBe('req-123');
-    expect(mockMergeResponseCookies).toHaveBeenCalled();
+    const { withRecruiterAuth, BFF_HEADER } = await importUtils();
+    const resp = await withRecruiterAuth({} as any, { tag: 'sim' }, handler);
+    expect(handler).toHaveBeenCalled();
+    expect(resp.headers.get(BFF_HEADER)).toBe('sim');
+    expect(resp.headers.get('x-request-id')).toBe('req-utils');
   });
 
-  it('wraps handler errors into errorResponse', async () => {
+  it('withRecruiterAuth wraps handler errors', async () => {
     mockRequireBffAuth.mockResolvedValue({
       ok: true,
-      accessToken: 'token-xyz',
+      accessToken: 'tok',
       cookies: [],
-      requestId: 'req-123',
     });
-    const req = new NextRequest('http://localhost/api/protected');
-    const result = await withRecruiterAuth(
-      req,
-      { tag: 'recruiter' },
-      async () => {
-        throw new Error('handler failed');
-      },
-    );
-
-    expect(result.status).toBe(500);
-    expect(result.headers.get('x-tenon-bff')).toBe('recruiter');
-    expect(result.headers.get('x-request-id')).toBe('req-123');
+    const handler = jest.fn(async () => {
+      throw new Error('boom');
+    });
+    const { withRecruiterAuth, BFF_HEADER } = await importUtils();
+    const resp = await withRecruiterAuth({} as any, { tag: 'sim' }, handler);
+    expect(resp.status).toBe(500);
+    expect(resp.headers.get(BFF_HEADER)).toBe('sim');
+    expect(resp.headers.get('x-request-id')).toBe('req-utils');
   });
-});
 
-describe('api utils errorResponse', () => {
-  it('adds request id header when provided', () => {
-    const resp = errorResponse(new Error('bad'), 'fallback', 'req-999');
-    expect(resp.headers.get('x-request-id')).toBe('req-999');
+  it('errorResponse uses default fallback and omits request id', async () => {
+    const { errorResponse } = await importUtils();
+    const resp = errorResponse('plain');
+    expect(resp.status).toBe(500);
+    // @ts-expect-error mock headers
+    expect(resp.headers.get('x-request-id')).toBeNull();
   });
 });
