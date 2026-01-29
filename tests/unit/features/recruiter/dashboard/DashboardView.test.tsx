@@ -1,12 +1,12 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import DashboardView from '@/features/recruiter/dashboard/DashboardView';
 
 const notifyMock = jest.fn();
 const updateMock = jest.fn();
 const inviteFlowResetMock = jest.fn();
 const inviteFlowSubmitMock = jest.fn();
-let capturedModalProps: any = null;
+const capturedModalProps: { current: unknown } = { current: null };
 
 jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
@@ -21,12 +21,12 @@ jest.mock('@/features/recruiter/dashboard/hooks/useInviteCandidateFlow', () => (
 }));
 
 jest.mock('next/dynamic', () => {
-  return (_importer: () => Promise<any>, opts: any) => {
-    const Mock = (props: any) => {
-      capturedModalProps = props;
+  return (_importer: () => Promise<unknown>, opts: { loading?: () => JSX.Element }) => {
+    const Mock = (props: Record<string, unknown>) => {
+      capturedModalProps.current = props;
       return <div data-testid="invite-modal" />;
     };
-    (Mock as any).loading = opts?.loading;
+    (Mock as { loading?: () => JSX.Element }).loading = opts?.loading;
     return Mock;
   };
 });
@@ -106,10 +106,10 @@ describe('DashboardView', () => {
     expect(inviteFlowResetMock).toHaveBeenCalled();
     expect(screen.getByTestId('invite-modal')).toBeInTheDocument();
 
-    const modalProps = capturedModalProps;
-    expect(typeof modalProps?.onSubmit).toBe('function');
+    const modalProps = capturedModalProps.current as { onSubmit: (n: string, e: string) => Promise<void> } | null;
+    expect(modalProps).toBeTruthy();
     await act(async () => {
-      await modalProps.onSubmit('Ann', 'a@test.com');
+      await modalProps?.onSubmit('Ann', 'a@test.com');
     });
     expect(inviteFlowSubmitMock).toHaveBeenCalledWith('Ann', 'a@test.com');
     expect(props.onRefresh).toHaveBeenCalled();

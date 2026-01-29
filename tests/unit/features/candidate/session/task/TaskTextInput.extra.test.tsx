@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { TaskTextInput } from '@/features/candidate/session/task/components/TaskTextInput';
 
 describe('TaskTextInput additional coverage', () => {
@@ -43,5 +43,24 @@ describe('TaskTextInput additional coverage', () => {
     expect(
       screen.getByPlaceholderText(/Write your response/),
     ).toBeDisabled();
+  });
+
+  it('shows preview placeholder and character count when empty', async () => {
+    render(
+      <TaskTextInput
+        value=""
+        onChange={() => {}}
+        disabled={false}
+        savedAt={null}
+      />,
+    );
+    const previewBtn = screen.getByRole('button', { name: /Preview/i });
+    await act(async () => {
+      previewBtn.click();
+    });
+    expect(
+      await screen.findByText(/Add content to preview your Markdown formatting/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/0 characters/i)).toBeInTheDocument();
   });
 });

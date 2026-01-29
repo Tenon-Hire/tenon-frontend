@@ -20,21 +20,20 @@ describe('NavigationPerfLogger', () => {
     delete require.cache[modulePath];
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '0';
     usePathnameMock.mockReturnValue('/dashboard');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Object.defineProperty(global, 'performance', {
+    Object.defineProperty(globalThis, 'performance', {
       configurable: true,
       value: {
         getEntriesByType: jest.fn(() => [{ duration: 42 }]),
         now: jest.fn(() => 99),
-      },
+      } as unknown as Performance,
     });
   });
 
   afterAll(() => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = originalEnv;
     consoleLogSpy.mockRestore();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (global as any).performance;
+    const globalWithPerf = globalThis as { performance?: Performance };
+    delete globalWithPerf.performance;
   });
 
   it('logs navigation performance when debug flag enabled', async () => {
@@ -52,8 +51,8 @@ describe('NavigationPerfLogger', () => {
   });
 
   it('does nothing when performance API is unavailable', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (global as any).performance;
+    const globalWithPerf = globalThis as { performance?: Performance };
+    delete globalWithPerf.performance;
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
     const { NavigationPerfLogger } = require(modulePath);
     render(<NavigationPerfLogger />);

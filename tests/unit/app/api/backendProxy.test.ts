@@ -1,5 +1,5 @@
 import { TextEncoder } from 'util';
-import { MockNextRequest, MockNextResponse, makeResponse } from './mockNext';
+import { MockNextRequest, makeResponse } from './mockNext';
 
 const upstreamRequestMock = jest.fn();
 const parseUpstreamBodyMock = jest.fn();
@@ -42,7 +42,7 @@ describe('api/backend proxy route', () => {
 
   afterAll(() => {
     process.env = originalEnv;
-    const coverage = (global as any).__coverage__;
+    const coverage = (globalThis as { __coverage__?: Record<string, unknown> }).__coverage__;
     const cov = coverage?.[require.resolve(modulePath)];
     if (cov?.s) {
       ['48', '120'].forEach((k) => {
@@ -251,7 +251,7 @@ describe('api/backend proxy route', () => {
     const { GET } = await importRoute();
     const req = new MockNextRequest('http://localhost/api/backend/raw');
     await GET(req, { params: Promise.resolve({ path: 'single' }) });
-    await GET(req, { params: Promise.resolve({}) as any });
+    await GET(req, { params: Promise.resolve({ path: [] as string[] }) });
     expect(upstreamRequestMock).toHaveBeenCalled();
   });
 
@@ -350,9 +350,11 @@ describe('api/backend proxy route', () => {
     );
     const { GET } = await importRoute();
     const req = new MockNextRequest('http://localhost/api/backend/search');
-    // @ts-expect-error override nextUrl to remove search
-    req.nextUrl = { search: undefined, pathname: '/api/backend/search' } as any;
-    await GET(req, { params: Promise.resolve({ path: [] }) });
+    (req as unknown as { nextUrl: { search?: string; pathname: string } }).nextUrl = {
+      search: undefined,
+      pathname: '/api/backend/search',
+    };
+    await GET(req, { params: Promise.resolve({ path: [] as string[] }) });
     expect(upstreamRequestMock).toHaveBeenCalledWith(
       expect.objectContaining({ url: expect.stringContaining('/api/') }),
     );
@@ -570,12 +572,12 @@ describe('api/backend proxy route', () => {
       makeResponse('ok', { status: 200, headers: { 'content-type': 'text/plain' } }),
     );
     const mod = await importRoute();
-    const ctx = { params: Promise.resolve({ path: [] }) };
-    await mod.HEAD(new MockNextRequest('http://x', { method: 'HEAD' }), ctx as any);
-    await mod.PUT(new MockNextRequest('http://x', { method: 'PUT' }), ctx as any);
-    await mod.PATCH(new MockNextRequest('http://x', { method: 'PATCH' }), ctx as any);
-    await mod.DELETE(new MockNextRequest('http://x', { method: 'DELETE' }), ctx as any);
-    await mod.OPTIONS(new MockNextRequest('http://x', { method: 'OPTIONS' }), ctx as any);
+    const ctx = { params: Promise.resolve({ path: [] as string[] }) };
+    await mod.HEAD(new MockNextRequest('http://x', { method: 'HEAD' }), ctx);
+    await mod.PUT(new MockNextRequest('http://x', { method: 'PUT' }), ctx);
+    await mod.PATCH(new MockNextRequest('http://x', { method: 'PATCH' }), ctx);
+    await mod.DELETE(new MockNextRequest('http://x', { method: 'DELETE' }), ctx);
+    await mod.OPTIONS(new MockNextRequest('http://x', { method: 'OPTIONS' }), ctx);
     expect(upstreamRequestMock).toHaveBeenCalledTimes(5);
   });
 });

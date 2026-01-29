@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RunTestsPanel } from '@/features/candidate/session/task/components/RunTestsPanel';
 
@@ -433,7 +433,6 @@ describe('RunTestsPanel', () => {
 
   it('restores in-flight run from sessionStorage when present', async () => {
     useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     sessionStorage.setItem('stored-run', 'run-resume');
     const onPoll = jest
       .fn()
@@ -530,8 +529,12 @@ describe('RunTestsPanel', () => {
     expect(writeMock).toHaveBeenCalled();
 
     // Clipboard unavailable path
-    // @ts-expect-error remove clipboard
-    delete (global as any).navigator.clipboard;
+    const globalWithNav = globalThis as {
+      navigator?: { clipboard?: { writeText: jest.Mock } };
+    };
+    if (globalWithNav.navigator) {
+      delete globalWithNav.navigator.clipboard;
+    }
     await user.click(copyButtons[1]);
   });
 });
