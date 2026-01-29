@@ -312,6 +312,18 @@ describe('app layouts and pages', () => {
     expect(screen.getAllByTestId('link')[1]).toHaveAttribute('href', '/dest');
   });
 
+  it('wraps not-authorized layout in AppShell', async () => {
+    const { default: NotAuthorizedLayout } = await import(
+      '@/app/not-authorized/layout'
+    );
+    render(
+      NotAuthorizedLayout({
+        children: <div data-testid="na-child" />,
+      }),
+    );
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+  });
+
   it('renders global error with digest and retry', async () => {
     const { default: GlobalError } = await import('@/app/global-error');
     const reset = jest.fn();
@@ -323,5 +335,18 @@ describe('app layouts and pages', () => {
     );
     screen.getByRole('button', { name: /Retry/i }).click();
     expect(reset).toHaveBeenCalled();
+  });
+
+  it('renders global error without digest in production', async () => {
+    const prevEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    const { default: GlobalError } = await import('@/app/global-error');
+    const view = GlobalError({
+      error: Object.assign(new Error('fail'), {}),
+      reset: jest.fn(),
+    });
+    render(view);
+    expect(screen.queryByText(/Error id/)).not.toBeInTheDocument();
+    process.env.NODE_ENV = prevEnv;
   });
 });

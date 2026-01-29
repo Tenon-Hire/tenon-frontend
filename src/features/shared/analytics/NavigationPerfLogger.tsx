@@ -3,15 +3,16 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
-const DEBUG_PERF = ['1', 'true'].includes(
-  (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase(),
-);
+const isDebugPerf = () =>
+  ['1', 'true'].includes(
+    (process.env.NEXT_PUBLIC_TENON_DEBUG_PERF ?? '').toLowerCase(),
+  );
 
 export function NavigationPerfLogger() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!DEBUG_PERF || typeof performance === 'undefined') return;
+    if (!isDebugPerf() || typeof performance === 'undefined') return;
     const navEntries = performance.getEntriesByType(
       'navigation',
     ) as PerformanceNavigationTiming[];

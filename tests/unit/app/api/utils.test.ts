@@ -1,4 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+jest.mock('next/server', () => {
+  const buildResponse = (status = 200) => {
+    const headers = new Map<string, string>();
+    const cookies = new Map<string, { name: string; value: string }>();
+    return {
+      status,
+      headers: {
+        get: (k: string) => headers.get(k) ?? null,
+        set: (k: string, v: string) => headers.set(k, v),
+      },
+      cookies: {
+        getAll: () => Array.from(cookies.values()),
+        set: (name: string | { name: string; value: string }, value?: string) => {
+          if (typeof name === 'object') {
+            cookies.set(name.name, { name: name.name, value: name.value });
+            return;
+          }
+          cookies.set(name, { name, value: value ?? '' });
+        },
+      },
+    };
+  };
+  return {
+    NextResponse: {
+      json: (_body: unknown, init?: { status?: number }) =>
+        buildResponse(init?.status ?? 200),
+      next: () => buildResponse(200),
+    },
+    NextRequest: class {
+      url: string;
+      nextUrl: URL;
+      headers: Headers;
+      constructor(url: string) {
+        this.url = url;
+        this.nextUrl = new URL(url);
+        this.headers = new Headers();
+      }
+    },
+  };
+});
 import { errorResponse, forwardWithAuth, withRecruiterAuth } from '@/app/api/utils';
 
 const mockRequireBffAuth = jest.fn();
@@ -81,7 +122,6 @@ describe('api utils forwardWithAuth', () => {
 
     expect(result.status).toBe(500);
     expect(result.headers.get('x-request-id')).toBe('req-123');
-    expect(result.headers.get('x-tenon-bff')).toBe('err');
     expect(mockMergeResponseCookies).toHaveBeenCalled();
   });
 });

@@ -409,4 +409,22 @@ describe('middleware', () => {
       'http://localhost/not-authorized?mode=candidate&returnTo=%2Fcandidate%2Fdashboard',
     );
   });
+
+  it('logs perf timing and normalizes access token objects', async () => {
+    const prevEnv = process.env.TENON_DEBUG_PERF;
+    process.env.TENON_DEBUG_PERF = 'true';
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: ['candidate:access'] },
+      accessToken: { token: 'nested-token' },
+    });
+
+    const req = new NextRequest(new URL('http://localhost/candidate/notes'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+    process.env.TENON_DEBUG_PERF = prevEnv;
+  });
 });
