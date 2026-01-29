@@ -1,14 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 
-jest.mock('react', () => {
-  const actual = jest.requireActual('react');
-  return {
-    ...actual,
-    useCallback: (fn: (...args: unknown[]) => unknown) => fn,
-  };
-});
-
 const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
 const useReportWebVitalsMock = jest.fn();
 
@@ -18,12 +10,10 @@ jest.mock('next/web-vitals', () => ({
 
 describe('WebVitalsLogger', () => {
   const originalEnv = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF;
-  const importLogger = () =>
-    import('@/features/shared/analytics/WebVitalsLogger');
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
+    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
   });
 
   afterAll(() => {
@@ -32,8 +22,8 @@ describe('WebVitalsLogger', () => {
   });
 
   it('logs watched metrics when debug flag enabled', async () => {
-    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
-    const { WebVitalsLogger } = await importLogger();
+    const { WebVitalsLogger } =
+      await import('@/features/shared/analytics/WebVitalsLogger');
     render(<WebVitalsLogger />);
 
     const handler = useReportWebVitalsMock.mock.calls[0][0] as (metric: {
@@ -56,7 +46,8 @@ describe('WebVitalsLogger', () => {
 
   it('ignores untracked metrics and when debug disabled', async () => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '0';
-    const { WebVitalsLogger } = await importLogger();
+    const { WebVitalsLogger } =
+      await import('@/features/shared/analytics/WebVitalsLogger');
     render(<WebVitalsLogger />);
     const handler = useReportWebVitalsMock.mock.calls[0][0] as (metric: {
       id: string;

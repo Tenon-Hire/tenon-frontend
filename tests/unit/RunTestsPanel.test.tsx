@@ -22,6 +22,21 @@ jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock }),
 }));
 
+jest.mock('@/lib/utils/errors', () => {
+  const actual = jest.requireActual('@/lib/utils/errors');
+  return {
+    ...actual,
+    normalizeApiError: jest.fn((err: unknown, fallback?: string) => ({
+      message:
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : (fallback ?? 'normalized'),
+    })),
+  };
+});
+
 let timersAreFake = false;
 const useFakeTimers = () => {
   timersAreFake = true;
@@ -536,5 +551,52 @@ describe('RunTestsPanel', () => {
       delete globalWithNav.navigator.clipboard;
     }
     await user.click(copyButtons[1]);
+  });
+
+  it('surfaces poll exceptions via normalizeApiError', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onStart = jest.fn().mockResolvedValue({ runId: 'poll-ex' });
+    const onPoll = jest.fn().mockRejectedValue(new Error('poll boom'));
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => {
+      jest.advanceTimersByTime(1200);
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByText(/poll boom/i)).toBeInTheDocument();
+  });
+
+  it('honors maxDurationMs and ends run with error when exceeded', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onStart = jest.fn().mockResolvedValue({ runId: 'duration' });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValue({ ...baseResult, status: 'running' as const });
+
+    render(
+      <RunTestsPanel
+        onStart={onStart}
+        onPoll={onPoll}
+        pollIntervalMs={1000}
+        maxDurationMs={1}
+      />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+      await Promise.resolve();
+    });
+
+    expect(
+      await screen.findByText(/This is taking longer than expected/i),
+    ).toBeInTheDocument();
   });
 });

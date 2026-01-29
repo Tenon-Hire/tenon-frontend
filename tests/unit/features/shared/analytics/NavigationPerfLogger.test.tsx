@@ -1,15 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 
-jest.mock('react', () => {
-  const actual = jest.requireActual('react');
-  return {
-    ...actual,
-    useEffect: (fn: () => void) => fn(),
-  };
-});
-
-const usePathnameMock = jest.fn();
+const usePathnameMock = jest.fn(() => '/dashboard');
 jest.mock('next/navigation', () => ({
   usePathname: () => usePathnameMock(),
 }));
@@ -17,20 +9,17 @@ jest.mock('next/navigation', () => ({
 describe('NavigationPerfLogger', () => {
   const originalEnv = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF;
   const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-  const importLogger = () =>
-    import('@/features/shared/analytics/NavigationPerfLogger');
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
-    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '0';
     usePathnameMock.mockReturnValue('/dashboard');
+    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
     Object.defineProperty(globalThis, 'performance', {
       configurable: true,
       value: {
         getEntriesByType: jest.fn(() => [{ duration: 42 }]),
         now: jest.fn(() => 99),
-      } as unknown as Performance,
+      } as Performance,
     });
   });
 
@@ -42,15 +31,18 @@ describe('NavigationPerfLogger', () => {
   });
 
   it('logs navigation performance when debug flag enabled', async () => {
-    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
-    const { NavigationPerfLogger } = await importLogger();
+    const { NavigationPerfLogger } =
+      await import('@/features/shared/analytics/NavigationPerfLogger');
     render(<NavigationPerfLogger />);
-    expect(consoleLogSpy).toHaveBeenCalled();
+    expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[perf:navigation] /dashboard duration=42'),
+    );
   });
 
   it('skips logging when debug flag disabled', async () => {
-    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'false';
-    const { NavigationPerfLogger } = await importLogger();
+    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '0';
+    const { NavigationPerfLogger } =
+      await import('@/features/shared/analytics/NavigationPerfLogger');
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });
@@ -58,8 +50,8 @@ describe('NavigationPerfLogger', () => {
   it('does nothing when performance API is unavailable', async () => {
     const globalWithPerf = globalThis as { performance?: Performance };
     delete globalWithPerf.performance;
-    process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
-    const { NavigationPerfLogger } = await importLogger();
+    const { NavigationPerfLogger } =
+      await import('@/features/shared/analytics/NavigationPerfLogger');
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });
