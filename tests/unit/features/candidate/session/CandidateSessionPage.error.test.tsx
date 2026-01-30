@@ -1,5 +1,11 @@
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import {
+  render,
+  screen,
+  waitFor,
+  act,
+  fireEvent,
+} from '@testing-library/react';
 import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 
 const useCandidateSessionMock = jest.fn();
@@ -22,12 +28,15 @@ jest.mock('@/features/candidate/session/task/CandidateTaskView', () => ({
   ),
 }));
 
-jest.mock('@/features/candidate/session/task/components/WorkspacePanel', () => ({
-  __esModule: true,
-  WorkspacePanel: (props: Record<string, unknown>) => (
-    <div data-testid="workspace-panel">{JSON.stringify(props)}</div>
-  ),
-}));
+jest.mock(
+  '@/features/candidate/session/task/components/WorkspacePanel',
+  () => ({
+    __esModule: true,
+    WorkspacePanel: (props: Record<string, unknown>) => (
+      <div data-testid="workspace-panel">{JSON.stringify(props)}</div>
+    ),
+  }),
+);
 
 jest.mock('@/features/candidate/session/task/components/RunTestsPanel', () => ({
   __esModule: true,
@@ -46,7 +55,15 @@ jest.mock('@/features/candidate/session/task/components/ResourcePanel', () => ({
 }));
 
 jest.mock('@/features/candidate/session/components/StateMessage', () => ({
-  StateMessage: ({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) => (
+  StateMessage: ({
+    title,
+    description,
+    action,
+  }: {
+    title: string;
+    description?: string;
+    action?: React.ReactNode;
+  }) => (
     <div data-testid="state-message">
       {title}
       {description ? `|${description}` : ''}
@@ -55,14 +72,18 @@ jest.mock('@/features/candidate/session/components/StateMessage', () => ({
   ),
 }));
 
-jest.mock('@/features/candidate/session/components/CandidateSessionSkeleton', () => ({
-  CandidateSessionSkeleton: ({ message }: { message: string }) => (
-    <div data-testid="skeleton">{message}</div>
-  ),
-}));
+jest.mock(
+  '@/features/candidate/session/components/CandidateSessionSkeleton',
+  () => ({
+    CandidateSessionSkeleton: ({ message }: { message: string }) => (
+      <div data-testid="skeleton">{message}</div>
+    ),
+  }),
+);
 
 const resolveInviteMock = jest.fn();
 const getCurrentTaskMock = jest.fn();
+import { HttpError } from '@/lib/api/candidate';
 
 jest.mock('@/lib/api/candidate', () => ({
   resolveCandidateInviteToken: (...args: unknown[]) =>
@@ -173,7 +194,7 @@ describe('CandidateSessionPage auth/error states', () => {
   });
 
   it('shows invite expired error with sign-in link when unauthenticated', async () => {
-    resolveInviteMock.mockRejectedValue(new (require('@/lib/api/candidate').HttpError)(410));
+    resolveInviteMock.mockRejectedValue(new HttpError(410));
     useCandidateSessionMock.mockReturnValue({
       ...baseState(),
       state: { ...baseState().state, authStatus: 'unauthenticated' },
@@ -194,7 +215,7 @@ describe('CandidateSessionPage auth/error states', () => {
   });
 
   it('shows invite error with go home action when authenticated', async () => {
-    resolveInviteMock.mockRejectedValue(new (require('@/lib/api/candidate').HttpError)(404));
+    resolveInviteMock.mockRejectedValue(new HttpError(404));
     useCandidateSessionMock.mockReturnValue(baseState());
 
     await act(async () => {
@@ -229,5 +250,4 @@ describe('CandidateSessionPage auth/error states', () => {
     );
     expect(setToken).toHaveBeenCalledWith(null);
   });
-
 });

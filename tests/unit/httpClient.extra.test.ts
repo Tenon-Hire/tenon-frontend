@@ -1,7 +1,4 @@
-import {
-  apiClient,
-  __resetHttpClientCache,
-} from '@/lib/api/httpClient';
+import { apiClient, __resetHttpClientCache } from '@/lib/api/httpClient';
 import { responseHelpers } from '../setup';
 
 describe('httpClient edge cases', () => {

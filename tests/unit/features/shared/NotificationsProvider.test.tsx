@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   NotificationsProvider,
@@ -60,7 +66,9 @@ describe('NotificationsProvider', () => {
 
   it('supports actions, updates, and auto dismiss cleanup', async () => {
     jest.useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({
+      advanceTimers: jest.advanceTimersByTime,
+    });
     const actionSpy = jest.fn();
 
     function ActionTrigger() {
@@ -256,7 +264,9 @@ describe('NotificationsProvider', () => {
 
   it('reuses toast id instead of duplicating and skips auto-dismiss when duration <= 0', async () => {
     jest.useFakeTimers();
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const userDup = userEvent.setup({
+      advanceTimers: jest.advanceTimersByTime,
+    });
 
     function DupTrigger() {
       const { notify } = useNotifications();
@@ -295,18 +305,14 @@ describe('NotificationsProvider', () => {
       </NotificationsProvider>,
     );
 
-    act(() => {
-      screen.getByText('first').click();
-      screen.getByText('second').click();
-    });
+    await userDup.click(screen.getByText('first'));
+    await userDup.click(screen.getByText('second'));
 
     const toasts = await screen.findAllByRole('status');
     expect(toasts).toHaveLength(1);
     expect(toasts[0]).toHaveTextContent('Second');
 
     // duration 0 => sticky, should not auto-dismiss
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
   });
 });

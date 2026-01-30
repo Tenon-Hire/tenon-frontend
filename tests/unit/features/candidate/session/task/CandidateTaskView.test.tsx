@@ -2,12 +2,15 @@ import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CandidateTaskView from '@/features/candidate/session/task/CandidateTaskView';
+import { Task } from '@/features/candidate/session/task/types';
 
 const useTaskDraftsMock = jest.fn();
 const useSubmitHandlerMock = jest.fn();
 
 jest.mock('@/features/candidate/session/task/hooks/taskHooks', () => {
-  const actual = jest.requireActual('@/features/candidate/session/task/hooks/taskHooks');
+  const actual = jest.requireActual(
+    '@/features/candidate/session/task/hooks/taskHooks',
+  );
   return {
     ...actual,
     useTaskDrafts: (...args: unknown[]) => useTaskDraftsMock(...args),
@@ -15,11 +18,14 @@ jest.mock('@/features/candidate/session/task/hooks/taskHooks', () => {
   };
 });
 
-jest.mock('@/features/candidate/session/task/components/TaskDescription', () => ({
-  TaskDescription: ({ description }: { description: string }) => (
-    <div data-testid="desc">{description}</div>
-  ),
-}));
+jest.mock(
+  '@/features/candidate/session/task/components/TaskDescription',
+  () => ({
+    TaskDescription: ({ description }: { description: string }) => (
+      <div data-testid="desc">{description}</div>
+    ),
+  }),
+);
 
 jest.mock('@/features/candidate/session/task/components/TaskHeader', () => ({
   TaskHeader: ({ task }: { task: { title: string } }) => (
@@ -33,25 +39,38 @@ jest.mock('@/features/candidate/session/task/components/TaskStatus', () => ({
   ),
 }));
 
-jest.mock('@/features/candidate/session/task/components/TaskErrorBanner', () => ({
-  TaskErrorBanner: ({ message }: { message: string | null }) => (
-    <div data-testid="error">{message}</div>
-  ),
-}));
+jest.mock(
+  '@/features/candidate/session/task/components/TaskErrorBanner',
+  () => ({
+    TaskErrorBanner: ({ message }: { message: string | null }) => (
+      <div data-testid="error">{message}</div>
+    ),
+  }),
+);
 
 jest.mock('@/features/candidate/session/task/components/TaskActions', () => ({
-  TaskActions: ({ onSaveDraft, onSubmit }: { onSaveDraft?: () => void; onSubmit: () => void }) => (
+  TaskActions: ({
+    onSaveDraft,
+    onSubmit,
+  }: {
+    onSaveDraft?: () => void;
+    onSubmit: () => void;
+  }) => (
     <div>
-      {onSaveDraft && (
-        <button onClick={onSaveDraft}>save</button>
-      )}
+      {onSaveDraft && <button onClick={onSaveDraft}>save</button>}
       <button onClick={onSubmit}>submit</button>
     </div>
   ),
 }));
 
 jest.mock('@/features/candidate/session/task/components/TaskTextInput', () => ({
-  TaskTextInput: ({ onChange, value }: { onChange: (v: string) => void; value: string }) => (
+  TaskTextInput: ({
+    onChange,
+    value,
+  }: {
+    onChange: (v: string) => void;
+    value: string;
+  }) => (
     <textarea
       data-testid="text-input"
       value={value}
@@ -60,7 +79,7 @@ jest.mock('@/features/candidate/session/task/components/TaskTextInput', () => ({
   ),
 }));
 
-const baseTask = {
+const baseTask: Task = {
   id: 1,
   dayIndex: 1,
   type: 'write',
@@ -91,7 +110,7 @@ describe('CandidateTaskView', () => {
 
     render(
       <CandidateTaskView
-        task={{ ...baseTask, dayIndex: 2, type: 'code' } as any}
+        task={{ ...baseTask, dayIndex: 2, type: 'code' }}
         submitting={false}
         onSubmit={jest.fn()}
         submitError={null}
@@ -122,7 +141,7 @@ describe('CandidateTaskView', () => {
 
     render(
       <CandidateTaskView
-        task={baseTask as any}
+        task={baseTask}
         submitting={false}
         onSubmit={jest.fn()}
         submitError={null}
@@ -152,7 +171,7 @@ describe('CandidateTaskView', () => {
 
     render(
       <CandidateTaskView
-        task={baseTask as any}
+        task={baseTask}
         submitting={false}
         onSubmit={jest.fn()}
         submitError={null}
@@ -182,7 +201,7 @@ describe('CandidateTaskView', () => {
 
     render(
       <CandidateTaskView
-        task={baseTask as any}
+        task={baseTask}
         submitting={false}
         onSubmit={jest.fn()}
         submitError="err"

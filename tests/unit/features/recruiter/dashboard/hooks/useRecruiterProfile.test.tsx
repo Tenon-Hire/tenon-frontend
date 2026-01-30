@@ -11,8 +11,10 @@ jest.mock('@/lib/api/httpClient', () => ({
 }));
 
 jest.mock('@/lib/auth/routing', () => ({
-  buildLoginUrl: (_mode: string, returnTo: string) => `/auth/login?returnTo=${returnTo}`,
-  buildNotAuthorizedUrl: (_mode: string, returnTo: string) => `/not-authorized?returnTo=${returnTo}`,
+  buildLoginUrl: (_mode: string, returnTo: string) =>
+    `/auth/login?returnTo=${returnTo}`,
+  buildNotAuthorizedUrl: (_mode: string, returnTo: string) =>
+    `/not-authorized?returnTo=${returnTo}`,
   buildReturnTo: () => '/return',
 }));
 
@@ -28,7 +30,10 @@ describe('useRecruiterProfile', () => {
 
   it('returns initial profile when provided and skip fetch', () => {
     const { result } = renderHook(() =>
-      useRecruiterProfile({ initialProfile: { name: 'R' } as any, fetchOnMount: false }),
+      useRecruiterProfile({
+        initialProfile: { name: 'R' },
+        fetchOnMount: false,
+      }),
     );
     expect(result.current.profile?.name).toBe('R');
     expect(result.current.loading).toBe(false);

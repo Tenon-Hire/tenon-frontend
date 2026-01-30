@@ -67,7 +67,7 @@ describe('TaskTextInput', () => {
             setValue(next);
           }}
           disabled={false}
-          savedAt={Date.now()}
+          savedAt={1234567890}
         />
       );
     }

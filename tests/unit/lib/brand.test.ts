@@ -1,6 +1,5 @@
 describe('brand config', () => {
-  const originalNamespace =
-    process.env.NEXT_PUBLIC_TENON_AUTH0_CLAIM_NAMESPACE;
+  const originalNamespace = process.env.NEXT_PUBLIC_TENON_AUTH0_CLAIM_NAMESPACE;
 
   afterEach(() => {
     process.env.NEXT_PUBLIC_TENON_AUTH0_CLAIM_NAMESPACE = originalNamespace;
@@ -21,5 +20,12 @@ describe('brand config', () => {
 
     const { CUSTOM_CLAIM_NAMESPACE } = await import('@/lib/brand');
     expect(CUSTOM_CLAIM_NAMESPACE).toBe('https://namespaced.example/');
+  });
+
+  it('falls back to brand domain when env missing', async () => {
+    delete process.env.NEXT_PUBLIC_TENON_AUTH0_CLAIM_NAMESPACE;
+    const { CUSTOM_CLAIM_NAMESPACE, BRAND_DOMAIN } =
+      await import('@/lib/brand');
+    expect(CUSTOM_CLAIM_NAMESPACE).toBe(`https://${BRAND_DOMAIN}/`);
   });
 });

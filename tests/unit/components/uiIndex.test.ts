@@ -7,5 +7,8 @@ describe('components/ui index export', () => {
     expect(ui).toHaveProperty('StatusPill');
     expect(ui).toHaveProperty('Card');
     expect(ui).toHaveProperty('cn');
+    expect(ui).toHaveProperty('Skeleton');
+    expect(ui).toHaveProperty('MarkdownPreview');
+    expect(ui).toHaveProperty('LazyMarkdownPreview');
   });
 });

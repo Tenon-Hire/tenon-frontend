@@ -4,10 +4,17 @@ import { useSimulations } from '@/features/recruiter/dashboard/hooks/useSimulati
 const listSimulationsMock = jest.fn();
 const errorToMessageMock = jest.fn(() => 'friendly-error');
 
-global.AbortController = class {
-  signal = { aborted: false } as AbortSignal;
-  abort = jest.fn();
-} as any;
+class MockAbortController {
+  signal: AbortSignal;
+  abort: jest.Mock;
+  constructor() {
+    this.signal = { aborted: false } as AbortSignal;
+    this.abort = jest.fn();
+  }
+}
+
+global.AbortController =
+  MockAbortController as unknown as typeof AbortController;
 
 jest.mock('@/lib/api/recruiter', () => ({
   listSimulations: (...args: unknown[]) => listSimulationsMock(...args),

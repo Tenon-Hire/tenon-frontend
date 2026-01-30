@@ -315,8 +315,10 @@ describe('bff helpers', () => {
       });
 
       expect(resp.status).toBe(200);
-      expect((resp as unknown as { _tenonMeta?: { attempts?: number } })
-        ._tenonMeta?.attempts).toBe(2);
+      expect(
+        (resp as unknown as { _tenonMeta?: { attempts?: number } })._tenonMeta
+          ?.attempts,
+      ).toBe(2);
     });
 
     it('honors retry-after header on 429 responses', async () => {
@@ -346,8 +348,10 @@ describe('bff helpers', () => {
       });
 
       expect(resp.status).toBe(200);
-      expect((resp as unknown as { _tenonMeta?: { attempts?: number } })
-        ._tenonMeta?.attempts).toBe(2);
+      expect(
+        (resp as unknown as { _tenonMeta?: { attempts?: number } })._tenonMeta
+          ?.attempts,
+      ).toBe(2);
     });
 
     it('throws when a request times out', async () => {

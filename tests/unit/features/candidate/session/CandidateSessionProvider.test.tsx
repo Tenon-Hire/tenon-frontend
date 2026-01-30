@@ -1,17 +1,23 @@
 import React from 'react';
 import { act, renderHook } from '@testing-library/react';
-import { CandidateSessionProvider, useCandidateSession } from '@/features/candidate/session/CandidateSessionProvider';
+import {
+  CandidateSessionProvider,
+  useCandidateSession,
+} from '@/features/candidate/session/CandidateSessionProvider';
 import { BRAND_SLUG } from '@/lib/brand';
 
 const fetchAuthAccessTokenMock = jest.fn();
 
 jest.mock('@/lib/auth/accessToken', () => ({
-  fetchAuthAccessToken: (...args: unknown[]) => fetchAuthAccessTokenMock(...args),
+  fetchAuthAccessToken: (...args: unknown[]) =>
+    fetchAuthAccessTokenMock(...args),
 }));
 
 const renderWithProvider = () =>
   renderHook(() => useCandidateSession(), {
-    wrapper: ({ children }) => <CandidateSessionProvider>{children}</CandidateSessionProvider>,
+    wrapper: ({ children }) => (
+      <CandidateSessionProvider>{children}</CandidateSessionProvider>
+    ),
   });
 
 describe('CandidateSessionProvider', () => {
@@ -37,7 +43,11 @@ describe('CandidateSessionProvider', () => {
       JSON.stringify({
         inviteToken: 'inv',
         candidateSessionId: 9,
-        bootstrap: { candidateSessionId: 9, status: 'in_progress', simulation: { title: 'Sim', role: 'Role' } },
+        bootstrap: {
+          candidateSessionId: 9,
+          status: 'in_progress',
+          simulation: { title: 'Sim', role: 'Role' },
+        },
         started: true,
       }),
     );

@@ -1,4 +1,3 @@
-import React from 'react';
 import { act, renderHook } from '@testing-library/react';
 import {
   useTaskDrafts,
@@ -23,9 +22,11 @@ describe('useTaskDrafts', () => {
     jest.useFakeTimers();
   });
 
+  type MinimalTask = { id: number; type: 'design' | 'code'; dayIndex: number };
+
   it('saves drafts on debounce and clears for github native tasks', () => {
     const { result, rerender } = renderHook(
-      (task) => useTaskDrafts(task as any),
+      (task: MinimalTask) => useTaskDrafts(task),
       {
         initialProps: { id: 1, type: 'design', dayIndex: 1 },
       },
@@ -39,7 +40,7 @@ describe('useTaskDrafts', () => {
     });
     expect(saveTextDraft).toHaveBeenCalledWith(1, 'hello');
 
-    rerender({ id: 2, type: 'code', dayIndex: 2 } as any);
+    rerender({ id: 2, type: 'code', dayIndex: 2 });
     act(() => {
       jest.advanceTimersByTime(10);
     });
@@ -50,7 +51,7 @@ describe('useTaskDrafts', () => {
 
   it('saveDraftNow sets savedAt and clears later, clearDrafts clears storage', () => {
     const { result } = renderHook(() =>
-      useTaskDrafts({ id: 3, type: 'design', dayIndex: 1 } as any),
+      useTaskDrafts({ id: 3, type: 'design', dayIndex: 1 }),
     );
 
     act(() => {

@@ -135,4 +135,23 @@ describe('httpClient', () => {
     expect(second).toEqual({ value: 1 });
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it('skips dedupe when disableDedupe is true', async () => {
+    __resetHttpClientCache();
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(
+        responseHelpers.jsonResponse({ value: 1 }) as unknown as Response,
+      )
+      .mockResolvedValueOnce(
+        responseHelpers.jsonResponse({ value: 2 }) as unknown as Response,
+      );
+
+    const p1 = apiClient.get('/dedupe-off', { disableDedupe: true });
+    const p2 = apiClient.get('/dedupe-off', { disableDedupe: true });
+    const [a, b] = await Promise.all([p1, p2]);
+
+    expect(a).toEqual({ value: 1 });
+    expect(b).toEqual({ value: 2 });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
 });

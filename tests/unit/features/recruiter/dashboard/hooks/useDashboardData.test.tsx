@@ -18,8 +18,10 @@ jest.mock('@/features/recruiter/dashboard/utils/perf', () => ({
 }));
 
 jest.mock('@/lib/auth/routing', () => ({
-  buildLoginUrl: (_mode: string, returnTo: string) => `/auth/login?returnTo=${returnTo}`,
-  buildNotAuthorizedUrl: (_mode: string, returnTo: string) => `/not-authorized?returnTo=${returnTo}`,
+  buildLoginUrl: (_mode: string, returnTo: string) =>
+    `/auth/login?returnTo=${returnTo}`,
+  buildNotAuthorizedUrl: (_mode: string, returnTo: string) =>
+    `/not-authorized?returnTo=${returnTo}`,
   buildReturnTo: () => '/here',
 }));
 
@@ -59,7 +61,9 @@ describe('useDashboardData', () => {
     await act(async () => {
       await result.current.refresh(true).catch(() => {});
     });
-    expect(locationAssign).toHaveBeenCalledWith(expect.stringContaining('/auth/login'));
+    expect(locationAssign).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/login'),
+    );
   });
 
   it('sets user messages on other errors', async () => {
