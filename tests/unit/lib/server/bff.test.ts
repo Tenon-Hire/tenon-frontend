@@ -397,5 +397,272 @@ describe('bff helpers', () => {
         }),
       ).rejects.toMatchObject({ message: 'caller-cancel' });
     });
+
+    it('falls back to arrayBuffer cleanup when body cancel not available', async () => {
+      const bad = new Response('bad', { status: 503 });
+      const good = new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+      // No body.cancel method
+      (bad as unknown as { body?: unknown }).body = undefined;
+      const arrayBufferMock = jest.fn().mockResolvedValue(new ArrayBuffer(0));
+      (bad as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer = arrayBufferMock;
+
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(bad as unknown as Response)
+        .mockResolvedValueOnce(good as unknown as Response);
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { upstreamRequest } = await import('@/lib/server/bff');
+
+      const resp = await upstreamRequest({
+        url: 'https://api.test/cleanup',
+        requestId: 'req-cleanup',
+        timeoutMs: 200,
+        maxTotalTimeMs: 2000,
+        maxAttempts: 2,
+        method: 'GET',
+        headers: {},
+      });
+
+      expect(resp.status).toBe(200);
+      expect(arrayBufferMock).toHaveBeenCalled();
+    });
+
+    it('throws when maxTotalTimeMs budget is exceeded', async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      const bad = new Response('bad', { status: 502 });
+      (bad as unknown as { body?: { cancel?: () => Promise<void> } }).body = {
+        cancel: jest.fn().mockResolvedValue(undefined),
+      };
+
+      global.fetch = jest.fn().mockResolvedValue(bad as unknown as Response);
+      const { upstreamRequest } = await import('@/lib/server/bff');
+
+      // Use a very short maxTotalTimeMs
+      const promise = upstreamRequest({
+        url: 'https://api.test/budget',
+        requestId: 'req-budget',
+        timeoutMs: 1000,
+        maxTotalTimeMs: 1, // Very short budget
+        maxAttempts: 3,
+        method: 'GET',
+        headers: {},
+      });
+
+      await expect(promise).rejects.toThrow(/max total time/i);
+    });
+
+    it('rethrows caller abort during retry wait', async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      const controller = new AbortController();
+      const bad = new Response('bad', { status: 503 });
+      (bad as unknown as { body?: { cancel?: () => Promise<void> } }).body = {
+        cancel: jest.fn().mockResolvedValue(undefined),
+      };
+
+      global.fetch = jest.fn().mockResolvedValue(bad as unknown as Response);
+      const { upstreamRequest } = await import('@/lib/server/bff');
+
+      const promise = upstreamRequest({
+        url: 'https://api.test/abort-wait',
+        requestId: 'req-abort-wait',
+        timeoutMs: 500,
+        maxTotalTimeMs: 5000,
+        maxAttempts: 3,
+        method: 'GET',
+        headers: {},
+        signal: controller.signal,
+      });
+
+      // Allow the first fetch to complete and start the retry wait
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Abort during the wait
+      controller.abort(new Error('user-cancelled'));
+      jest.runOnlyPendingTimers();
+
+      await expect(promise).rejects.toThrow(/user-cancelled/i);
+    });
+  });
+
+  describe('testable helpers', () => {
+    it('jitteredBackoffMs returns exponentially increasing delay', async () => {
+      const { __testables } = await import('@/lib/server/bff');
+      const { jitteredBackoffMs } = __testables;
+
+      const delay1 = jitteredBackoffMs(1, 100, 1000);
+      const delay2 = jitteredBackoffMs(2, 100, 1000);
+      const delay3 = jitteredBackoffMs(3, 100, 1000);
+
+      expect(delay1).toBeGreaterThanOrEqual(100);
+      expect(delay1).toBeLessThanOrEqual(200);
+      expect(delay2).toBeGreaterThan(delay1);
+      expect(delay3).toBeGreaterThan(delay2);
+    });
+
+    it('jitteredBackoffMs caps at max value', async () => {
+      const { __testables } = await import('@/lib/server/bff');
+      const { jitteredBackoffMs } = __testables;
+
+      const delay = jitteredBackoffMs(10, 100, 500);
+      expect(delay).toBeLessThanOrEqual(500);
+    });
+
+    it('parseRetryAfterMs parses numeric seconds', async () => {
+      const { __testables } = await import('@/lib/server/bff');
+      const { parseRetryAfterMs } = __testables;
+
+      expect(parseRetryAfterMs('2', Date.now(), 5000)).toBe(2000);
+      expect(parseRetryAfterMs('0', Date.now(), 5000)).toBeNull();
+      expect(parseRetryAfterMs(null, Date.now(), 5000)).toBeNull();
+    });
+
+    it('parseRetryAfterMs parses date strings', async () => {
+      const { __testables } = await import('@/lib/server/bff');
+      const { parseRetryAfterMs } = __testables;
+
+      const futureDate = new Date(Date.now() + 1500).toUTCString();
+      const result = parseRetryAfterMs(futureDate, Date.now(), 5000);
+      expect(result).toBeGreaterThan(0);
+      expect(result).toBeLessThanOrEqual(2000);
+    });
+
+    it('parseRetryAfterMs returns null for past dates', async () => {
+      const { __testables } = await import('@/lib/server/bff');
+      const { parseRetryAfterMs } = __testables;
+
+      const pastDate = new Date(Date.now() - 1000).toUTCString();
+      expect(parseRetryAfterMs(pastDate, Date.now(), 5000)).toBeNull();
+    });
+
+    it('waitWithAbort rejects immediately when signal already aborted', async () => {
+      const { __testables } = await import('@/lib/server/bff');
+      const { waitWithAbort } = __testables;
+
+      const controller = new AbortController();
+      controller.abort(new Error('pre-aborted'));
+
+      await expect(waitWithAbort(1000, controller.signal)).rejects.toThrow(
+        'pre-aborted',
+      );
+    });
+
+    it('waitWithAbort rejects when signal aborts during wait', async () => {
+      jest.useFakeTimers();
+      const { __testables } = await import('@/lib/server/bff');
+      const { waitWithAbort } = __testables;
+
+      const controller = new AbortController();
+      const promise = waitWithAbort(1000, controller.signal);
+
+      controller.abort(new Error('mid-aborted'));
+      jest.advanceTimersByTime(100);
+
+      await expect(promise).rejects.toThrow('mid-aborted');
+    });
+  });
+
+  describe('forwardJson edge cases', () => {
+    const originalDebugPerf = process.env.TENON_DEBUG_PERF;
+
+    afterEach(() => {
+      if (originalDebugPerf === undefined) {
+        delete process.env.TENON_DEBUG_PERF;
+      } else {
+        process.env.TENON_DEBUG_PERF = originalDebugPerf;
+      }
+    });
+
+    it('logs performance when DEBUG_PERF is enabled', async () => {
+      jest.resetModules();
+      process.env.TENON_DEBUG_PERF = 'true';
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      global.fetch = jest.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+
+      const { forwardJson } = await import('@/lib/server/bff');
+      await forwardJson({
+        path: '/api/perf-test',
+        method: 'GET',
+        accessToken: 'tok',
+      });
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[perf:bff]'),
+      );
+      logSpy.mockRestore();
+    });
+
+    it('passes string body without re-serializing', async () => {
+      global.fetch = jest.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+
+      const { forwardJson } = await import('@/lib/server/bff');
+      await forwardJson({
+        path: '/api/string-body',
+        method: 'POST',
+        body: '{"already":"serialized"}',
+        accessToken: 'tok',
+      });
+
+      const fetchCall = (global.fetch as jest.Mock).mock.calls[0][1];
+      expect(fetchCall.body).toBe('{"already":"serialized"}');
+    });
+
+    it('respects caller-provided Content-Type header', async () => {
+      global.fetch = jest.fn().mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+
+      const { forwardJson } = await import('@/lib/server/bff');
+      await forwardJson({
+        path: '/api/custom-ct',
+        method: 'POST',
+        body: { data: 'test' },
+        headers: { 'Content-Type': 'text/plain' },
+        accessToken: 'tok',
+      });
+
+      const fetchCall = (global.fetch as jest.Mock).mock.calls[0][1];
+      const headers = fetchCall.headers as Headers;
+      expect(headers.get('content-type')).toBe('text/plain');
+    });
+
+    it('logs error performance when request fails', async () => {
+      jest.resetModules();
+      process.env.TENON_DEBUG_PERF = 'true';
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+
+      const { forwardJson } = await import('@/lib/server/bff');
+      await expect(
+        forwardJson({
+          path: '/api/error-test',
+          method: 'POST', // Use POST to avoid retries
+          accessToken: 'tok',
+          timeoutMs: 100,
+        }),
+      ).rejects.toThrow('network error');
+
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('error'),
+      );
+      logSpy.mockRestore();
+    });
   });
 });

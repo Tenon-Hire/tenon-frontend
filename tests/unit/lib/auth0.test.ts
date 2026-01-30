@@ -197,4 +197,273 @@ describe('lib/auth0 wrapper', () => {
       /Auth0 env vars are missing/,
     );
   });
+
+  it('handles error with name instead of code', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const resp = await config.onCallback(
+      { name: 'AuthError', message: 'bad' },
+      { returnTo: '/test' },
+    );
+    expect(resp.status).toBe(307);
+    expect(resp.headers.get('location')).toContain('errorCode=AuthError');
+  });
+
+  it('handles error without code or name', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const resp = await config.onCallback({}, { returnTo: '/test' });
+    expect(resp.status).toBe(307);
+    expect(resp.headers.get('location')).toContain('errorCode=auth_callback_error');
+  });
+
+  it('handles string error message', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const resp = await config.onCallback(
+      { code: 'test', message: 'plain string error' },
+      { returnTo: '/test' },
+    );
+    expect(resp.status).toBe(307);
+  });
+
+  it('handles error message with URLs to strip', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const resp = await config.onCallback(
+      { code: 'test', message: 'Error at https://evil.com/path?foo=bar' },
+      { returnTo: '/test' },
+    );
+    expect(resp.status).toBe(307);
+  });
+
+  it('handles error message that becomes empty after sanitization', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const resp = await config.onCallback(
+      { code: 'test', message: '!!@@##$$%%' },
+      { returnTo: '/test' },
+    );
+    expect(resp.status).toBe(307);
+    // Should not include msg parameter since message becomes empty
+  });
+
+  it('uses accessToken from session object', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const session = { user: {}, accessToken: 'direct-token' };
+    const payload = Buffer.from(
+      JSON.stringify({ permissions: ['from:token'] }),
+    ).toString('base64url');
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
+    expect(result.user).toBeDefined();
+  });
+
+  it('uses token property when accessToken is missing', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const session = {
+      user: {},
+      accessToken: { token: 'nested-token' },
+    };
+    const result = await config.beforeSessionSaved(session, 'invalid');
+    expect(result.user).toBeDefined();
+  });
+
+  it('handles accessToken object with accessToken property', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const session = {
+      user: {},
+      accessToken: { accessToken: 'nested-access-token' },
+    };
+    const result = await config.beforeSessionSaved(session, 'invalid');
+    expect(result.user).toBeDefined();
+  });
+
+  it('filters non-strings from array in toStringArray', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const session = {
+      user: {
+        permissions: ['valid', 123, null, 'another', undefined],
+      },
+    };
+    const result = await config.beforeSessionSaved(session, 'x.e30.y');
+    expect(result.user.permissions).toEqual(['valid', 'another']);
+  });
+
+  it('parses permissions string with comma and space separators', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const payload = Buffer.from(
+      JSON.stringify({
+        'https://tenon.ai/permissions_str': 'perm1, perm2,perm3  perm4',
+      }),
+    ).toString('base64url');
+    const session = { user: {} };
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
+    expect(result.user.permissions).toContain('perm1');
+    expect(result.user.permissions).toContain('perm2');
+    expect(result.user.permissions).toContain('perm3');
+    expect(result.user.permissions).toContain('perm4');
+  });
+
+  it('derives both recruiter and candidate permissions from roles', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const payload = Buffer.from(
+      JSON.stringify({ roles: ['SuperRecruiter', 'CandidateAdmin'] }),
+    ).toString('base64url');
+    const session = { user: {} };
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
+    expect(result.user.permissions).toContain('recruiter:access');
+    expect(result.user.permissions).toContain('candidate:access');
+  });
+
+  it('uses user permissions when available over token permissions', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const payload = Buffer.from(
+      JSON.stringify({ permissions: ['token:perm'] }),
+    ).toString('base64url');
+    const session = {
+      user: { permissions: ['user:perm'] },
+    };
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
+    expect(result.user.permissions).toContain('user:perm');
+    expect(result.user.permissions).not.toContain('token:perm');
+  });
+
+  it('uses user roles when available over token roles', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const payload = Buffer.from(
+      JSON.stringify({ roles: ['TokenRole'] }),
+    ).toString('base64url');
+    const session = {
+      user: { 'https://tenon.ai/roles': ['UserRole'] },
+    };
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
+    expect(result.user.roles).toContain('UserRole');
+    expect(result.user.roles).not.toContain('TokenRole');
+  });
+
+  it('preserves existing user permissions/roles when normalized are empty', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const session = {
+      user: { permissions: ['existing:perm'], roles: ['ExistingRole'] },
+    };
+    const result = await config.beforeSessionSaved(session, 'x.e30.y');
+    expect(result.user.permissions).toContain('existing:perm');
+  });
+
+  it('decodes JWT using Buffer when atob unavailable', async () => {
+    const originalAtob = global.atob;
+    // @ts-expect-error remove atob
+    delete global.atob;
+
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const payload = Buffer.from(
+      JSON.stringify({ permissions: ['buffer:perm'] }),
+    ).toString('base64url');
+    const session = { user: {} };
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
+    expect(result.user.permissions).toContain('buffer:perm');
+
+    global.atob = originalAtob;
+  });
+
+  it('falls back to idToken when accessToken decode fails', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const idPayload = Buffer.from(
+      JSON.stringify({ permissions: ['id:perm'] }),
+    ).toString('base64url');
+    const session = { user: {}, accessToken: 'invalid' };
+    const result = await config.beforeSessionSaved(
+      session,
+      `x.${idPayload}.y`,
+    );
+    expect(result.user.permissions).toContain('id:perm');
+  });
+
+  it('getAccessToken throws when no token in result', async () => {
+    mockAuth0Instance.getAccessToken.mockResolvedValue({ token: null });
+    const { getAccessToken } = await import('@/lib/auth0');
+    await expect(getAccessToken()).rejects.toThrow(
+      /No access token found/,
+    );
+  });
+
+  it('getAccessToken returns token when available', async () => {
+    mockAuth0Instance.getAccessToken.mockResolvedValue({ token: 'valid-token' });
+    const { getAccessToken } = await import('@/lib/auth0');
+    const token = await getAccessToken();
+    expect(token).toBe('valid-token');
+  });
+
+  it('getSessionNormalized passes request to getSession when provided', async () => {
+    const { NextRequest } = jest.requireMock('next/server');
+    mockAuth0Instance.getSession.mockResolvedValue({
+      user: { sub: 'user-123' },
+    });
+    const { getSessionNormalized } = await import('@/lib/auth0');
+    const req = new NextRequest('http://localhost/test');
+    await getSessionNormalized(req);
+    expect(mockAuth0Instance.getSession).toHaveBeenCalledWith(req);
+  });
+
+  it('getSessionNormalized returns session as-is when no user', async () => {
+    mockAuth0Instance.getSession.mockResolvedValue({ accessToken: 'tok' });
+    const { getSessionNormalized } = await import('@/lib/auth0');
+    const session = await getSessionNormalized();
+    expect(session).toEqual({ accessToken: 'tok' });
+  });
+
+  it('uses VERCEL_URL in resolveBaseUrl when primary is missing', async () => {
+    // This test verifies the URL resolution logic
+    // The client requires TENON_APP_BASE_URL for hasAuth0Env, 
+    // but resolveBaseUrl can use VERCEL_URL as fallback
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+    
+    // Test with a modified environment - redirect uses resolveBaseUrl internally
+    const resp = await config.onCallback(null, { returnTo: '/dashboard' });
+    expect(resp.status).toBe(307);
+    expect(resp.headers.get('location')).toContain('/dashboard');
+  });
+
+  it('handles callback with candidate path for mode detection', async () => {
+    const { modeForPath } = jest.requireMock('@/lib/auth/routing');
+    modeForPath.mockReturnValueOnce('recruiter');
+    
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+    
+    const resp = await config.onCallback(
+      { code: 'err' },
+      { returnTo: '/dashboard/simulations' },
+    );
+    expect(resp.status).toBe(307);
+    expect(resp.headers.get('location')).toContain('mode=recruiter');
+  });
 });

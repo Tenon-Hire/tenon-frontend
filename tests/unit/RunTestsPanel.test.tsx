@@ -599,4 +599,196 @@ describe('RunTestsPanel', () => {
       await screen.findByText(/This is taking longer than expected/i),
     ).toBeInTheDocument();
   });
+
+  it('handles missing runId from onStart', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onStart = jest.fn().mockResolvedValue({});
+    const onPoll = jest.fn();
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => Promise.resolve());
+
+    expect(await screen.findByText(/Missing run id/i)).toBeInTheDocument();
+    expect(onPoll).not.toHaveBeenCalled();
+  });
+
+  it('collapses expanded stdout when toggle is clicked', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const longStdout = 'x'.repeat(9001);
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'collapse-test' });
+    const onPoll = jest.fn().mockResolvedValueOnce({
+      ...baseResult,
+      status: 'failed' as const,
+      stdout: longStdout,
+      stderr: '',
+      failed: 1,
+      total: 1,
+    });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+
+    // Expand first
+    await user.click(screen.getByRole('button', { name: /show full stdout/i }));
+    expect(await screen.findByText(longStdout)).toBeInTheDocument();
+
+    // Collapse
+    await user.click(screen.getByRole('button', { name: /collapse/i }));
+    expect(screen.queryByText(longStdout)).not.toBeInTheDocument();
+  });
+
+  it('does not dedupe toast when run id differs', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const onStart = jest
+      .fn()
+      .mockResolvedValueOnce({ runId: 'first-run' })
+      .mockResolvedValueOnce({ runId: 'second-run' });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
+    });
+    expect(notifyMock).toHaveBeenCalled();
+
+    notifyMock.mockClear();
+    await user.click(screen.getByRole('button', { name: /re-run tests/i }));
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
+    });
+    expect(notifyMock).toHaveBeenCalled();
+  });
+
+  it('queues poll when visibility hidden during running poll', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'hidden-poll' });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValueOnce({ ...baseResult, status: 'running' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const });
+
+    render(
+      <RunTestsPanel
+        onStart={onStart}
+        onPoll={onPoll}
+        pollIntervalMs={1000}
+        maxPollIntervalMs={1000}
+      />,
+    );
+
+    await user.click(getTestsButton());
+    // First poll after initial delay (1000ms base)
+    await act(async () => {
+      jest.advanceTimersByTime(1100);
+      await Promise.resolve();
+    });
+
+    // Now hide visibility before next poll
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
+    });
+
+    // Resume visibility
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Tests passed/i)).toBeInTheDocument();
+  });
+
+  it('handles empty stderr output display', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'empty-stderr' });
+    const onPoll = jest.fn().mockResolvedValueOnce({
+      ...baseResult,
+      status: 'failed' as const,
+      stdout: 'some output',
+      stderr: '   ',
+      failed: 1,
+      total: 1,
+    });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={100} />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => {
+      // Poll interval is at least 1000ms, so advance well past that
+      jest.advanceTimersByTime(1500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Stderr: No output captured/i)).toBeInTheDocument();
+  });
+
+  it('ignores stale poll when different run is active', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    const onStart = jest
+      .fn()
+      .mockResolvedValueOnce({ runId: 'run-a' })
+      .mockResolvedValueOnce({ runId: 'run-b' });
+    const onPoll = jest
+      .fn()
+      .mockResolvedValueOnce({ ...baseResult, status: 'running' as const })
+      .mockResolvedValueOnce({ ...baseResult, status: 'passed' as const });
+
+    render(
+      <RunTestsPanel
+        onStart={onStart}
+        onPoll={onPoll}
+        pollIntervalMs={1000}
+        storageKey="conflict-key"
+      />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => Promise.resolve());
+  });
 });

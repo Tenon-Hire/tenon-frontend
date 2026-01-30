@@ -41,4 +41,14 @@ describe('auth token helpers', () => {
     setAuthToken(null);
     expect(getAuthToken()).toBeNull();
   });
+
+  it('does nothing on server when setting token without window', () => {
+    const originalWindow = global.window;
+    // @ts-expect-error simulate server
+    delete global.window;
+    // Should not throw
+    expect(() => setAuthToken('test')).not.toThrow();
+    // @ts-expect-error restore window
+    global.window = originalWindow;
+  });
 });

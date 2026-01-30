@@ -218,4 +218,147 @@ describe('WorkspacePanel', () => {
     ).toBeInTheDocument();
     expect(initMock).not.toHaveBeenCalled();
   });
+
+  it('shows session expired error when token is null', async () => {
+    render(
+      <WorkspacePanel
+        taskId={17}
+        candidateSessionId={18}
+        token={null}
+        dayIndex={2}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/Session expired\. Please sign in again/i),
+    ).toBeInTheDocument();
+    expect(statusMock).not.toHaveBeenCalled();
+  });
+
+  it('shows session expired for 401 status errors', async () => {
+    statusMock.mockRejectedValueOnce({ status: 401 });
+
+    render(
+      <WorkspacePanel
+        taskId={19}
+        candidateSessionId={20}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/Session expired\. Please sign in again/i),
+    ).toBeInTheDocument();
+  });
+
+  it('shows session expired for 403 status errors', async () => {
+    statusMock.mockRejectedValueOnce({ status: 403 });
+
+    render(
+      <WorkspacePanel
+        taskId={21}
+        candidateSessionId={22}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/Session expired\. Please sign in again/i),
+    ).toBeInTheDocument();
+  });
+
+  it('shows generic error for other statuses', async () => {
+    statusMock.mockRejectedValueOnce({
+      status: 500,
+      message: 'Server error',
+    });
+
+    render(
+      <WorkspacePanel
+        taskId={23}
+        candidateSessionId={24}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    expect(await screen.findByText(/Server issue/i)).toBeInTheDocument();
+    const retryButton = screen.getByRole('button', { name: /Retry/i });
+    expect(retryButton).toBeInTheDocument();
+  });
+
+  it('does not double initialize when status 404 already attempted', async () => {
+    statusMock.mockRejectedValueOnce({ status: 404 });
+    initMock.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/acme/repo',
+      repoName: 'acme/repo',
+      codespaceUrl: null,
+    });
+    statusMock.mockRejectedValueOnce({ status: 404 });
+
+    render(
+      <WorkspacePanel
+        taskId={25}
+        candidateSessionId={26}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    await screen.findByText(/Repository is ready/i);
+    
+    const user = (await import('@testing-library/user-event')).default.setup();
+    await user.click(screen.getByRole('button', { name: /Refresh/i }));
+    
+    await waitFor(() => expect(statusMock).toHaveBeenCalledTimes(2));
+    expect(initMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders repo fullName when available', async () => {
+    statusMock.mockResolvedValueOnce({
+      repoUrl: 'https://github.com/org/fullname',
+      repoName: 'shortname',
+      repoFullName: 'org/fullname',
+      codespaceUrl: null,
+    });
+
+    render(
+      <WorkspacePanel
+        taskId={27}
+        candidateSessionId={28}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    expect(await screen.findByText(/Repo: org\/fullname/i)).toBeInTheDocument();
+  });
+
+  it('shows codespace link pending message when no links available', async () => {
+    statusMock.mockResolvedValueOnce({
+      repoUrl: null,
+      repoName: null,
+      codespaceUrl: null,
+    });
+    initMock.mockResolvedValueOnce({
+      repoUrl: null,
+      repoName: null,
+      codespaceUrl: null,
+    });
+
+    render(
+      <WorkspacePanel
+        taskId={29}
+        candidateSessionId={30}
+        token="tok"
+        dayIndex={2}
+      />,
+    );
+
+    expect(
+      await screen.findByText(/Codespace link will appear when ready/i),
+    ).toBeInTheDocument();
+  });
 });

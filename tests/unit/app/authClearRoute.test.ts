@@ -101,4 +101,61 @@ describe('auth clear route', () => {
     const res = await GET(req as unknown as NextRequest);
     expect(res.headers.get('location')).toContain('mode=candidate');
   });
+
+  it('does not set domain when hostname has no dot', async () => {
+    delete process.env.TENON_AUTH0_COOKIE_DOMAIN;
+    jest.resetModules();
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest('http://localhost/auth/clear');
+    (
+      req as unknown as {
+        cookies: { getAll: () => Array<{ name: string; value: string }> };
+      }
+    ).cookies = {
+      getAll: () => [{ name: 'appSession', value: '1' }],
+    };
+    const res = (await GET(req as unknown as NextRequest)) as {
+      status: number;
+      cookies: {
+        getAll: () => Array<{ name: string; value?: string; domain?: string }>;
+      };
+    };
+    expect(res.status).toBe(307);
+    const deleted = res.cookies.getAll();
+    expect(deleted.some((c) => c.domain)).toBe(false);
+  });
+
+  it('uses hostname with dot as domain when env not set', async () => {
+    delete process.env.TENON_AUTH0_COOKIE_DOMAIN;
+    jest.resetModules();
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest('http://tenon.example.com/auth/clear');
+    (
+      req as unknown as {
+        cookies: { getAll: () => Array<{ name: string; value: string }> };
+      }
+    ).cookies = {
+      getAll: () => [{ name: 'appSession', value: '1' }],
+    };
+    const res = (await GET(req as unknown as NextRequest)) as {
+      status: number;
+      cookies: {
+        getAll: () => Array<{ name: string; value?: string; domain?: string }>;
+      };
+    };
+    const deleted = res.cookies.getAll();
+    expect(deleted.some((c) => c.domain === 'tenon.example.com')).toBe(true);
+  });
+
+  it('uses recruiter mode when param is recruiter', async () => {
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest(
+      'http://localhost/auth/clear?returnTo=%2F&mode=recruiter',
+    );
+    (req as unknown as { cookies: { getAll: () => unknown[] } }).cookies = {
+      getAll: () => [],
+    };
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.headers.get('location')).toContain('mode=recruiter');
+  });
 });

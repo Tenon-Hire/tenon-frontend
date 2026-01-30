@@ -315,4 +315,131 @@ describe('NotificationsProvider', () => {
     // duration 0 => sticky, should not auto-dismiss
     await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument());
   });
+
+  it('renders error tone styling correctly', () => {
+    function ErrorTrigger() {
+      const { notify } = useNotifications();
+      // Call notify immediately on mount
+      notify({
+        id: 'error-toast',
+        tone: 'error',
+        title: 'Error occurred',
+        description: 'Something went wrong',
+        sticky: true,
+      });
+      return null;
+    }
+
+    render(
+      <NotificationsProvider>
+        <ErrorTrigger />
+      </NotificationsProvider>,
+    );
+
+    expect(screen.getByText('Error occurred')).toBeInTheDocument();
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+  });
+
+  it('does nothing when disabled action is clicked', () => {
+    const actionSpy = jest.fn();
+
+    function DisabledActionTrigger() {
+      const { notify } = useNotifications();
+      notify({
+        id: 'disabled-action',
+        tone: 'info',
+        title: 'With disabled action',
+        actions: [{ label: 'Disabled', disabled: true, onClick: actionSpy }],
+        sticky: true,
+      });
+      return null;
+    }
+
+    render(
+      <NotificationsProvider>
+        <DisabledActionTrigger />
+      </NotificationsProvider>,
+    );
+
+    const disabledButton = screen.getByRole('button', { name: /Disabled/i });
+    fireEvent.click(disabledButton);
+    expect(actionSpy).not.toHaveBeenCalled();
+  });
+
+  it('clears existing timer when rescheduling dismiss', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    function RescheduleTrigger() {
+      const { notify } = useNotifications();
+      return (
+        <>
+          <button
+            onClick={() =>
+              notify({
+                id: 'reschedule',
+                tone: 'info',
+                title: 'First notify',
+                durationMs: 5000,
+              })
+            }
+          >
+            first
+          </button>
+          <button
+            onClick={() =>
+              notify({
+                id: 'reschedule',
+                tone: 'info',
+                title: 'Second notify',
+                durationMs: 3000,
+              })
+            }
+          >
+            second
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <NotificationsProvider>
+        <RescheduleTrigger />
+      </NotificationsProvider>,
+    );
+
+    await user.click(screen.getByText('first'));
+    await user.click(screen.getByText('second')); // This should clear the first timer
+
+    // After 3s, should dismiss (not 5s)
+    act(() => {
+      jest.advanceTimersByTime(3100);
+    });
+    expect(screen.queryByRole('status')).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it('generates unique id when not provided', () => {
+    let notifyFn: (input: { tone: 'success'; title: string }) => void;
+
+    function AutoIdTrigger() {
+      const { notify } = useNotifications();
+      notifyFn = notify;
+      return null;
+    }
+
+    render(
+      <NotificationsProvider>
+        <AutoIdTrigger />
+      </NotificationsProvider>,
+    );
+
+    act(() => {
+      notifyFn({ tone: 'success', title: 'Toast 1' });
+      notifyFn({ tone: 'success', title: 'Toast 2' });
+    });
+
+    const toasts = screen.getAllByRole('status');
+    expect(toasts).toHaveLength(2);
+  });
 });

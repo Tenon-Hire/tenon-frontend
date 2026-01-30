@@ -345,4 +345,101 @@ describe('CandidateSessionPage view rendering', () => {
     await waitFor(() => expect(buildLoginHrefMock).toHaveBeenCalled());
     expect(routerMock.replace).toHaveBeenCalled();
   });
+
+  it('navigates to candidate dashboard from start view back button', async () => {
+    useCandidateSessionMock.mockReturnValue(
+      buildState({
+        state: {
+          ...baseState().state,
+          started: false,
+          taskState: {
+            loading: false,
+            error: null,
+            isComplete: false,
+            completedTaskIds: [],
+            currentTask: null,
+          },
+        },
+      }),
+    );
+
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
+
+    const backBtn = screen.getByRole('button', {
+      name: /Back to Candidate Dashboard/i,
+    });
+    fireEvent.click(backBtn);
+    expect(routerMock.push).toHaveBeenCalledWith('/candidate/dashboard');
+  });
+
+  it('does not re-run init when same token and already in flight', async () => {
+    useCandidateSessionMock.mockReturnValue(buildState());
+    resolveInviteMock.mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 100)),
+    );
+
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
+
+    // Resolve is called once
+    expect(resolveInviteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders task error banner with retry', async () => {
+    getCurrentTaskMock.mockResolvedValue({
+      isComplete: false,
+      completedTaskIds: [],
+      currentTask: {
+        id: 1,
+        dayIndex: 2,
+        type: 'code',
+        title: 'Code Day',
+        description: 'http://docs',
+      },
+    });
+
+    useCandidateSessionMock.mockReturnValue(
+      buildState({
+        state: {
+          ...baseState().state,
+          started: true,
+          taskState: {
+            loading: false,
+            error: 'Task fetch failed',
+            isComplete: false,
+            completedTaskIds: [],
+            currentTask: {
+              id: 1,
+              dayIndex: 2,
+              type: 'code',
+              title: 'Code Day',
+              description: '',
+            },
+          },
+        },
+      }),
+    );
+
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
+
+    // Wait for the error banner to appear in running view
+    await waitFor(() =>
+      expect(screen.getByText('Task fetch failed')).toBeInTheDocument(),
+    );
+
+    const retryButton = screen.getByRole('button', { name: /Retry/i });
+    fireEvent.click(retryButton);
+    await waitFor(() =>
+      expect(getCurrentTaskMock).toHaveBeenCalledWith(
+        99,
+        'auth-token',
+        expect.objectContaining({ skipCache: true }),
+      ),
+    );
+  });
 });
