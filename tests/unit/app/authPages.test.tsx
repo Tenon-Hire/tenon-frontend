@@ -50,6 +50,23 @@ describe('auth route entrypoints', () => {
     jest.clearAllMocks();
   });
 
+  it('auth error page defaults when search params missing', async () => {
+    const { default: AuthErrorRoutePage } =
+      await import('@/app/(auth)/auth/error/page');
+    const element = await AuthErrorRoutePage({ searchParams: undefined });
+    render(element);
+    expect(authErrorMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        returnTo: undefined,
+        mode: undefined,
+        error: undefined,
+        errorCode: undefined,
+        errorId: undefined,
+        cleared: false,
+      }),
+    );
+  });
+
   it('login page resolves search params and defaults when missing', async () => {
     const { default: LoginRoutePage } =
       await import('@/app/(auth)/auth/login/page');
@@ -117,6 +134,18 @@ describe('auth route entrypoints', () => {
     expect(links[1]).toHaveAttribute('href', '/dash');
   });
 
+  it('not-authorized page uses candidate returnTo and default recruiter path', async () => {
+    const { default: NotAuthorizedPage } =
+      await import('@/app/not-authorized/page');
+    const element = await NotAuthorizedPage({
+      searchParams: Promise.resolve({ mode: 'candidate', returnTo: '/cand' }),
+    });
+    render(element);
+    const links = screen.getAllByRole('link');
+    expect(links[0]).toHaveAttribute('href', '/cand');
+    expect(links[1]).toHaveAttribute('href', '/dashboard');
+  });
+
   it('global error shows digest in prod and hides in dev', async () => {
     const { default: GlobalError } = await import('@/app/global-error');
     const reset = jest.fn();
@@ -136,5 +165,31 @@ describe('auth route entrypoints', () => {
     render(devView, { container: document.documentElement });
     expect(screen.getByText(/boom/)).toBeInTheDocument();
     process.env.NODE_ENV = prevEnv;
+  });
+
+  it('global error go-home button changes location', async () => {
+    const { default: GlobalError } = await import('@/app/global-error');
+    const reset = jest.fn();
+    const originalLocation = window.location;
+    // @ts-expect-error redefining for test
+    delete (window as { location?: Location }).location;
+    // minimal mutable location stub
+    const stubLocation: { href: string } = { href: 'http://initial.test' };
+    // @ts-expect-error redefine location for test
+    window.location = stubLocation as unknown as Location;
+
+    render(
+      GlobalError({
+        error: Object.assign(new Error('boom'), { digest: undefined }),
+        reset,
+      }),
+      { container: document.documentElement },
+    );
+
+    screen.getByRole('button', { name: /Go home/i }).click();
+    expect(stubLocation.href).toBe('/');
+
+    // restore
+    window.location = originalLocation;
   });
 });
