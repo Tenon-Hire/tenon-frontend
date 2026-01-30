@@ -160,7 +160,9 @@ describe('httpClient edge cases', () => {
   });
 
   it('handles network errors with proper error status', async () => {
-    (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
+    (global.fetch as jest.Mock).mockRejectedValueOnce(
+      new Error('Network down'),
+    );
 
     await expect(
       apiClient.get('/network-fail', { skipCache: true }),
@@ -193,7 +195,11 @@ describe('httpClient edge cases', () => {
       responseHelpers.jsonResponse({ updated: true }) as unknown as Response,
     );
 
-    await apiClient.put('/resource/1', { name: 'updated' }, { skipCache: true });
+    await apiClient.put(
+      '/resource/1',
+      { name: 'updated' },
+      { skipCache: true },
+    );
 
     expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe('PUT');
   });
@@ -225,7 +231,9 @@ describe('httpClient edge cases', () => {
 
     await apiClient.get('/cached', { cache: 'force-cache', skipCache: true });
 
-    expect((global.fetch as jest.Mock).mock.calls[0][1].cache).toBe('force-cache');
+    expect((global.fetch as jest.Mock).mock.calls[0][1].cache).toBe(
+      'force-cache',
+    );
   });
 
   it('sanitizes path with long segments in fallback mode', async () => {
@@ -238,10 +246,7 @@ describe('httpClient edge cases', () => {
     );
 
     // Use a path that exercises the fallback sanitization
-    await debugApiClient.get(
-      `/path/${'x'.repeat(40)}`,
-      { skipCache: true },
-    );
+    await debugApiClient.get(`/path/${'x'.repeat(40)}`, { skipCache: true });
 
     expect(infoSpy).toHaveBeenCalled();
     const [message] = infoSpy.mock.calls[0];

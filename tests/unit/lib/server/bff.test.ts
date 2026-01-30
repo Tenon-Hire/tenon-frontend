@@ -407,7 +407,9 @@ describe('bff helpers', () => {
       // No body.cancel method
       (bad as unknown as { body?: unknown }).body = undefined;
       const arrayBufferMock = jest.fn().mockResolvedValue(new ArrayBuffer(0));
-      (bad as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer = arrayBufferMock;
+      (
+        bad as unknown as { arrayBuffer: () => Promise<ArrayBuffer> }
+      ).arrayBuffer = arrayBufferMock;
 
       const fetchMock = jest
         .fn()
@@ -570,6 +572,7 @@ describe('bff helpers', () => {
     const originalDebugPerf = process.env.TENON_DEBUG_PERF;
 
     afterEach(() => {
+      jest.resetModules();
       if (originalDebugPerf === undefined) {
         delete process.env.TENON_DEBUG_PERF;
       } else {
@@ -659,9 +662,7 @@ describe('bff helpers', () => {
         }),
       ).rejects.toThrow('network error');
 
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('error'),
-      );
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('error'));
       logSpy.mockRestore();
     });
   });

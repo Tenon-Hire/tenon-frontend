@@ -5,6 +5,7 @@ import {
   waitFor,
   fireEvent,
 } from '@testing-library/react';
+import { useEffect } from 'react';
 import userEvent from '@testing-library/user-event';
 import {
   NotificationsProvider,
@@ -319,14 +320,16 @@ describe('NotificationsProvider', () => {
   it('renders error tone styling correctly', () => {
     function ErrorTrigger() {
       const { notify } = useNotifications();
-      // Call notify immediately on mount
-      notify({
-        id: 'error-toast',
-        tone: 'error',
-        title: 'Error occurred',
-        description: 'Something went wrong',
-        sticky: true,
-      });
+      // Call notify immediately after mount to avoid state updates during render
+      useEffect(() => {
+        notify({
+          id: 'error-toast',
+          tone: 'error',
+          title: 'Error occurred',
+          description: 'Something went wrong',
+          sticky: true,
+        });
+      }, [notify]);
       return null;
     }
 
@@ -345,13 +348,15 @@ describe('NotificationsProvider', () => {
 
     function DisabledActionTrigger() {
       const { notify } = useNotifications();
-      notify({
-        id: 'disabled-action',
-        tone: 'info',
-        title: 'With disabled action',
-        actions: [{ label: 'Disabled', disabled: true, onClick: actionSpy }],
-        sticky: true,
-      });
+      useEffect(() => {
+        notify({
+          id: 'disabled-action',
+          tone: 'info',
+          title: 'With disabled action',
+          actions: [{ label: 'Disabled', disabled: true, onClick: actionSpy }],
+          sticky: true,
+        });
+      }, [notify]);
       return null;
     }
 
@@ -419,12 +424,13 @@ describe('NotificationsProvider', () => {
     jest.useRealTimers();
   });
 
-  it('generates unique id when not provided', () => {
-    let notifyFn: (input: { tone: 'success'; title: string }) => void;
-
+  it('generates unique id when not provided', async () => {
     function AutoIdTrigger() {
       const { notify } = useNotifications();
-      notifyFn = notify;
+      useEffect(() => {
+        notify({ tone: 'success', title: 'Toast 1' });
+        notify({ tone: 'success', title: 'Toast 2' });
+      }, [notify]);
       return null;
     }
 
@@ -434,12 +440,7 @@ describe('NotificationsProvider', () => {
       </NotificationsProvider>,
     );
 
-    act(() => {
-      notifyFn({ tone: 'success', title: 'Toast 1' });
-      notifyFn({ tone: 'success', title: 'Toast 2' });
-    });
-
-    const toasts = screen.getAllByRole('status');
+    const toasts = await screen.findAllByRole('status');
     expect(toasts).toHaveLength(2);
   });
 });

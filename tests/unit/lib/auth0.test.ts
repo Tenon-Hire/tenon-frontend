@@ -216,7 +216,9 @@ describe('lib/auth0 wrapper', () => {
 
     const resp = await config.onCallback({}, { returnTo: '/test' });
     expect(resp.status).toBe(307);
-    expect(resp.headers.get('location')).toContain('errorCode=auth_callback_error');
+    expect(resp.headers.get('location')).toContain(
+      'errorCode=auth_callback_error',
+    );
   });
 
   it('handles string error message', async () => {
@@ -399,23 +401,20 @@ describe('lib/auth0 wrapper', () => {
       JSON.stringify({ permissions: ['id:perm'] }),
     ).toString('base64url');
     const session = { user: {}, accessToken: 'invalid' };
-    const result = await config.beforeSessionSaved(
-      session,
-      `x.${idPayload}.y`,
-    );
+    const result = await config.beforeSessionSaved(session, `x.${idPayload}.y`);
     expect(result.user.permissions).toContain('id:perm');
   });
 
   it('getAccessToken throws when no token in result', async () => {
     mockAuth0Instance.getAccessToken.mockResolvedValue({ token: null });
     const { getAccessToken } = await import('@/lib/auth0');
-    await expect(getAccessToken()).rejects.toThrow(
-      /No access token found/,
-    );
+    await expect(getAccessToken()).rejects.toThrow(/No access token found/);
   });
 
   it('getAccessToken returns token when available', async () => {
-    mockAuth0Instance.getAccessToken.mockResolvedValue({ token: 'valid-token' });
+    mockAuth0Instance.getAccessToken.mockResolvedValue({
+      token: 'valid-token',
+    });
     const { getAccessToken } = await import('@/lib/auth0');
     const token = await getAccessToken();
     expect(token).toBe('valid-token');
@@ -441,11 +440,11 @@ describe('lib/auth0 wrapper', () => {
 
   it('uses VERCEL_URL in resolveBaseUrl when primary is missing', async () => {
     // This test verifies the URL resolution logic
-    // The client requires TENON_APP_BASE_URL for hasAuth0Env, 
+    // The client requires TENON_APP_BASE_URL for hasAuth0Env,
     // but resolveBaseUrl can use VERCEL_URL as fallback
     await import('@/lib/auth0');
     const config = Auth0ClientMock.mock.calls[0][0];
-    
+
     // Test with a modified environment - redirect uses resolveBaseUrl internally
     const resp = await config.onCallback(null, { returnTo: '/dashboard' });
     expect(resp.status).toBe(307);
@@ -455,10 +454,10 @@ describe('lib/auth0 wrapper', () => {
   it('handles callback with candidate path for mode detection', async () => {
     const { modeForPath } = jest.requireMock('@/lib/auth/routing');
     modeForPath.mockReturnValueOnce('recruiter');
-    
+
     await import('@/lib/auth0');
     const config = Auth0ClientMock.mock.calls[0][0];
-    
+
     const resp = await config.onCallback(
       { code: 'err' },
       { returnTo: '/dashboard/simulations' },

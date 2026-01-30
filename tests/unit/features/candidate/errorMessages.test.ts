@@ -95,9 +95,15 @@ describe('candidate error messages', () => {
   });
 
   it('handles claim 400, 404, 409 as invite unavailable', () => {
-    expect(friendlyClaimError(new HttpError(400, ''))).toContain('no longer valid');
-    expect(friendlyClaimError(new HttpError(404, ''))).toContain('no longer valid');
-    expect(friendlyClaimError(new HttpError(409, ''))).toContain('no longer valid');
+    expect(friendlyClaimError(new HttpError(400, ''))).toContain(
+      'no longer valid',
+    );
+    expect(friendlyClaimError(new HttpError(404, ''))).toContain(
+      'no longer valid',
+    );
+    expect(friendlyClaimError(new HttpError(409, ''))).toContain(
+      'no longer valid',
+    );
   });
 
   it('handles claim network error when status is 0', () => {
@@ -111,7 +117,9 @@ describe('candidate error messages', () => {
   });
 
   it('handles task error with 409 status', () => {
-    expect(friendlyTaskError(new HttpError(409, ''))).toContain('no longer valid');
+    expect(friendlyTaskError(new HttpError(409, ''))).toContain(
+      'no longer valid',
+    );
   });
 
   it('handles bootstrap error with message from object without status', () => {

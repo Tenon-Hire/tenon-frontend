@@ -28,7 +28,9 @@ describe('StateMessage', () => {
         action={<button>Click me</button>}
       />,
     );
-    expect(screen.getByRole('button', { name: /Click me/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Click me/i }),
+    ).toBeInTheDocument();
   });
 
   it('does not render action container when action is undefined', () => {

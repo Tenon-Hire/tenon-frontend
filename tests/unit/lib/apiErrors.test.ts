@@ -83,9 +83,9 @@ describe('api errors helpers', () => {
   });
 
   it('handles 403 as signin action', () => {
-    expect(normalizeApiError({ status: 403, message: 'forbidden' }).action).toBe(
-      'signin',
-    );
+    expect(
+      normalizeApiError({ status: 403, message: 'forbidden' }).action,
+    ).toBe('signin');
   });
 
   it('handles 408 as retry action', () => {
@@ -95,14 +95,14 @@ describe('api errors helpers', () => {
   });
 
   it('handles 504 as retry action', () => {
-    expect(normalizeApiError({ status: 504, message: 'gateway timeout' }).action).toBe(
-      'retry',
-    );
+    expect(
+      normalizeApiError({ status: 504, message: 'gateway timeout' }).action,
+    ).toBe('retry');
   });
 
   it('falls back to retry for other errors', () => {
-    expect(normalizeApiError({ status: 400, message: 'bad request' }).action).toBe(
-      'retry',
-    );
+    expect(
+      normalizeApiError({ status: 400, message: 'bad request' }).action,
+    ).toBe('retry');
   });
 });

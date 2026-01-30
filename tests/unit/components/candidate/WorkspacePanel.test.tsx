@@ -308,10 +308,10 @@ describe('WorkspacePanel', () => {
     );
 
     await screen.findByText(/Repository is ready/i);
-    
+
     const user = (await import('@testing-library/user-event')).default.setup();
     await user.click(screen.getByRole('button', { name: /Refresh/i }));
-    
+
     await waitFor(() => expect(statusMock).toHaveBeenCalledTimes(2));
     expect(initMock).toHaveBeenCalledTimes(1);
   });

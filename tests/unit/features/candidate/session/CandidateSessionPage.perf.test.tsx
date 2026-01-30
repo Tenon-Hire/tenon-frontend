@@ -2,7 +2,7 @@
  * Tests for CandidateSessionPage perf/debug and handlers
  */
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 
 const originalEnv = { ...process.env };
@@ -281,7 +281,6 @@ describe('CandidateSessionPage with debug perf enabled', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.resetModules();
     resolveInviteMock.mockResolvedValue({
       candidateSessionId: 99,
       status: 'in_progress',
@@ -301,25 +300,18 @@ describe('CandidateSessionPage with debug perf enabled', () => {
   });
 
   it('logs debug and perf info when debug flag enabled', async () => {
-    // Need to re-import after setting env
-    jest.isolateModules(async () => {
-      const { default: CandidateSessionPageDebug } = await import(
-        '@/features/candidate/session/CandidateSessionPage'
-      );
+    useCandidateSessionMock.mockReturnValue(baseState());
 
-      useCandidateSessionMock.mockReturnValue(baseState());
-
-      await act(async () => {
-        render(<CandidateSessionPageDebug token="inv" />);
-      });
-
-      await waitFor(() =>
-        expect(screen.getByTestId('run-tests-panel')).toBeInTheDocument(),
-      );
-
-      // Debug logs are called when debug is enabled
-      // The actual logging may or may not happen depending on timing
-      expect(resolveInviteMock).toHaveBeenCalled();
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
     });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('run-tests-panel')).toBeInTheDocument(),
+    );
+
+    // Debug logs are called when debug is enabled
+    // The actual logging may or may not happen depending on timing
+    expect(resolveInviteMock).toHaveBeenCalled();
   });
 });

@@ -272,7 +272,10 @@ describe('CandidateSessionPage auth/error states', () => {
   });
 
   it('shows generic error with retry action for non-invite errors', async () => {
-    resolveInviteMock.mockRejectedValue({ status: 500, message: 'Server error' });
+    resolveInviteMock.mockRejectedValue({
+      status: 500,
+      message: 'Server error',
+    });
     useCandidateSessionMock.mockReturnValue(baseState());
 
     await act(async () => {
@@ -336,7 +339,13 @@ describe('CandidateSessionPage auth/error states', () => {
         bootstrap: null,
         taskState: {
           ...baseState().state.taskState,
-          currentTask: { id: 1, dayIndex: 1, type: 'design', title: 'Task', description: '' },
+          currentTask: {
+            id: 1,
+            dayIndex: 1,
+            type: 'design',
+            title: 'Task',
+            description: '',
+          },
         },
       },
     });
@@ -367,7 +376,9 @@ describe('CandidateSessionPage auth/error states', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText(/Unable to load your session/i)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/Unable to load your session/i),
+      ).toBeInTheDocument(),
     );
   });
 
@@ -388,7 +399,9 @@ describe('CandidateSessionPage auth/error states', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText(/Unable to load your session/i)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/Unable to load your session/i),
+      ).toBeInTheDocument(),
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Back to dashboard/i }));
@@ -572,7 +585,9 @@ describe('CandidateSessionPage auth/error states', () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByText(/Unable to load your session/i)).toBeInTheDocument(),
+      expect(
+        screen.getByText(/Unable to load your session/i),
+      ).toBeInTheDocument(),
     );
 
     const retryBtn = screen.getByRole('button', { name: /Retry/i });

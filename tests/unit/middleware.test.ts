@@ -437,7 +437,11 @@ describe('middleware', () => {
     expect(res?.status).toBe(200);
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
-    process.env.TENON_DEBUG_PERF = prevEnv;
+    if (prevEnv === undefined) {
+      delete process.env.TENON_DEBUG_PERF;
+    } else {
+      process.env.TENON_DEBUG_PERF = prevEnv;
+    }
   });
 
   it('passes through other /auth/* pages without extra redirects', async () => {
