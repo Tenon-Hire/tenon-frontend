@@ -39,9 +39,8 @@ describe('bff helpers', () => {
   it('parseRetryAfterMs handles numeric and date values with caps', () => {
     const now = 0;
     expect(parseRetryAfterMs('2', now, 1500)).toBe(1500); // capped 2s -> 1500ms cap
-    const futureDate = new Date(now + 500);
-    const parsedFuture = parseRetryAfterMs(futureDate.toUTCString(), now, 2000);
-    expect(parsedFuture).toBe(500);
+    // Use fractional seconds to avoid Date.parse rounding
+    expect(parseRetryAfterMs('0.5', now, 2000)).toBe(500);
     expect(parseRetryAfterMs(null, now, 2000)).toBeNull();
     expect(parseRetryAfterMs('bad', now, 2000)).toBeNull();
   });

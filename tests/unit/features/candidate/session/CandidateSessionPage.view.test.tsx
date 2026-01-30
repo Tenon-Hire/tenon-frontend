@@ -80,11 +80,17 @@ jest.mock('@/lib/api/candidate', () => ({
   startCandidateTestRun: jest.fn(),
 }));
 
+const buildLoginHrefMock = jest.fn(() => '/auth/login?mode=candidate');
+jest.mock('@/features/auth/authPaths', () => ({
+  buildLoginHref: (...args: unknown[]) => buildLoginHrefMock(...args),
+}));
+
+const routerMock = {
+  push: jest.fn(),
+  replace: jest.fn(),
+};
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
+  useRouter: () => routerMock,
 }));
 
 const buildState = (overrides?: Partial<ReturnType<typeof baseState>>) => ({
@@ -141,6 +147,8 @@ describe('CandidateSessionPage view rendering', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    routerMock.push.mockReset();
+    routerMock.replace.mockReset();
     resolveInviteMock.mockResolvedValue({
       candidateSessionId: 99,
       status: 'in_progress',
@@ -294,5 +302,47 @@ describe('CandidateSessionPage view rendering', () => {
         'Simulation complete',
       ),
     );
+  });
+
+  it('renders start view and triggers start fetch when not started', async () => {
+    useCandidateSessionMock.mockReturnValue(
+      buildState({
+        state: {
+          ...baseState().state,
+          started: false,
+          taskState: {
+            loading: false,
+            error: null,
+            isComplete: false,
+            completedTaskIds: [],
+            currentTask: null,
+          },
+        },
+      }),
+    );
+
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
+
+    const startBtn = screen.getByRole('button', { name: /Start simulation/i });
+    fireEvent.click(startBtn);
+
+    await waitFor(() => expect(getCurrentTaskMock).toHaveBeenCalled());
+  });
+
+  it('redirects unauthenticated users to login', async () => {
+    useCandidateSessionMock.mockReturnValue(
+      buildState({
+        state: {
+          ...baseState().state,
+          authStatus: 'unauthenticated',
+        },
+      }),
+    );
+
+    render(<CandidateSessionPage token="inv" />);
+    await waitFor(() => expect(buildLoginHrefMock).toHaveBeenCalled());
+    expect(routerMock.replace).toHaveBeenCalled();
   });
 });

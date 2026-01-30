@@ -74,4 +74,28 @@ describe('SimulationSection', () => {
     );
     expect(container.querySelector('[data-testid=\"sim-list\"]')).toBeTruthy();
   });
+
+  it('shows refreshing label when loading with existing sims', () => {
+    render(
+      <SimulationSection
+        simulations={sample}
+        loading
+        error={null}
+        onInvite={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/Refreshing/)).toBeInTheDocument();
+  });
+
+  it('omits retry button when onRetry is undefined', () => {
+    render(
+      <SimulationSection
+        simulations={[]}
+        loading={false}
+        error="boom"
+        onInvite={jest.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /Retry/i })).toBeNull();
+  });
 });

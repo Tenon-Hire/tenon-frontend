@@ -56,6 +56,27 @@ describe('authPaths helpers', () => {
     expect(href).toBe('/auth/logout');
   });
 
+  it('uses vercel url fallback when app base missing', () => {
+    delete process.env.NEXT_PUBLIC_TENON_APP_BASE_URL;
+    process.env.NEXT_PUBLIC_VERCEL_URL = 'example.vercel.app';
+    const href = buildLogoutHref('/candidate/dashboard');
+    expect(href).toBe(
+      '/auth/logout?returnTo=https%3A%2F%2Fexample.vercel.app%2Fcandidate%2Fdashboard',
+    );
+  });
+
+  it('omits connection when candidate connection not set', () => {
+    delete process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION;
+    const href = buildLoginHref('/dest', 'candidate');
+    expect(href).toBe('/auth/login?returnTo=%2Fdest&mode=candidate');
+  });
+
+  it('returns base login when no returnTo provided and recruiter mode default', () => {
+    delete process.env.NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION;
+    const href = buildLoginHref(undefined, undefined);
+    expect(href).toBe('/auth/login?returnTo=%2F&mode=recruiter');
+  });
+
   it('builds clear auth href with optional mode', () => {
     expect(buildClearAuthHref('/back')).toBe('/auth/clear?returnTo=%2Fback');
     expect(buildClearAuthHref('/back', 'candidate')).toBe(

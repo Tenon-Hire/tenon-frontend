@@ -280,4 +280,118 @@ describe('bff helpers', () => {
       expect(result.status).toBe(401);
     }
   });
+
+  describe('robust upstreamRequest behavior', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('retries on retryable status and annotates response meta', async () => {
+      const bad = new Response('bad', { status: 502 });
+      // add cancel method to satisfy cleanup branch
+      (bad as unknown as { body?: { cancel?: () => Promise<void> } }).body = {
+        cancel: jest.fn().mockResolvedValue(undefined),
+      };
+      const good = new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(bad as unknown as Response)
+        .mockResolvedValueOnce(good as unknown as Response);
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { upstreamRequest } = await import('@/lib/server/bff');
+
+      const resp = await upstreamRequest({
+        url: 'https://api.test/data',
+        requestId: 'req-1',
+        timeoutMs: 200,
+        maxTotalTimeMs: 1000,
+        maxAttempts: 2,
+        method: 'GET',
+        headers: {},
+      });
+
+      expect(resp.status).toBe(200);
+      expect((resp as unknown as { _tenonMeta?: { attempts?: number } })
+        ._tenonMeta?.attempts).toBe(2);
+    });
+
+    it('honors retry-after header on 429 responses', async () => {
+      const first = new Response('rate', {
+        status: 429,
+        headers: { 'retry-after': '1' },
+      });
+      const second = new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(first as unknown as Response)
+        .mockResolvedValueOnce(second as unknown as Response);
+      global.fetch = fetchMock as unknown as typeof fetch;
+      const { upstreamRequest } = await import('@/lib/server/bff');
+
+      const resp = await upstreamRequest({
+        url: 'https://api.test/rate',
+        requestId: 'req-3',
+        timeoutMs: 500,
+        maxTotalTimeMs: 2000,
+        maxAttempts: 2,
+        method: 'GET',
+        headers: {},
+      });
+
+      expect(resp.status).toBe(200);
+      expect((resp as unknown as { _tenonMeta?: { attempts?: number } })
+        ._tenonMeta?.attempts).toBe(2);
+    });
+
+    it('throws when a request times out', async () => {
+      jest.useFakeTimers();
+      global.fetch = jest.fn((_, init: RequestInit) => {
+        const signal = init.signal as AbortSignal | undefined;
+        return new Promise<Response>((_, reject) => {
+          signal?.addEventListener('abort', () =>
+            reject(signal.reason ?? new DOMException('Aborted', 'AbortError')),
+          );
+        });
+      }) as unknown as typeof fetch;
+      const { upstreamRequest } = await import('@/lib/server/bff');
+
+      const promise = upstreamRequest({
+        url: 'https://api.test/slow',
+        requestId: 'req-2',
+        timeoutMs: 5,
+        maxAttempts: 1,
+        method: 'GET',
+        headers: {},
+      });
+
+      jest.runOnlyPendingTimers();
+      await expect(promise).rejects.toThrow(/timed out/i);
+    });
+
+    it('aborts immediately when caller signal already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort(new Error('caller-cancel'));
+      global.fetch = jest.fn();
+      const { upstreamRequest } = await import('@/lib/server/bff');
+
+      await expect(
+        upstreamRequest({
+          url: 'https://api.test/abort',
+          requestId: 'req-4',
+          timeoutMs: 100,
+          maxAttempts: 1,
+          method: 'GET',
+          headers: {},
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ message: 'caller-cancel' });
+    });
+  });
 });

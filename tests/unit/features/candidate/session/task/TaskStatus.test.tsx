@@ -20,6 +20,12 @@ describe('TaskStatus', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders submitted without progress details', () => {
+    render(<TaskStatus displayStatus="submitted" progress={null} />);
+    expect(screen.getByText(/Submitted/)).toBeInTheDocument();
+    expect(screen.queryByText(/Progress:/)).toBeNull();
+  });
+
   it('renders nothing when idle', () => {
     render(<TaskStatus displayStatus="idle" progress={null} />);
     expect(screen.queryByText(/Submitting/i)).toBeNull();

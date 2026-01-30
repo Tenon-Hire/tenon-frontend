@@ -144,6 +144,50 @@ describe('lib/auth0 wrapper', () => {
     expect(result.user.roles).toContain('Recruiter');
   });
 
+  it('uses role-derived permissions when token has none', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+
+    const session = { user: { roles: ['Candidate'] } };
+    const payload = Buffer.from(JSON.stringify({ permissions: [] })).toString(
+      'base64url',
+    );
+    const result = await config.beforeSessionSaved(session, `x.${payload}.y`);
+    expect(result.user.permissions).toContain('candidate:access');
+  });
+
+  it('redirects to sanitized returnTo on successful callback', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+    const resp = await config.onCallback(null, { returnTo: '/foo?bar=baz' });
+    expect(resp.status).toBe(307);
+    expect(resp.headers.get('location')).toContain('/foo');
+  });
+
+  it('logs perf timing when normalizing session with debug perf enabled', async () => {
+    process.env.TENON_DEBUG_PERF = '1';
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    mockAuth0Instance.getSession.mockResolvedValue({
+      user: { permissions: ['p1'] },
+      accessToken: 'jwt.token.here',
+    });
+    const { getSessionNormalized } = await import('@/lib/auth0');
+    await getSessionNormalized();
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+    delete process.env.TENON_DEBUG_PERF;
+  });
+
+  it('returns null when decoding malformed jwt payload', async () => {
+    await import('@/lib/auth0');
+    const config = Auth0ClientMock.mock.calls[0][0];
+    const result = await config.beforeSessionSaved(
+      { user: { permissions: [] } },
+      'not-a-token',
+    );
+    expect(result.user.permissions).toEqual([]);
+  });
+
   it('falls back to stub auth when env missing', async () => {
     delete process.env.TENON_AUTH0_SECRET;
     const { auth0, getAccessToken } = await import('@/lib/auth0');

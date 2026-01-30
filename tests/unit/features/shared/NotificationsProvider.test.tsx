@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   NotificationsProvider,
@@ -75,7 +75,7 @@ describe('NotificationsProvider', () => {
                 tone: 'info',
                 title: 'Toast with action',
                 actions: [{ label: 'Do it', onClick: actionSpy }],
-                durationMs: 10,
+                durationMs: 1000,
               })
             }
           >
@@ -102,14 +102,16 @@ describe('NotificationsProvider', () => {
     );
 
     await user.click(screen.getByText('launch'));
-    await user.click(screen.getByRole('button', { name: /Do it/i }));
+    const actionButton = await screen.findByRole('button', { name: /Do it/i });
+    fireEvent.click(actionButton);
     expect(actionSpy).toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: /update/i }));
-    expect(screen.getByRole('button', { name: /Updated/i })).toBeDisabled();
+    const updatedBtn = await screen.findByRole('button', { name: /Updated/i });
+    expect(updatedBtn).toBeDisabled();
 
     act(() => {
-      jest.advanceTimersByTime(15);
+      jest.advanceTimersByTime(1100);
     });
     expect(screen.queryByRole('status')).toBeNull();
     jest.useRealTimers();
@@ -177,5 +179,134 @@ describe('NotificationsProvider', () => {
     ).toBeEnabled();
 
     jest.useRealTimers();
+  });
+
+  it('dismisses via button and skips auto-dismiss when sticky', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    function StickyTrigger() {
+      const { notify } = useNotifications();
+      return (
+        <>
+          <button
+            onClick={() =>
+              notify({
+                id: 'sticky',
+                tone: 'warning',
+                title: 'Persist',
+                sticky: true,
+              })
+            }
+          >
+            sticky
+          </button>
+          <button
+            onClick={() =>
+              notify({
+                id: 'temp',
+                tone: 'info',
+                title: 'Temp',
+                durationMs: 5,
+              })
+            }
+          >
+            temp
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <NotificationsProvider>
+        <StickyTrigger />
+      </NotificationsProvider>,
+    );
+
+    await user.click(screen.getByText('sticky'));
+    await user.click(screen.getByText('temp'));
+
+    act(() => {
+      jest.advanceTimersByTime(10);
+    });
+    expect(screen.getByText('Persist')).toBeInTheDocument(); // sticky remains
+    expect(screen.queryByText('Temp')).toBeNull(); // temp auto-dismissed
+
+    await user.click(
+      screen.getByRole('button', { name: /Dismiss notification/i }),
+    );
+    expect(screen.queryByText('Persist')).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it('update no-op when toast id missing', () => {
+    function NoopUpdater() {
+      const { update } = useNotifications();
+      update('missing', { title: 'ignored' });
+      return null;
+    }
+
+    render(
+      <NotificationsProvider>
+        <NoopUpdater />
+      </NotificationsProvider>,
+    );
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('reuses toast id instead of duplicating and skips auto-dismiss when duration <= 0', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    function DupTrigger() {
+      const { notify } = useNotifications();
+      return (
+        <>
+          <button
+            onClick={() =>
+              notify({
+                id: 'dup',
+                tone: 'info',
+                title: 'First',
+                durationMs: 0,
+              })
+            }
+          >
+            first
+          </button>
+          <button
+            onClick={() =>
+              notify({
+                id: 'dup',
+                tone: 'warning',
+                title: 'Second',
+              })
+            }
+          >
+            second
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <NotificationsProvider>
+        <DupTrigger />
+      </NotificationsProvider>,
+    );
+
+    act(() => {
+      screen.getByText('first').click();
+      screen.getByText('second').click();
+    });
+
+    const toasts = await screen.findAllByRole('status');
+    expect(toasts).toHaveLength(1);
+    expect(toasts[0]).toHaveTextContent('Second');
+
+    // duration 0 => sticky, should not auto-dismiss
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toBeInTheDocument(),
+    );
   });
 });

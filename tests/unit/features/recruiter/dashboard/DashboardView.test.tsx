@@ -12,16 +12,13 @@ jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
 }));
 
-jest.mock(
-  '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow',
-  () => ({
-    useInviteCandidateFlow: () => ({
-      state: { status: 'idle' },
-      submit: inviteFlowSubmitMock,
-      reset: inviteFlowResetMock,
-    }),
-  }),
-);
+jest.mock('@/features/recruiter/dashboard/hooks/useInviteCandidateFlow', () => ({
+  useInviteCandidateFlow: jest.fn(() => ({
+    state: { status: 'idle' },
+    submit: inviteFlowSubmitMock,
+    reset: inviteFlowResetMock,
+  })),
+}));
 
 jest.mock('next/dynamic', () => {
   return (
@@ -152,5 +149,73 @@ describe('DashboardView', () => {
     });
     expect(inviteFlowSubmitMock).toHaveBeenCalledWith('Ann', 'a@test.com');
     expect(props.onRefresh).toHaveBeenCalled();
+  });
+
+  it('handles copy failures and invite resend state', async () => {
+    const props = baseProps();
+    const copyToClipboard =
+      require('@/features/recruiter/utils/formatters').copyToClipboard;
+    copyToClipboard.mockResolvedValueOnce(false);
+    inviteFlowSubmitMock.mockResolvedValueOnce({
+      inviteUrl: 'http://invite',
+      outcome: 'resent',
+      simulationId: '1',
+      candidateName: 'Ann',
+      candidateEmail: 'a@test.com',
+    });
+
+    await act(async () => {
+      render(<DashboardView {...props} />);
+    });
+
+    act(() =>
+      screen.getByTestId('simulation-section').querySelector('button')?.click(),
+    );
+
+    const modalProps = captureModalProps.mock.calls[0]?.[0] as {
+      onSubmit: (n: string, e: string) => Promise<void>;
+    };
+
+    await act(async () => {
+      await modalProps.onSubmit('Ann', 'a@test.com');
+    });
+
+    expect(notifyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'success',
+        title: expect.stringContaining('resent'),
+        actions: expect.any(Array),
+      }),
+    );
+
+    // trigger copy failure path
+    const copyAction = notifyMock.mock.calls[0][0]?.actions?.[0];
+    await act(async () => {
+      await copyAction.onClick();
+    });
+    expect(notifyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ tone: 'error' }),
+    );
+  });
+
+  it('renders modal error state when invite flow is error', () => {
+    const props = baseProps();
+    const { useInviteCandidateFlow } = require(
+      '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow',
+    );
+    (useInviteCandidateFlow as jest.Mock).mockReturnValue({
+      state: { status: 'error', message: 'bad' },
+      submit: inviteFlowSubmitMock,
+      reset: inviteFlowResetMock,
+    });
+
+    render(<DashboardView {...props} />);
+
+    act(() =>
+      screen.getByTestId('simulation-section').querySelector('button')?.click(),
+    );
+
+    const modalProps = captureModalProps.mock.calls[0]?.[0];
+    expect(modalProps.state).toEqual({ status: 'error', message: 'bad' });
   });
 });

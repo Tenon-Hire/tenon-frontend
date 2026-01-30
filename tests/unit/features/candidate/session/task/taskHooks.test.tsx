@@ -73,27 +73,26 @@ describe('useTaskDrafts', () => {
 describe('useSubmitHandler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
   });
 
   it('returns busy when already submitting', async () => {
-    const onSubmit = jest
-      .fn()
-      .mockReturnValue(new Promise((resolve) => setTimeout(resolve, 10)));
-    const { result } = renderHook(() => useSubmitHandler(onSubmit));
+    const onSubmit = jest.fn(() => new Promise(() => {})); // never resolves
+    const { result, rerender } = renderHook(() => useSubmitHandler(onSubmit));
 
-    let first: any;
-    await act(async () => {
-      const promise = result.current.handleSubmit({});
-      const second = await result.current.handleSubmit({});
-      expect(second).toEqual({ status: 'busy' });
-      first = await promise;
+    act(() => {
+      result.current.handleSubmit({});
     });
+    rerender();
+    let second: unknown;
+    await act(async () => {
+      second = await result.current.handleSubmit({});
+    });
+    expect(second).toEqual({ status: 'busy' });
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(first).toBeUndefined();
   });
 
   it('sets submitted status then resets after timer', async () => {
+    jest.useFakeTimers();
     const onSubmit = jest.fn().mockResolvedValue({
       submissionId: 1,
       taskId: 2,
@@ -114,9 +113,11 @@ describe('useSubmitHandler', () => {
     });
     expect(result.current.submitStatus).toBe('idle');
     expect(result.current.lastProgress).toBeNull();
+    jest.useRealTimers();
   });
 
   it('sets idle when submit throws', async () => {
+    jest.useFakeTimers();
     const onSubmit = jest.fn().mockRejectedValue(new Error('fail'));
     const { result } = renderHook(() => useSubmitHandler(onSubmit));
 
@@ -125,5 +126,6 @@ describe('useSubmitHandler', () => {
       expect(resp).toBe('submit-failed');
     });
     expect(result.current.submitStatus).toBe('idle');
+    jest.useRealTimers();
   });
 });

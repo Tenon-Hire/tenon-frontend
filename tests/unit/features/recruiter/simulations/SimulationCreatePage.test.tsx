@@ -97,4 +97,22 @@ describe('SimulationCreatePage', () => {
       expect(pushMock).toHaveBeenCalledWith('/dashboard/simulations/sim-1'),
     );
   });
+
+  it('surfaces fallback when backend succeeds without id', async () => {
+    render(<SimulationCreatePage />);
+    fillForm();
+    createSimulationMock.mockResolvedValue({ ok: true, id: null });
+    fireEvent.click(screen.getByRole('button', { name: /Create simulation/i }));
+    expect(
+      await screen.findByText(/Simulation created but no id was returned/i),
+    ).toBeInTheDocument();
+  });
+
+  it('uses toUserMessage on caught errors', async () => {
+    render(<SimulationCreatePage />);
+    fillForm();
+    createSimulationMock.mockRejectedValue(new Error('network down'));
+    fireEvent.click(screen.getByRole('button', { name: /Create simulation/i }));
+    expect(await screen.findByText(/pretty error/i)).toBeInTheDocument();
+  });
 });
