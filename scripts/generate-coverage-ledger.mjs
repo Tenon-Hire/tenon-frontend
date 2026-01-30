@@ -62,7 +62,10 @@ function status(entry) {
 
 function findTests(rel) {
   const withoutSrc = rel.replace(/^src\//, '');
-  const aliasPattern = `@/${withoutSrc.replace(/\\/g, '/')}`.replace(/\\/g, '/');
+  const aliasPattern = `@/${withoutSrc.replace(/\\/g, '/')}`.replace(
+    /\\/g,
+    '/',
+  );
   const base = path.basename(rel, path.extname(rel));
   const patterns = [aliasPattern.replace(/\.[^.]+$/, ''), base];
   const results = new Set();
@@ -98,20 +101,21 @@ ledgerLines.push('');
 ledgerLines.push('| Path | Area | Status | Tests | Notes |');
 ledgerLines.push('| --- | --- | --- | --- | --- |');
 
-rows
-  .sort()
-  .forEach((absPath) => {
-    const rel = path.relative(root, absPath);
-    const entry = coverageEntry(absPath);
-    const detectedTests = findTests(rel);
-    const note = path.extname(rel) === '.css' ? 'style asset' : '';
-    ledgerLines.push(
-      `| ${rel} | ${areaFor(rel)} | ${status(entry)} | ${
-        detectedTests.length ? detectedTests.join('<br>') : '—'
-      } | ${note || ''} |`,
-    );
-  });
+rows.sort().forEach((absPath) => {
+  const rel = path.relative(root, absPath);
+  const entry = coverageEntry(absPath);
+  const detectedTests = findTests(rel);
+  const note = path.extname(rel) === '.css' ? 'style asset' : '';
+  ledgerLines.push(
+    `| ${rel} | ${areaFor(rel)} | ${status(entry)} | ${
+      detectedTests.length ? detectedTests.join('<br>') : '—'
+    } | ${note || ''} |`,
+  );
+});
 
-fs.writeFileSync(path.join(root, 'docs', 'COVERAGE_LEDGER.md'), ledgerLines.join('\n'));
+fs.writeFileSync(
+  path.join(root, 'docs', 'COVERAGE_LEDGER.md'),
+  ledgerLines.join('\n'),
+);
 
 console.log('Wrote docs/COVERAGE_LEDGER.md with', rows.length, 'entries');

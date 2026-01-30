@@ -56,10 +56,13 @@ jest.mock('@/features/recruiter/simulations/SimulationCreatePage', () => ({
   default: () => simulationCreateMock(),
 }));
 
-jest.mock('@/features/recruiter/candidate-submissions/CandidateSubmissionsPage', () => ({
-  __esModule: true,
-  default: () => candidateSubmissionsMock(),
-}));
+jest.mock(
+  '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage',
+  () => ({
+    __esModule: true,
+    default: () => candidateSubmissionsMock(),
+  }),
+);
 
 jest.mock('@/lib/auth0', () => ({
   getCachedSessionNormalized: (...args: unknown[]) =>
@@ -90,7 +93,9 @@ describe('route wrapper pages', () => {
   });
 
   it('renders marketing page with user when session present', async () => {
-    getCachedSessionNormalizedMock.mockResolvedValue({ user: { email: 'a@b' } });
+    getCachedSessionNormalizedMock.mockResolvedValue({
+      user: { email: 'a@b' },
+    });
     const { default: MarketingPage } = await import('@/app/(marketing)/page');
     const element = await MarketingPage();
     render(element);
@@ -99,10 +104,11 @@ describe('route wrapper pages', () => {
   });
 
   it('renders candidate dashboard with signed-in email fallback', async () => {
-    getCachedSessionNormalizedMock.mockResolvedValue({ user: { email: 'c@d' } });
-    const { default: CandidateDashboardRoute } = await import(
-      '@/app/(candidate)/candidate/dashboard/page'
-    );
+    getCachedSessionNormalizedMock.mockResolvedValue({
+      user: { email: 'c@d' },
+    });
+    const { default: CandidateDashboardRoute } =
+      await import('@/app/(candidate)/candidate/dashboard/page');
     const element = await CandidateDashboardRoute();
     render(element);
     expect(candidateDashboardMock).toHaveBeenCalledWith({
@@ -112,9 +118,8 @@ describe('route wrapper pages', () => {
 
   it('renders candidate dashboard with null email when missing', async () => {
     getCachedSessionNormalizedMock.mockResolvedValue({ user: {} });
-    const { default: CandidateDashboardRoute } = await import(
-      '@/app/(candidate)/candidate/dashboard/page'
-    );
+    const { default: CandidateDashboardRoute } =
+      await import('@/app/(candidate)/candidate/dashboard/page');
     const element = await CandidateDashboardRoute();
     render(element);
     expect(candidateDashboardMock).toHaveBeenCalledWith({
@@ -124,9 +129,8 @@ describe('route wrapper pages', () => {
 
   it('passes token into candidate session route', async () => {
     requireCandidateTokenMock.mockResolvedValue('tok_123');
-    const { default: CandidateSessionRoute } = await import(
-      '@/app/(candidate)/candidate/session/[token]/page'
-    );
+    const { default: CandidateSessionRoute } =
+      await import('@/app/(candidate)/candidate/session/[token]/page');
     const element = await CandidateSessionRoute({
       params: Promise.resolve({ token: 'tok_123' }),
     });
@@ -135,35 +139,33 @@ describe('route wrapper pages', () => {
   });
 
   it('renders recruiter pages without extra props', async () => {
-    const { default: DashboardPage } = await import(
-      '@/app/(recruiter)/dashboard/page'
-    );
+    const { default: DashboardPage } =
+      await import('@/app/(recruiter)/dashboard/page');
     render(await DashboardPage());
     expect(recruiterDashboardMock).toHaveBeenCalled();
 
-    const { default: SimulationDetailPage } = await import(
-      '@/app/(recruiter)/dashboard/simulations/[id]/page'
-    );
+    const { default: SimulationDetailPage } =
+      await import('@/app/(recruiter)/dashboard/simulations/[id]/page');
     render(await SimulationDetailPage());
     expect(simulationDetailMock).toHaveBeenCalled();
 
-    const { default: SimulationCreatePage } = await import(
-      '@/app/(recruiter)/dashboard/simulations/new/page'
-    );
+    const { default: SimulationCreatePage } =
+      await import('@/app/(recruiter)/dashboard/simulations/new/page');
     render(await SimulationCreatePage());
     expect(simulationCreateMock).toHaveBeenCalled();
 
-    const { default: CandidateSubmissionsPage } = await import(
-      '@/app/(recruiter)/dashboard/simulations/[id]/candidates/[candidateSessionId]/page'
-    );
+    const { default: CandidateSubmissionsPage } =
+      await import('@/app/(recruiter)/dashboard/simulations/[id]/candidates/[candidateSessionId]/page');
     render(await CandidateSubmissionsPage());
     expect(candidateSubmissionsMock).toHaveBeenCalled();
   });
 
   it('exposes root layout metadata and viewport', async () => {
-    const { metadata, viewport, default: RootLayout } = await import(
-      '@/app/layout'
-    );
+    const {
+      metadata,
+      viewport,
+      default: RootLayout,
+    } = await import('@/app/layout');
     expect(metadata?.title).toBeDefined();
     expect(viewport?.width).toBe('device-width');
     const element = RootLayout({
@@ -174,9 +176,8 @@ describe('route wrapper pages', () => {
   });
 
   it('loads auth route metadata and components', async () => {
-    const { metadata: loginMeta, default: LoginRoute } = await import(
-      '@/app/(auth)/auth/login/page'
-    );
+    const { metadata: loginMeta, default: LoginRoute } =
+      await import('@/app/(auth)/auth/login/page');
     expect(loginMeta.title).toBeDefined();
     render(
       await LoginRoute({
@@ -184,15 +185,13 @@ describe('route wrapper pages', () => {
       }),
     );
 
-    const { metadata: logoutMeta, default: LogoutRoute } = await import(
-      '@/app/(auth)/auth/logout/page'
-    );
+    const { metadata: logoutMeta, default: LogoutRoute } =
+      await import('@/app/(auth)/auth/logout/page');
     expect(logoutMeta.title).toBeDefined();
     render(await LogoutRoute());
 
-    const { metadata: authErrorMeta } = await import(
-      '@/app/(auth)/auth/error/page'
-    );
+    const { metadata: authErrorMeta } =
+      await import('@/app/(auth)/auth/error/page');
     expect(authErrorMeta.title).toContain('Sign-in error');
   });
 });

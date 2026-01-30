@@ -524,9 +524,7 @@ describe('middleware', () => {
       user: { permissions: ['candidate:access'] },
     });
 
-    const req = new NextRequest(
-      new URL('http://localhost/candidate/updates'),
-    );
+    const req = new NextRequest(new URL('http://localhost/candidate/updates'));
     const res = await middleware(req);
     expect(res?.status).toBe(200);
     expect(res?.headers.get('location')).toBeNull();
