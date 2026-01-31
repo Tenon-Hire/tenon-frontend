@@ -14,7 +14,6 @@ import { responseHelpers } from '../setup';
 describe('httpClient branch coverage', () => {
   const realFetch = global.fetch;
   const originalDebug = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF;
-  const originalWindow = global.window;
 
   beforeEach(() => {
     __resetHttpClientCache();
@@ -56,7 +55,9 @@ describe('httpClient branch coverage', () => {
     });
 
     it('returns error on failure', async () => {
-      (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      (global.fetch as jest.Mock).mockRejectedValueOnce(
+        new Error('Network error'),
+      );
 
       const result = await safeRequest('/test', { skipCache: true });
       expect(result.data).toBeNull();
@@ -89,7 +90,10 @@ describe('httpClient branch coverage', () => {
         }) as unknown as Response,
       );
 
-      const result = await login({ email: 'test@example.com', password: 'pass' });
+      const result = await login({
+        email: 'test@example.com',
+        password: 'pass',
+      });
       expect(result.access_token).toBe('tok');
       expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe('POST');
     });
@@ -102,7 +106,9 @@ describe('httpClient branch coverage', () => {
       );
 
       await recruiterBffClient.get('/dashboard', { skipCache: true });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/api/dashboard');
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/api/dashboard',
+      );
     });
 
     it('post method works correctly', async () => {
@@ -110,7 +116,11 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ created: true }) as unknown as Response,
       );
 
-      await recruiterBffClient.post('/simulations', { title: 'New' }, { skipCache: true });
+      await recruiterBffClient.post(
+        '/simulations',
+        { title: 'New' },
+        { skipCache: true },
+      );
       expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe('POST');
     });
 
@@ -119,7 +129,11 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ updated: true }) as unknown as Response,
       );
 
-      await recruiterBffClient.put('/simulations/1', { title: 'Updated' }, { skipCache: true });
+      await recruiterBffClient.put(
+        '/simulations/1',
+        { title: 'Updated' },
+        { skipCache: true },
+      );
       expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe('PUT');
     });
 
@@ -128,7 +142,11 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ patched: true }) as unknown as Response,
       );
 
-      await recruiterBffClient.patch('/simulations/1', { status: 'active' }, { skipCache: true });
+      await recruiterBffClient.patch(
+        '/simulations/1',
+        { status: 'active' },
+        { skipCache: true },
+      );
       expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe('PATCH');
     });
 
@@ -138,7 +156,9 @@ describe('httpClient branch coverage', () => {
       );
 
       await recruiterBffClient.delete('/simulations/1', { skipCache: true });
-      expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe('DELETE');
+      expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe(
+        'DELETE',
+      );
     });
   });
 
@@ -157,8 +177,14 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
       );
 
-      await apiClient.get('/test', { skipCache: true }, { basePath: '/custom2' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom2/test');
+      await apiClient.get(
+        '/test',
+        { skipCache: true },
+        { basePath: '/custom2' },
+      );
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom2/test',
+      );
     });
 
     it('post accepts ApiClientOptions as third arg', async () => {
@@ -167,7 +193,9 @@ describe('httpClient branch coverage', () => {
       );
 
       await apiClient.post('/test', { data: 1 }, { basePath: '/custom3' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom3/test');
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom3/test',
+      );
     });
 
     it('post accepts RequestOptions as third arg and ApiClientOptions as fourth', async () => {
@@ -175,8 +203,15 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
       );
 
-      await apiClient.post('/test', { data: 1 }, { skipCache: true }, { basePath: '/custom4' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom4/test');
+      await apiClient.post(
+        '/test',
+        { data: 1 },
+        { skipCache: true },
+        { basePath: '/custom4' },
+      );
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom4/test',
+      );
     });
 
     it('put accepts ApiClientOptions as third arg', async () => {
@@ -185,7 +220,9 @@ describe('httpClient branch coverage', () => {
       );
 
       await apiClient.put('/test', { data: 1 }, { basePath: '/custom5' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom5/test');
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom5/test',
+      );
     });
 
     it('put accepts RequestOptions and ApiClientOptions', async () => {
@@ -193,8 +230,15 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
       );
 
-      await apiClient.put('/test', { data: 1 }, { skipCache: true }, { basePath: '/custom6' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom6/test');
+      await apiClient.put(
+        '/test',
+        { data: 1 },
+        { skipCache: true },
+        { basePath: '/custom6' },
+      );
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom6/test',
+      );
     });
 
     it('patch accepts ApiClientOptions as third arg', async () => {
@@ -203,7 +247,9 @@ describe('httpClient branch coverage', () => {
       );
 
       await apiClient.patch('/test', { data: 1 }, { basePath: '/custom7' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom7/test');
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom7/test',
+      );
     });
 
     it('patch accepts RequestOptions and ApiClientOptions', async () => {
@@ -211,8 +257,15 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
       );
 
-      await apiClient.patch('/test', { data: 1 }, { skipCache: true }, { basePath: '/custom8' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom8/test');
+      await apiClient.patch(
+        '/test',
+        { data: 1 },
+        { skipCache: true },
+        { basePath: '/custom8' },
+      );
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom8/test',
+      );
     });
 
     it('delete accepts ApiClientOptions as second arg', async () => {
@@ -221,7 +274,9 @@ describe('httpClient branch coverage', () => {
       );
 
       await apiClient.delete('/test', { basePath: '/custom9' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom9/test');
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom9/test',
+      );
     });
 
     it('delete accepts RequestOptions and ApiClientOptions', async () => {
@@ -229,8 +284,14 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
       );
 
-      await apiClient.delete('/test', { skipCache: true }, { basePath: '/custom10' });
-      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe('/custom10/test');
+      await apiClient.delete(
+        '/test',
+        { skipCache: true },
+        { basePath: '/custom10' },
+      );
+      expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe(
+        '/custom10/test',
+      );
     });
   });
 
@@ -252,21 +313,22 @@ describe('httpClient branch coverage', () => {
     });
 
     it('disables dedupe when disableDedupe is true', async () => {
-      (global.fetch as jest.Mock)
-        .mockImplementation(
-          () =>
-            new Promise((resolve) =>
-              setTimeout(
-                () =>
-                  resolve(
-                    responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
-                  ),
-                10,
-              ),
+      (global.fetch as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve(
+                  responseHelpers.jsonResponse({
+                    ok: true,
+                  }) as unknown as Response,
+                ),
+              10,
             ),
-        );
+          ),
+      );
 
-      const [a, b] = await Promise.all([
+      await Promise.all([
         apiClient.get('/no-dedupe', { disableDedupe: true }),
         apiClient.get('/no-dedupe', { disableDedupe: true }),
       ]);
@@ -282,7 +344,9 @@ describe('httpClient branch coverage', () => {
             setTimeout(() => {
               resolveCount++;
               resolve(
-                responseHelpers.jsonResponse({ count: resolveCount }) as unknown as Response,
+                responseHelpers.jsonResponse({
+                  count: resolveCount,
+                }) as unknown as Response,
               );
             }, 10),
           ),
@@ -325,9 +389,11 @@ describe('httpClient branch coverage', () => {
         await import('@/lib/api/httpClient');
       freshReset();
 
-      global.fetch = jest.fn().mockResolvedValueOnce(
-        responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
-      );
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce(
+          responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
+        );
 
       await freshClient.get('/perf-fallback', { skipCache: true });
 
@@ -401,11 +467,15 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
       );
 
-      await apiClient.get('/auth-test', { skipCache: true }, { authToken: 'custom-token' });
-
-      expect((global.fetch as jest.Mock).mock.calls[0][1].headers.Authorization).toBe(
-        'Bearer custom-token',
+      await apiClient.get(
+        '/auth-test',
+        { skipCache: true },
+        { authToken: 'custom-token' },
       );
+
+      expect(
+        (global.fetch as jest.Mock).mock.calls[0][1].headers.Authorization,
+      ).toBe('Bearer custom-token');
     });
 
     it('respects null authToken to skip auth', async () => {
@@ -425,7 +495,11 @@ describe('httpClient branch coverage', () => {
         responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
       );
 
-      await apiClient.get('/skip-auth', { skipCache: true }, { skipAuth: true });
+      await apiClient.get(
+        '/skip-auth',
+        { skipCache: true },
+        { skipAuth: true },
+      );
 
       expect(
         (global.fetch as jest.Mock).mock.calls[0][1].headers.Authorization,
@@ -441,7 +515,9 @@ describe('httpClient branch coverage', () => {
 
       await apiClient.get('/same-origin', { skipCache: true });
 
-      expect((global.fetch as jest.Mock).mock.calls[0][1].credentials).toBe('include');
+      expect((global.fetch as jest.Mock).mock.calls[0][1].credentials).toBe(
+        'include',
+      );
     });
 
     it('uses provided credentials option', async () => {
@@ -454,7 +530,9 @@ describe('httpClient branch coverage', () => {
         credentials: 'same-origin',
       });
 
-      expect((global.fetch as jest.Mock).mock.calls[0][1].credentials).toBe('same-origin');
+      expect((global.fetch as jest.Mock).mock.calls[0][1].credentials).toBe(
+        'same-origin',
+      );
     });
   });
 
@@ -470,7 +548,9 @@ describe('httpClient branch coverage', () => {
         signal: controller.signal,
       });
 
-      expect((global.fetch as jest.Mock).mock.calls[0][1].signal).toBe(controller.signal);
+      expect((global.fetch as jest.Mock).mock.calls[0][1].signal).toBe(
+        controller.signal,
+      );
     });
   });
 });

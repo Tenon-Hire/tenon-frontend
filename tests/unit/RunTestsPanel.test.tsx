@@ -74,7 +74,6 @@ describe('RunTestsPanel', () => {
       sessionStorage.clear();
     } catch {}
     // restore navigator after clipboard overrides
-    // @ts-expect-error readonly in jsdom, redefine for tests
     global.navigator = originalNavigator;
     Object.defineProperty(document, 'visibilityState', {
       value: 'visible',
@@ -544,7 +543,7 @@ describe('RunTestsPanel', () => {
     expect(writeMock).toHaveBeenCalled();
 
     // Clipboard unavailable path
-    const globalWithNav = globalThis as {
+    const globalWithNav = globalThis as unknown as {
       navigator?: { clipboard?: { writeText: jest.Mock } };
     };
     if (globalWithNav.navigator) {

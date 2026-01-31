@@ -14,13 +14,16 @@ jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
 }));
 
-jest.mock('@/features/recruiter/dashboard/hooks/useInviteCandidateFlow', () => ({
-  useInviteCandidateFlow: jest.fn(() => ({
-    state: { status: 'idle' },
-    submit: inviteFlowSubmitMock,
-    reset: inviteFlowResetMock,
-  })),
-}));
+jest.mock(
+  '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow',
+  () => ({
+    useInviteCandidateFlow: jest.fn(() => ({
+      state: { status: 'idle' },
+      submit: inviteFlowSubmitMock,
+      reset: inviteFlowResetMock,
+    })),
+  }),
+);
 
 jest.mock('@/features/recruiter/utils/formatters', () => ({
   copyToClipboard: (...args: unknown[]) => copyToClipboardMock(...args),
@@ -55,25 +58,28 @@ jest.mock('@/features/recruiter/dashboard/components/ProfileCard', () => ({
   ),
 }));
 
-jest.mock('@/features/recruiter/dashboard/components/SimulationSection', () => ({
-  SimulationSection: (props: {
-    simulations: Array<{ id: string; title: string; status: string }>;
-    loading: boolean;
-    error: string | null;
-    onInvite?: (sim: { id: string; title: string }) => void;
-    onRetry?: () => void;
-  }) => {
-    const { onInvite, onRetry } = props;
-    return (
-      <div data-testid="simulation-section">
-        <button onClick={() => onInvite?.({ id: '1', title: 'Sim 1' })}>
-          invite
-        </button>
-        <button onClick={() => onRetry?.()}>retry</button>
-      </div>
-    );
-  },
-}));
+jest.mock(
+  '@/features/recruiter/dashboard/components/SimulationSection',
+  () => ({
+    SimulationSection: (props: {
+      simulations: Array<{ id: string; title: string; status: string }>;
+      loading: boolean;
+      error: string | null;
+      onInvite?: (sim: { id: string; title: string }) => void;
+      onRetry?: () => void;
+    }) => {
+      const { onInvite, onRetry } = props;
+      return (
+        <div data-testid="simulation-section">
+          <button onClick={() => onInvite?.({ id: '1', title: 'Sim 1' })}>
+            invite
+          </button>
+          <button onClick={() => onRetry?.()}>retry</button>
+        </div>
+      );
+    },
+  }),
+);
 
 type Simulation = { id: string; title: string; status: string };
 
@@ -140,7 +146,7 @@ describe('DashboardView extra coverage', () => {
     // Get copy action and trigger it
     const copyAction = notifyMock.mock.calls[0][0]?.actions?.[0];
     expect(copyAction).toBeDefined();
-    
+
     await act(async () => {
       await copyAction.onClick();
     });
@@ -148,7 +154,9 @@ describe('DashboardView extra coverage', () => {
     expect(copyToClipboardMock).toHaveBeenCalledWith('http://invite');
     expect(updateMock).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ actions: [{ label: 'Copied', disabled: true }] }),
+      expect.objectContaining({
+        actions: [{ label: 'Copied', disabled: true }],
+      }),
     );
 
     // Advance timers to trigger reset
@@ -185,7 +193,7 @@ describe('DashboardView extra coverage', () => {
     });
 
     const copyAction = notifyMock.mock.calls[0][0]?.actions?.[0];
-    
+
     // Click copy multiple times rapidly
     await act(async () => {
       await copyAction.onClick();
@@ -341,7 +349,7 @@ describe('DashboardView extra coverage', () => {
   it('renders loading state for dynamic modal', () => {
     // Test the loading component
     jest.resetModules();
-    
+
     // Re-mock with loading component accessible
     const loadingFn = () => (
       <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">

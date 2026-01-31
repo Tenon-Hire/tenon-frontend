@@ -6,8 +6,10 @@ const originalEnv = process.env.NODE_ENV;
 describe('GlobalError component', () => {
   let windowLocationMock: { href: string };
   const originalLocation = window.location;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     // Mock window.location
     windowLocationMock = { href: '' };
     Object.defineProperty(window, 'location', {
@@ -17,6 +19,7 @@ describe('GlobalError component', () => {
   });
 
   afterAll(() => {
+    consoleErrorSpy.mockRestore();
     Object.defineProperty(window, 'location', {
       value: originalLocation,
       writable: true,
@@ -117,9 +120,7 @@ describe('GlobalError component', () => {
     render(<GlobalError error={error} reset={resetMock} />);
 
     // Should not show any detail line when no digest
-    expect(
-      screen.queryByText(/Error id:/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Error id:/i)).not.toBeInTheDocument();
     expect(
       screen.queryByText('Test error without digest'),
     ).not.toBeInTheDocument();

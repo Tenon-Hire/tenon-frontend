@@ -2,7 +2,13 @@
  * Tests for RecruiterSimulationDetailPage
  */
 import React from 'react';
-import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import RecruiterSimulationDetailPage, {
   __testables,
 } from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
@@ -58,13 +64,16 @@ jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
 }));
 
-jest.mock('@/features/recruiter/dashboard/hooks/useInviteCandidateFlow', () => ({
-  useInviteCandidateFlow: () => ({
-    state: { status: 'idle' },
-    submit: inviteFlowSubmitMock,
-    reset: inviteFlowResetMock,
+jest.mock(
+  '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow',
+  () => ({
+    useInviteCandidateFlow: () => ({
+      state: { status: 'idle' },
+      submit: inviteFlowSubmitMock,
+      reset: inviteFlowResetMock,
+    }),
   }),
-}));
+);
 
 jest.mock('@/features/recruiter/invitations/InviteCandidateModal', () => ({
   InviteCandidateModal: (props: { open: boolean }) =>
@@ -104,9 +113,9 @@ describe('RecruiterSimulationDetailPage helper functions', () => {
 
   describe('verificationStatusLabel', () => {
     it('returns Verified for verified true', () => {
-      expect(
-        verificationStatusLabel({ verified: true } as never),
-      ).toBe('Verified');
+      expect(verificationStatusLabel({ verified: true } as never)).toBe(
+        'Verified',
+      );
     });
 
     it('handles verificationStatus strings', () => {
@@ -123,14 +132,16 @@ describe('RecruiterSimulationDetailPage helper functions', () => {
         verificationStatusLabel({ verificationStatus: 'failed' } as never),
       ).toBe('Failed');
       expect(
-        verificationStatusLabel({ verificationStatus: 'other_status' } as never),
+        verificationStatusLabel({
+          verificationStatus: 'other_status',
+        } as never),
       ).toBe('other status');
     });
 
     it('returns Not verified for verified false', () => {
-      expect(
-        verificationStatusLabel({ verified: false } as never),
-      ).toBe('Not verified');
+      expect(verificationStatusLabel({ verified: false } as never)).toBe(
+        'Not verified',
+      );
     });
 
     it('returns Not verified for no verification info', () => {
@@ -526,8 +537,21 @@ describe('RecruiterSimulationDetailPage component', () => {
       scenario: 'Build an app',
       tasks: [
         { dayIndex: 1, title: 'Day 1', type: 'text', prompt: 'Task 1' },
-        { dayIndex: 2, title: 'Day 2', type: 'code', prompt: 'Task 2', repoProvisioned: true },
-        { dayIndex: 3, title: 'Day 3', type: 'code', prompt: 'Task 3', repoUrl: 'http://repo', repoName: 'test/repo' },
+        {
+          dayIndex: 2,
+          title: 'Day 2',
+          type: 'code',
+          prompt: 'Task 2',
+          repoProvisioned: true,
+        },
+        {
+          dayIndex: 3,
+          title: 'Day 3',
+          type: 'code',
+          prompt: 'Task 3',
+          repoUrl: 'http://repo',
+          repoName: 'test/repo',
+        },
       ],
     });
   });
@@ -594,7 +618,10 @@ describe('RecruiterSimulationDetailPage component', () => {
   });
 
   it('handles candidate fetch error', async () => {
-    listSimulationCandidatesMock.mockRejectedValue({ status: 500, details: 'Server error details' });
+    listSimulationCandidatesMock.mockRejectedValue({
+      status: 500,
+      details: 'Server error details',
+    });
 
     await act(async () => {
       render(<RecruiterSimulationDetailPage />);
@@ -639,7 +666,9 @@ describe('RecruiterSimulationDetailPage component', () => {
       expect(screen.getByText(/No candidates yet/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Invite your first candidate/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /Invite your first candidate/i }),
+    );
 
     expect(screen.getByTestId('invite-modal')).toBeInTheDocument();
   });
@@ -703,7 +732,9 @@ describe('RecruiterSimulationDetailPage component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Not generated yet/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Not generated yet/).length).toBeGreaterThan(
+        0,
+      );
     });
   });
 });

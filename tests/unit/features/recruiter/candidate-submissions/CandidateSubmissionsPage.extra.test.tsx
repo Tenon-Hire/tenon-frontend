@@ -2,7 +2,13 @@
  * Additional tests for CandidateSubmissionsPage to close coverage gaps
  */
 import React from 'react';
-import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import CandidateSubmissionsPage, {
   ArtifactCard,
 } from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
@@ -150,7 +156,9 @@ describe('CandidateSubmissionsPage extra coverage', () => {
   });
 
   it('handles generic error during candidate fetch', async () => {
-    listSimulationCandidatesMock.mockRejectedValueOnce(new Error('Network down'));
+    listSimulationCandidatesMock.mockRejectedValueOnce(
+      new Error('Network down'),
+    );
 
     await act(async () => {
       render(<CandidateSubmissionsPage />);
@@ -179,7 +187,7 @@ describe('CandidateSubmissionsPage extra coverage', () => {
     });
 
     expect(await screen.findByText(/List failed/i)).toBeInTheDocument();
-    
+
     // Test retry button
     recruiterGetMock.mockResolvedValueOnce({ items: [] });
     fireEvent.click(screen.getByRole('button', { name: /Retry/i }));
@@ -246,7 +254,7 @@ describe('CandidateSubmissionsPage extra coverage', () => {
 
     // Show all
     fireEvent.click(screen.getByRole('button', { name: /Show all/i }));
-    
+
     await waitFor(() => {
       expect(screen.getByText(/Page 1/)).toBeInTheDocument();
     });
@@ -311,7 +319,13 @@ describe('ArtifactCard coverage', () => {
     const longText = 'x'.repeat(400);
     const artifact = buildArtifact(1, 1, {
       contentText: longText,
-      task: { taskId: 1, dayIndex: 1, type: 'text', title: 'Text Task', prompt: 'Write something' },
+      task: {
+        taskId: 1,
+        dayIndex: 1,
+        type: 'text',
+        title: 'Text Task',
+        prompt: 'Write something',
+      },
     });
 
     render(<ArtifactCard artifact={artifact} />);
@@ -504,7 +518,13 @@ describe('ArtifactCard coverage', () => {
   it('shows no text answer message for code task without content', () => {
     const artifact = buildArtifact(1, 1, {
       contentText: null,
-      task: { taskId: 1, dayIndex: 1, type: 'text', title: 'Text', prompt: null },
+      task: {
+        taskId: 1,
+        dayIndex: 1,
+        type: 'text',
+        title: 'Text',
+        prompt: null,
+      },
     });
 
     render(<ArtifactCard artifact={artifact} />);

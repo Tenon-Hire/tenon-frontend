@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 
 const originalEnv = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF;
@@ -70,7 +76,9 @@ jest.mock('@/features/candidate/session/task/components/RunTestsPanel', () => ({
 jest.mock('@/features/candidate/session/task/components/ResourcePanel', () => ({
   __esModule: true,
   ResourcePanel: ({ title }: { title: string }) => (
-    <div data-testid={`resource-panel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+    <div
+      data-testid={`resource-panel-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       {title}
     </div>
   ),

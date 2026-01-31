@@ -224,7 +224,9 @@ describe('useCandidateBootstrap', () => {
   });
 
   it('works without onSetInviteToken callback', async () => {
-    resolveCandidateInviteTokenMock.mockResolvedValue({ candidateSessionId: 1 });
+    resolveCandidateInviteTokenMock.mockResolvedValue({
+      candidateSessionId: 1,
+    });
 
     const onResolved = jest.fn();
     const { result } = renderHook(() =>

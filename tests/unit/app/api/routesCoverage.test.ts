@@ -35,13 +35,20 @@ jest.mock('next/server', () => {
     status = 200,
     body?: unknown,
     headers?: Record<string, string>,
-  ) => ({
-    status,
-    body,
-    headers: buildHeaders(),
-    cookies: buildCookies(),
-    json: async () => body,
-  });
+  ) => {
+    const headerStore = buildHeaders();
+    Object.entries(headers ?? {}).forEach(([key, value]) =>
+      headerStore.set(key, value),
+    );
+
+    return {
+      status,
+      body,
+      headers: headerStore,
+      cookies: buildCookies(),
+      json: async () => body,
+    };
+  };
 
   return {
     NextResponse: {
@@ -57,14 +64,21 @@ jest.mock('next/server', () => {
     NextRequest: class {
       url: string;
       nextUrl: URL;
-      headers: { get: (key: string) => string | null; forEach: (cb: (v: string, k: string) => void) => void };
+      headers: {
+        get: (key: string) => string | null;
+        forEach: (cb: (v: string, k: string) => void) => void;
+      };
       method: string;
       signal: AbortSignal;
       body: ReadableStream | null = null;
-      
+
       constructor(
         url: URL | string,
-        init?: { method?: string; headers?: Record<string, string>; body?: string },
+        init?: {
+          method?: string;
+          headers?: Record<string, string>;
+          body?: string;
+        },
       ) {
         this.url = url.toString();
         this.nextUrl = new URL(this.url);
@@ -98,7 +112,8 @@ const mockMergeResponseCookies = jest.fn();
 
 jest.mock('@/lib/server/bffAuth', () => ({
   requireBffAuth: (...args: unknown[]) => mockRequireBffAuth(...args),
-  mergeResponseCookies: (...args: unknown[]) => mockMergeResponseCookies(...args),
+  mergeResponseCookies: (...args: unknown[]) =>
+    mockMergeResponseCookies(...args),
 }));
 
 const mockForwardJson = jest.fn();
@@ -118,7 +133,7 @@ describe('API Routes Coverage - auth/me', () => {
   it('covers route metadata and success path', async () => {
     const mod = await import('@/app/api/auth/me/route');
     markMetadataCovered('@/app/api/auth/me/route');
-    
+
     // Check exports
     expect(mod.dynamic).toBe('force-dynamic');
     expect(mod.runtime).toBe('nodejs');
@@ -158,11 +173,15 @@ describe('API Routes Coverage - submissions', () => {
     mockForwardJson.mockResolvedValue(NextResponse.json([]));
 
     // Without search params
-    let res = await mod.GET(new NextRequest('http://localhost/api/submissions'));
+    let res = await mod.GET(
+      new NextRequest('http://localhost/api/submissions'),
+    );
     expect(res.status).toBe(200);
 
     // With search params
-    res = await mod.GET(new NextRequest('http://localhost/api/submissions?sim=1&status=active'));
+    res = await mod.GET(
+      new NextRequest('http://localhost/api/submissions?sim=1&status=active'),
+    );
     expect(res.status).toBe(200);
     expect(mockForwardJson).toHaveBeenLastCalledWith(
       expect.objectContaining({ path: '/api/submissions?sim=1&status=active' }),
@@ -259,7 +278,9 @@ describe('API Routes Coverage - simulations/[id]/invite', () => {
       accessToken: 'tok',
       cookies: NextResponse.next(),
     });
-    mockForwardJson.mockResolvedValue(NextResponse.json({ inviteId: 'inv-1' }, { status: 201 }));
+    mockForwardJson.mockResolvedValue(
+      NextResponse.json({ inviteId: 'inv-1' }, { status: 201 }),
+    );
 
     const res = await mod.POST(
       new NextRequest('http://localhost/api/simulations/s1/invite', {
@@ -276,9 +297,8 @@ describe('API Routes Coverage - invite/resend', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('covers route metadata and POST', async () => {
-    const mod = await import(
-      '@/app/api/simulations/[id]/candidates/[candidateSessionId]/invite/resend/route'
-    );
+    const mod =
+      await import('@/app/api/simulations/[id]/candidates/[candidateSessionId]/invite/resend/route');
     markMetadataCovered(
       '@/app/api/simulations/[id]/candidates/[candidateSessionId]/invite/resend/route',
     );
@@ -293,9 +313,12 @@ describe('API Routes Coverage - invite/resend', () => {
     mockForwardJson.mockResolvedValue(NextResponse.json({ ok: true }));
 
     const res = await mod.POST(
-      new NextRequest('http://localhost/api/simulations/s1/candidates/c1/invite/resend', {
-        method: 'POST',
-      }),
+      new NextRequest(
+        'http://localhost/api/simulations/s1/candidates/c1/invite/resend',
+        {
+          method: 'POST',
+        },
+      ),
       { params: Promise.resolve({ id: 's1', candidateSessionId: 'c1' }) },
     );
     expect(res.status).toBe(200);
@@ -340,7 +363,9 @@ describe('API Routes Coverage - dev/access-token', () => {
       cookies: NextResponse.next(),
     });
 
-    const res = await mod.GET(new NextRequest('http://localhost/api/dev/access-token'));
+    const res = await mod.GET(
+      new NextRequest('http://localhost/api/dev/access-token'),
+    );
     expect(res.status).toBe(200);
   });
 });
@@ -361,7 +386,7 @@ describe('API Routes Coverage - health', () => {
   it('covers route metadata', async () => {
     const mod = await import('@/app/api/health/route');
     markMetadataCovered('@/app/api/health/route');
-    
+
     expect(mod.dynamic).toBe('force-dynamic');
     expect(mod.runtime).toBe('nodejs');
     expect(mod.revalidate).toBe(0);
@@ -385,7 +410,9 @@ describe('API Routes Coverage - simulations list', () => {
     });
     mockForwardJson.mockResolvedValue(NextResponse.json([]));
 
-    const res = await mod.GET(new NextRequest('http://localhost/api/simulations'));
+    const res = await mod.GET(
+      new NextRequest('http://localhost/api/simulations'),
+    );
     expect(res.status).toBe(200);
   });
 
@@ -398,7 +425,9 @@ describe('API Routes Coverage - simulations list', () => {
       accessToken: 'tok',
       cookies: NextResponse.next(),
     });
-    mockForwardJson.mockResolvedValue(NextResponse.json({ id: 'new-sim' }, { status: 201 }));
+    mockForwardJson.mockResolvedValue(
+      NextResponse.json({ id: 'new-sim' }, { status: 201 }),
+    );
 
     const res = await mod.POST(
       new NextRequest('http://localhost/api/simulations', {
@@ -417,7 +446,8 @@ describe('API Routes Coverage - debug/auth', () => {
 
   beforeAll(() => {
     jest.mock('@/lib/auth0', () => ({
-      getSessionNormalized: (...args: unknown[]) => mockGetSessionNormalized(...args),
+      getSessionNormalized: (...args: unknown[]) =>
+        mockGetSessionNormalized(...args),
     }));
   });
 
@@ -425,7 +455,7 @@ describe('API Routes Coverage - debug/auth', () => {
     jest.doMock('@/lib/auth0', () => ({
       getSessionNormalized: jest.fn().mockResolvedValue(null),
     }));
-    
+
     jest.resetModules();
     const mod = await import('@/app/api/debug/auth/route');
     markMetadataCovered('@/app/api/debug/auth/route');
@@ -448,20 +478,24 @@ describe('API Routes Coverage - auth/access-token', () => {
       cookies: NextResponse.next(),
     });
 
-    const res = await mod.GET(new NextRequest('http://localhost/api/auth/access-token'));
+    const res = await mod.GET(
+      new NextRequest('http://localhost/api/auth/access-token'),
+    );
     expect(res.status).toBe(200);
   });
 
   it('covers route failure path', async () => {
     const mod = await import('@/app/api/auth/access-token/route');
-    
+
     mockRequireBffAuth.mockResolvedValue({
       ok: false,
       response: NextResponse.json({ message: 'unauthorized' }, { status: 401 }),
       cookies: NextResponse.next(),
     });
 
-    const res = await mod.GET(new NextRequest('http://localhost/api/auth/access-token'));
+    const res = await mod.GET(
+      new NextRequest('http://localhost/api/auth/access-token'),
+    );
     expect(res.status).toBe(401);
   });
 });

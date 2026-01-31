@@ -2,7 +2,13 @@
  * Tests for CandidateDashboardPage
  */
 import React from 'react';
-import { act, render, screen, waitFor, fireEvent } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react';
 import CandidateDashboardPage, {
   extractInviteToken,
 } from '@/features/candidate/dashboard/CandidateDashboardPage';
@@ -20,7 +26,8 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('@/lib/api/candidate', () => ({
-  listCandidateInvites: (...args: unknown[]) => listCandidateInvitesMock(...args),
+  listCandidateInvites: (...args: unknown[]) =>
+    listCandidateInvitesMock(...args),
 }));
 
 jest.mock('@/features/candidate/session/CandidateSessionProvider', () => ({
@@ -34,12 +41,16 @@ describe('extractInviteToken', () => {
   });
 
   it('extracts token from canonical URL format', () => {
-    expect(extractInviteToken('http://app.com/candidate/session/abc123')).toBe('abc123');
+    expect(extractInviteToken('http://app.com/candidate/session/abc123')).toBe(
+      'abc123',
+    );
     expect(extractInviteToken('/candidate/session/token456')).toBe('token456');
   });
 
   it('extracts token from legacy URL format', () => {
-    expect(extractInviteToken('http://app.com/candidate-sessions/legacy123')).toBe('legacy123');
+    expect(
+      extractInviteToken('http://app.com/candidate-sessions/legacy123'),
+    ).toBe('legacy123');
     expect(extractInviteToken('/candidate-sessions/tok789')).toBe('tok789');
   });
 
@@ -97,7 +108,9 @@ describe('CandidateDashboardPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Signed in as test@example.com/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Signed in as test@example.com/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -164,9 +177,7 @@ describe('CandidateDashboardPage', () => {
     });
 
     // There should be text about the invite being expired
-    expect(
-      screen.getByText(/This invite has expired/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/This invite has expired/)).toBeInTheDocument();
   });
 
   it('shows warning when token unavailable', async () => {
@@ -212,7 +223,9 @@ describe('CandidateDashboardPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 
-    expect(useRouterMock.push).toHaveBeenCalledWith('/candidate/session/nav-token');
+    expect(useRouterMock.push).toHaveBeenCalledWith(
+      '/candidate/session/nav-token',
+    );
   });
 
   it('shows error for expired invite on continue', async () => {
@@ -359,7 +372,9 @@ describe('CandidateDashboardPage', () => {
     expect(continueBtn).not.toBeDisabled();
 
     fireEvent.click(continueBtn);
-    expect(useRouterMock.push).toHaveBeenCalledWith('/candidate/session/fallback-invite-token');
+    expect(useRouterMock.push).toHaveBeenCalledWith(
+      '/candidate/session/fallback-invite-token',
+    );
   });
 
   it('handles no token and no fallback', async () => {
@@ -414,7 +429,9 @@ describe('CandidateDashboardPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Start simulation/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Start simulation/i }),
+      ).toBeInTheDocument();
     });
   });
 });

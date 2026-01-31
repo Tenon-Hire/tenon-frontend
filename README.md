@@ -104,6 +104,7 @@ npm run test:e2e
 The project enforces **100% coverage** for statements, branches, functions, and lines both globally and per-file. The CI pipeline fails if any threshold drops below 100%.
 
 Configuration is in `jest.config.mjs`:
+
 - Collects coverage from `src/**/*.{ts,tsx}` (excludes `.d.ts` type declaration files).
 - Outputs coverage in `text`, `lcov`, `json`, and `json-summary` formats.
 - Coverage reports are written to the `coverage/` directory.
@@ -111,11 +112,13 @@ Configuration is in `jest.config.mjs`:
 ### Coverage Ledger
 
 A complete file-level coverage ledger is maintained at `docs/COVERAGE_LEDGER.md`. This ledger tracks:
+
 - Every source file with its coverage status (covered, needs tests, or not instrumented).
 - Detected test files covering each source file.
 - Notes on key branches/states exercised.
 
 To regenerate the ledger after a coverage run:
+
 ```bash
 node scripts/generate-coverage-ledger.mjs
 ```
@@ -123,6 +126,7 @@ node scripts/generate-coverage-ledger.mjs
 ### Test Utilities
 
 The `tests/setup/` directory provides shared test utilities:
+
 - `createMockServer()` – lightweight fetch mock for API testing.
 - `renderCandidateWithProviders()` – wraps components with `CandidateSessionProvider`.
 - `jsonResponse()`, `textResponse()` – helpers for mocking API responses.
@@ -150,6 +154,7 @@ tests/
 ### CI Gate
 
 CI runs `npm run test:ci` which:
+
 1. Runs all tests with `--runInBand` for stable, serial execution.
 2. Collects coverage and enforces 100% thresholds.
 3. Fails the build if any file drops below 100% coverage.

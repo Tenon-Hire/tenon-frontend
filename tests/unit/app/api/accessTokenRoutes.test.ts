@@ -66,7 +66,8 @@ const mockMergeResponseCookies = jest.fn();
 
 jest.mock('@/lib/server/bffAuth', () => ({
   requireBffAuth: (...args: unknown[]) => mockRequireBffAuth(...args),
-  mergeResponseCookies: (...args: unknown[]) => mockMergeResponseCookies(...args),
+  mergeResponseCookies: (...args: unknown[]) =>
+    mockMergeResponseCookies(...args),
 }));
 
 describe('/api/auth/access-token route', () => {
@@ -87,8 +88,11 @@ describe('/api/auth/access-token route', () => {
   it('returns 401 when auth fails', async () => {
     const authCookies = NextResponse.next();
     authCookies.cookies.set('session', 'refresh');
-    
-    const authResponse = NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+
+    const authResponse = NextResponse.json(
+      { message: 'Unauthorized' },
+      { status: 401 },
+    );
     mockRequireBffAuth.mockResolvedValue({
       ok: false,
       response: authResponse,
@@ -102,7 +106,10 @@ describe('/api/auth/access-token route', () => {
     const res = await mod.GET(req as never);
 
     expect(res.status).toBe(401);
-    expect(mockMergeResponseCookies).toHaveBeenCalledWith(authCookies, authResponse);
+    expect(mockMergeResponseCookies).toHaveBeenCalledWith(
+      authCookies,
+      authResponse,
+    );
   });
 
   it('returns accessToken on success', async () => {
@@ -144,7 +151,10 @@ describe('/api/dev/access-token route', () => {
 
   it('returns 403 when auth fails', async () => {
     const authCookies = NextResponse.next();
-    const authResponse = NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    const authResponse = NextResponse.json(
+      { message: 'Forbidden' },
+      { status: 403 },
+    );
     mockRequireBffAuth.mockResolvedValue({
       ok: false,
       response: authResponse,
@@ -158,7 +168,10 @@ describe('/api/dev/access-token route', () => {
     const res = await mod.GET(req as never);
 
     expect(res.status).toBe(403);
-    expect(mockMergeResponseCookies).toHaveBeenCalledWith(authCookies, authResponse);
+    expect(mockMergeResponseCookies).toHaveBeenCalledWith(
+      authCookies,
+      authResponse,
+    );
   });
 
   it('returns accessToken on success', async () => {

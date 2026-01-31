@@ -55,7 +55,22 @@ const mockAuth0Instance = {
 // Silence intentional callback warnings
 const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-const Auth0ClientMock = jest.fn(() => mockAuth0Instance);
+const Auth0ClientMock = jest.fn((config: unknown) => {
+  void config;
+  return mockAuth0Instance;
+});
+
+const getAuth0Config = () => {
+  const config = Auth0ClientMock.mock.calls[0]?.[0];
+  if (!config) {
+    throw new Error('Auth0 client was not initialized');
+  }
+  return config as {
+    beforeSessionSaved: (session: unknown, token: string) => unknown;
+    onCallback: (...args: unknown[]) => unknown;
+    authorizationParameters?: Record<string, unknown>;
+  };
+};
 
 jest.mock('@auth0/nextjs-auth0/server', () => ({
   Auth0Client: Auth0ClientMock,
@@ -104,7 +119,7 @@ describe('lib/auth0 wrapper', () => {
     const { getSessionNormalized } = await import('@/lib/auth0');
 
     expect(Auth0ClientMock).toHaveBeenCalled();
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
     expect(config.authorizationParameters).toEqual(
       expect.objectContaining({ scope: process.env.TENON_AUTH0_SCOPE }),
     );
@@ -120,7 +135,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('handles callback errors by redirecting with sanitized params', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const resp = await config.onCallback(
       { code: 'boom', message: 'bad callback' },
@@ -133,7 +148,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('adds permissions/roles in beforeSessionSaved', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const session = { user: { permissions: [] } };
     const payload = Buffer.from(
@@ -146,7 +161,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('uses role-derived permissions when token has none', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const session = { user: { roles: ['Candidate'] } };
     const payload = Buffer.from(JSON.stringify({ permissions: [] })).toString(
@@ -158,7 +173,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('redirects to sanitized returnTo on successful callback', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
     const resp = await config.onCallback(null, { returnTo: '/foo?bar=baz' });
     expect(resp.status).toBe(307);
     expect(resp.headers.get('location')).toContain('/foo');
@@ -180,7 +195,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('returns null when decoding malformed jwt payload', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
     const result = await config.beforeSessionSaved(
       { user: { permissions: [] } },
       'not-a-token',
@@ -200,7 +215,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('handles error with name instead of code', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const resp = await config.onCallback(
       { name: 'AuthError', message: 'bad' },
@@ -212,7 +227,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('handles error without code or name', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const resp = await config.onCallback({}, { returnTo: '/test' });
     expect(resp.status).toBe(307);
@@ -223,7 +238,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('handles string error message', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const resp = await config.onCallback(
       { code: 'test', message: 'plain string error' },
@@ -234,7 +249,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('handles error message with URLs to strip', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const resp = await config.onCallback(
       { code: 'test', message: 'Error at https://evil.com/path?foo=bar' },
@@ -245,7 +260,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('handles error message that becomes empty after sanitization', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const resp = await config.onCallback(
       { code: 'test', message: '!!@@##$$%%' },
@@ -257,7 +272,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('uses accessToken from session object', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const session = { user: {}, accessToken: 'direct-token' };
     const payload = Buffer.from(
@@ -269,7 +284,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('uses token property when accessToken is missing', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const session = {
       user: {},
@@ -281,7 +296,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('handles accessToken object with accessToken property', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const session = {
       user: {},
@@ -293,7 +308,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('filters non-strings from array in toStringArray', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const session = {
       user: {
@@ -306,7 +321,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('parses permissions string with comma and space separators', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const payload = Buffer.from(
       JSON.stringify({
@@ -323,7 +338,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('derives both recruiter and candidate permissions from roles', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const payload = Buffer.from(
       JSON.stringify({ roles: ['SuperRecruiter', 'CandidateAdmin'] }),
@@ -336,7 +351,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('uses user permissions when available over token permissions', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const payload = Buffer.from(
       JSON.stringify({ permissions: ['token:perm'] }),
@@ -351,7 +366,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('uses user roles when available over token roles', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const payload = Buffer.from(
       JSON.stringify({ roles: ['TokenRole'] }),
@@ -366,7 +381,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('preserves existing user permissions/roles when normalized are empty', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const session = {
       user: { permissions: ['existing:perm'], roles: ['ExistingRole'] },
@@ -381,7 +396,7 @@ describe('lib/auth0 wrapper', () => {
     delete global.atob;
 
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const payload = Buffer.from(
       JSON.stringify({ permissions: ['buffer:perm'] }),
@@ -395,7 +410,7 @@ describe('lib/auth0 wrapper', () => {
 
   it('falls back to idToken when accessToken decode fails', async () => {
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const idPayload = Buffer.from(
       JSON.stringify({ permissions: ['id:perm'] }),
@@ -443,7 +458,7 @@ describe('lib/auth0 wrapper', () => {
     // The client requires TENON_APP_BASE_URL for hasAuth0Env,
     // but resolveBaseUrl can use VERCEL_URL as fallback
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     // Test with a modified environment - redirect uses resolveBaseUrl internally
     const resp = await config.onCallback(null, { returnTo: '/dashboard' });
@@ -456,7 +471,7 @@ describe('lib/auth0 wrapper', () => {
     modeForPath.mockReturnValueOnce('recruiter');
 
     await import('@/lib/auth0');
-    const config = Auth0ClientMock.mock.calls[0][0];
+    const config = getAuth0Config();
 
     const resp = await config.onCallback(
       { code: 'err' },
