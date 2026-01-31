@@ -1,82 +1,92 @@
 import {
-  buildClearAuthHref,
   buildLoginHref,
-  buildLogoutHref,
   buildSignupHref,
+  buildLogoutHref,
+  buildClearAuthHref,
+  modeForPath,
 } from '@/features/auth/authPaths';
 
-const originalCandidate =
-  process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION;
-const originalRecruiter =
-  process.env.NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION;
+const originalEnv = { ...process.env };
 
-describe('authPaths buildLoginHref', () => {
+describe('authPaths helpers', () => {
+  beforeEach(() => {
+    Object.assign(process.env, originalEnv, {
+      NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION: 'cand-conn',
+      NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION: 'recruit-conn',
+      NEXT_PUBLIC_TENON_APP_BASE_URL: 'https://app.tenon.dev',
+      NEXT_PUBLIC_VERCEL_URL: '',
+    });
+  });
+
   afterAll(() => {
-    process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION =
-      originalCandidate;
-    process.env.NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION =
-      originalRecruiter;
+    Object.assign(process.env, originalEnv);
   });
 
-  it('appends candidate connection when mode=candidate', () => {
-    process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION =
-      'Tenon-Candidates';
-    const href = buildLoginHref('/candidate/dashboard', 'candidate');
+  it('builds login href with mode and connection', () => {
+    const href = buildLoginHref('/dest', 'candidate');
     expect(href).toContain('mode=candidate');
-    expect(href).toContain('connection=Tenon-Candidates');
-    expect(href).toContain('returnTo=%2Fcandidate%2Fdashboard');
+    expect(href).toContain('returnTo=%2Fdest');
+    expect(href).toContain('connection=cand-conn');
   });
 
-  it('appends recruiter connection when mode=recruiter', () => {
-    process.env.NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION = 'rec-db';
-    const href = buildLoginHref('/dashboard', 'recruiter');
-    expect(href).toContain('mode=recruiter');
-    expect(href).toContain('connection=rec-db');
-    expect(href).toContain('returnTo=%2Fdashboard');
+  it('defaults login mode to recruiter and omits connection when unset', () => {
+    delete process.env.NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION;
+    const href = buildLoginHref();
+    expect(href).toBe('/auth/login?returnTo=%2F&mode=recruiter');
   });
 
-  it('builds signup link with screen_hint', () => {
-    const href = buildSignupHref('/candidate/dashboard', 'candidate');
+  it('builds signup href with screen hint', () => {
+    const href = buildSignupHref('/home', 'recruiter');
     expect(href).toContain('screen_hint=signup');
-    expect(href).toContain('mode=candidate');
-  });
-});
-
-describe('authPaths buildClearAuthHref', () => {
-  it('builds a clear-auth link with returnTo and mode', () => {
-    const href = buildClearAuthHref('/dashboard', 'recruiter');
-    expect(href).toBe('/auth/clear?returnTo=%2Fdashboard&mode=recruiter');
+    expect(href).toContain('connection=recruit-conn');
   });
 
-  it('defaults to returnTo when mode is missing', () => {
-    const href = buildClearAuthHref('/candidate/dashboard');
-    expect(href).toBe('/auth/clear?returnTo=%2Fcandidate%2Fdashboard');
-  });
-});
-
-describe('authPaths buildLogoutHref', () => {
-  it('uses an absolute returnTo for logout when a path is provided', () => {
-    const href = buildLogoutHref('/dashboard');
-    const url = new URL(href, window.location.origin);
-    const returnTo = url.searchParams.get('returnTo');
-    expect(returnTo).toBe(
-      new URL('/dashboard', window.location.origin).toString(),
+  it('builds logout href with absolute returnTo and strips hash/query', () => {
+    const href = buildLogoutHref('/candidate/dashboard#hash?x=1');
+    expect(href).toBe(
+      '/auth/logout?returnTo=http%3A%2F%2Flocalhost%2Fcandidate%2Fdashboard',
     );
   });
 
-  it('defaults logout returnTo to the origin root', () => {
-    const href = buildLogoutHref();
-    const url = new URL(href, window.location.origin);
-    const returnTo = url.searchParams.get('returnTo');
-    expect(returnTo).toBe(new URL('/', window.location.origin).toString());
+  it('falls back to base logout when origin cannot be resolved', () => {
+    delete process.env.NEXT_PUBLIC_TENON_APP_BASE_URL;
+    const globalWithWindow = globalThis as { window?: unknown };
+    delete globalWithWindow.window;
+    const href = buildLogoutHref('/any');
+    expect(href).toBe('/auth/logout');
   });
 
-  it('strips query and hash from returnTo', () => {
-    const href = buildLogoutHref('/dashboard?mode=recruiter#section');
-    const url = new URL(href, window.location.origin);
-    const returnTo = url.searchParams.get('returnTo');
-    expect(returnTo).toBe(
-      new URL('/dashboard', window.location.origin).toString(),
+  it('uses vercel url fallback when app base missing', () => {
+    delete process.env.NEXT_PUBLIC_TENON_APP_BASE_URL;
+    process.env.NEXT_PUBLIC_VERCEL_URL = 'example.vercel.app';
+    const href = buildLogoutHref('/candidate/dashboard');
+    expect(href).toBe(
+      '/auth/logout?returnTo=https%3A%2F%2Fexample.vercel.app%2Fcandidate%2Fdashboard',
     );
+  });
+
+  it('omits connection when candidate connection not set', () => {
+    delete process.env.NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION;
+    const href = buildLoginHref('/dest', 'candidate');
+    expect(href).toBe('/auth/login?returnTo=%2Fdest&mode=candidate');
+  });
+
+  it('returns base login when no returnTo provided and recruiter mode default', () => {
+    delete process.env.NEXT_PUBLIC_TENON_AUTH0_RECRUITER_CONNECTION;
+    const href = buildLoginHref(undefined, undefined);
+    expect(href).toBe('/auth/login?returnTo=%2F&mode=recruiter');
+  });
+
+  it('builds clear auth href with optional mode', () => {
+    expect(buildClearAuthHref('/back')).toBe('/auth/clear?returnTo=%2Fback');
+    expect(buildClearAuthHref('/back', 'candidate')).toBe(
+      '/auth/clear?returnTo=%2Fback&mode=candidate',
+    );
+  });
+
+  it('derives mode from path segments', () => {
+    expect(modeForPath('/candidate/session/abc')).toBe('candidate');
+    expect(modeForPath('/dashboard')).toBe('recruiter');
+    expect(modeForPath('/unknown')).toBe('recruiter');
   });
 });

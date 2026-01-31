@@ -58,6 +58,14 @@ jest.mock('@/lib/auth0', () => ({
   getSessionNormalized: jest.fn(),
 }));
 
+jest.mock('@/lib/auth/routing', () => {
+  const actual = jest.requireActual('@/lib/auth/routing');
+  return {
+    ...actual,
+    modeForPath: jest.fn(actual.modeForPath),
+  };
+});
+
 const mockAuth0 = jest.requireMock('@/lib/auth0').auth0 as {
   middleware: jest.Mock;
   getSession: jest.Mock;
@@ -65,11 +73,15 @@ const mockAuth0 = jest.requireMock('@/lib/auth0').auth0 as {
 };
 const getSessionNormalizedMock = jest.requireMock('@/lib/auth0')
   .getSessionNormalized as jest.Mock;
+const modeForPathMock = jest.requireMock('@/lib/auth/routing')
+  .modeForPath as jest.Mock;
+const actualRouting = jest.requireActual('@/lib/auth/routing');
 
 describe('middleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getSessionNormalizedMock.mockReset();
+    modeForPathMock.mockImplementation(actualRouting.modeForPath);
     mockAuth0.getAccessToken.mockResolvedValue({ token: 'auth' });
   });
 
@@ -408,5 +420,140 @@ describe('middleware', () => {
     expect(res?.headers.get('location')).toBe(
       'http://localhost/not-authorized?mode=candidate&returnTo=%2Fcandidate%2Fdashboard',
     );
+  });
+
+  it('logs perf timing and normalizes access token objects', async () => {
+    const prevEnv = process.env.TENON_DEBUG_PERF;
+    process.env.TENON_DEBUG_PERF = 'true';
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: ['candidate:access'] },
+      accessToken: { token: 'nested-token' },
+    });
+
+    const req = new NextRequest(new URL('http://localhost/candidate/notes'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+    if (prevEnv === undefined) {
+      delete process.env.TENON_DEBUG_PERF;
+    } else {
+      process.env.TENON_DEBUG_PERF = prevEnv;
+    }
+  });
+
+  it('passes through other /auth/* pages without extra redirects', async () => {
+    const authResp = NextResponse.next();
+    authResp.cookies.set('persist', '1');
+    mockAuth0.middleware.mockResolvedValue(authResp);
+    getSessionNormalizedMock.mockResolvedValue(null);
+
+    const req = new NextRequest(new URL('http://localhost/auth/clear'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+    expect(res?.cookies.getAll().find((c) => c.name === 'persist')?.value).toBe(
+      '1',
+    );
+  });
+
+  it('redirects root visitors with recruiter access to dashboard using normalized accessToken field', async () => {
+    const authResp = NextResponse.next();
+    authResp.cookies.set('edge', 'cookie');
+    mockAuth0.middleware.mockResolvedValue(authResp);
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: ['recruiter:access'] },
+      accessToken: { accessToken: 'root-token' },
+    });
+
+    const req = new NextRequest(new URL('http://localhost/'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(307);
+    expect(res?.headers.get('location')).toBe('http://localhost/dashboard');
+    expect(res?.cookies.getAll().find((c) => c.name === 'edge')?.value).toBe(
+      'cookie',
+    );
+  });
+
+  it('lets unknown auth paths skip auth and return next response', async () => {
+    const authResp = NextResponse.next();
+    authResp.cookies.set('auth', 'pass');
+    mockAuth0.middleware.mockResolvedValue(authResp);
+    getSessionNormalizedMock.mockResolvedValue(null);
+
+    const req = new NextRequest(new URL('http://localhost/auth/reset'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+    expect(res?.cookies.getAll().find((c) => c.name === 'auth')?.value).toBe(
+      'pass',
+    );
+  });
+
+  it('returns next when recruiter is authorized for dashboard', async () => {
+    const authResp = NextResponse.next();
+    authResp.cookies.set('edge', 'cookie');
+    mockAuth0.middleware.mockResolvedValue(authResp);
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: ['recruiter:access'] },
+      accessToken: 'abc',
+    });
+
+    const req = new NextRequest(new URL('http://localhost/dashboard/overview'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+    expect(res?.cookies.getAll().find((c) => c.name === 'edge')?.value).toBe(
+      'cookie',
+    );
+  });
+
+  it('falls back to NextResponse.next when auth middleware returns non-response on public auth path', async () => {
+    mockAuth0.middleware.mockResolvedValue(null);
+    getSessionNormalizedMock.mockResolvedValue(null);
+
+    const req = new NextRequest(new URL('http://localhost/auth/reset'));
+    const res = await middleware(req);
+
+    expect(res?.status).toBe(200);
+    expect(res?.headers.get('location')).toBeNull();
+  });
+
+  it('passes through when authResponse is null but user already authorized', async () => {
+    mockAuth0.middleware.mockResolvedValue(null);
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: ['candidate:access'] },
+    });
+
+    const req = new NextRequest(new URL('http://localhost/candidate/updates'));
+    const res = await middleware(req);
+    expect(res?.status).toBe(200);
+    expect(res?.headers.get('location')).toBeNull();
+  });
+
+  it('normalizes access token objects that lack string token', async () => {
+    const authResp = NextResponse.next();
+    mockAuth0.middleware.mockResolvedValue(authResp);
+    getSessionNormalizedMock.mockResolvedValue({
+      user: { permissions: ['candidate:access'] },
+      accessToken: { token: 123 },
+    });
+    const req = new NextRequest(new URL('http://localhost/candidate/board'));
+    const res = await middleware(req);
+    expect(res?.status).toBe(200);
+  });
+
+  it('uses modeForPath fallback when login mode is undefined', async () => {
+    modeForPathMock.mockReturnValueOnce(undefined);
+    getSessionNormalizedMock.mockResolvedValue(null);
+
+    const req = new NextRequest(new URL('http://localhost/unknown'));
+    const res = await middleware(req);
+
+    expect(res?.headers.get('location')).toContain('/auth/login');
+    expect(modeForPathMock).toHaveBeenCalled();
   });
 });

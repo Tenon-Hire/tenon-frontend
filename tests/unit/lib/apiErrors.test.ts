@@ -66,4 +66,43 @@ describe('api errors helpers', () => {
       'contact_support',
     );
   });
+
+  it('extracts code from nested detail.code', () => {
+    expect(
+      normalizeApiError({
+        status: 400,
+        details: { code: 'validation_error' },
+      }).code,
+    ).toBe('validation_error');
+  });
+
+  it('extracts code from top-level error object', () => {
+    expect(normalizeApiError({ code: 'direct_code', status: 400 }).code).toBe(
+      'direct_code',
+    );
+  });
+
+  it('handles 403 as signin action', () => {
+    expect(
+      normalizeApiError({ status: 403, message: 'forbidden' }).action,
+    ).toBe('signin');
+  });
+
+  it('handles 408 as retry action', () => {
+    expect(normalizeApiError({ status: 408, message: 'timeout' }).action).toBe(
+      'retry',
+    );
+  });
+
+  it('handles 504 as retry action', () => {
+    expect(
+      normalizeApiError({ status: 504, message: 'gateway timeout' }).action,
+    ).toBe('retry');
+  });
+
+  it('falls back to retry for other errors', () => {
+    expect(
+      normalizeApiError({ status: 400, message: 'bad request' }).action,
+    ).toBe('retry');
+  });
 });

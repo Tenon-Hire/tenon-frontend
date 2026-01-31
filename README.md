@@ -76,6 +76,89 @@ Client-safe:
 - Point to local backend: set `TENON_BACKEND_BASE_URL` and `NEXT_PUBLIC_TENON_API_BASE_URL` in `.env.local`.
 - Load test `/api/dashboard` locally (optional): `npm run loadtest:dashboard` (override with `LOADTEST_URL`, `LOADTEST_CONN`, `LOADTEST_DURATION`, `LOADTEST_COOKIE`, `LOADTEST_AUTH_HEADER` for authenticated calls; without auth you will mostly hit 401/403).
 
+## Testing & Coverage
+
+The codebase uses **Jest** as the test runner with **React Testing Library** for component tests and a custom mock server for API mocking.
+
+### Running Tests
+
+```bash
+# Run all tests (no coverage)
+npm test
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run a specific test file or pattern
+npm test -- --testPathPattern='CandidateSessionPage'
+
+# Run tests in CI mode (coverage + runInBand)
+npm run test:ci
+
+# Run E2E tests with Playwright
+npm run test:e2e
+```
+
+### Coverage Thresholds
+
+The project enforces **100% coverage** for statements, branches, functions, and lines both globally and per-file. The CI pipeline fails if any threshold drops below 100%.
+
+Configuration is in `jest.config.mjs`:
+
+- Collects coverage from `src/**/*.{ts,tsx}` (excludes `.d.ts` type declaration files).
+- Outputs coverage in `text`, `lcov`, `json`, and `json-summary` formats.
+- Coverage reports are written to the `coverage/` directory.
+
+### Coverage Ledger
+
+A complete file-level coverage ledger is maintained at `docs/COVERAGE_LEDGER.md`. This ledger tracks:
+
+- Every source file with its coverage status (covered, needs tests, or not instrumented).
+- Detected test files covering each source file.
+- Notes on key branches/states exercised.
+
+To regenerate the ledger after a coverage run:
+
+```bash
+node scripts/generate-coverage-ledger.mjs
+```
+
+### Test Utilities
+
+The `tests/setup/` directory provides shared test utilities:
+
+- `createMockServer()` – lightweight fetch mock for API testing.
+- `renderCandidateWithProviders()` – wraps components with `CandidateSessionProvider`.
+- `jsonResponse()`, `textResponse()` – helpers for mocking API responses.
+- Router mocks for Next.js App Router (`tests/integration/setup/`).
+
+### Test Structure
+
+```text
+tests/
+├── e2e/                    # Playwright E2E tests
+│   ├── candidate.spec.ts
+│   ├── recruiter.spec.ts
+│   └── smoke.spec.ts
+├── integration/            # Integration tests (full provider stacks)
+│   ├── candidate/
+│   └── recruiter/
+├── setup/                  # Shared test utilities
+└── unit/                   # Unit tests organized by source location
+    ├── app/                # Page/route tests
+    ├── components/         # UI component tests
+    ├── features/           # Feature module tests
+    └── lib/                # Library/utility tests
+```
+
+### CI Gate
+
+CI runs `npm run test:ci` which:
+
+1. Runs all tests with `--runInBand` for stable, serial execution.
+2. Collects coverage and enforces 100% thresholds.
+3. Fails the build if any file drops below 100% coverage.
+
 ## Performance Debugging
 
 - Set `NEXT_PUBLIC_TENON_DEBUG_PERF=1` to log Web Vitals (LCP/INP/CLS), navigation timings, client API request durations, and candidate UI marks (bootstrap/task fetch) to the browser console. Server routes still respect `TENON_DEBUG_PERF`.
@@ -104,7 +187,7 @@ Client-safe:
 
 ## Manual QA checklist
 
-- Incognito candidate invite link (/candidate/session/<token>) → enter invite email + OTP → intro screen → Start simulation → Day 1 loads.
+- Incognito candidate invite link (/candidate/session/{{token}}) → enter invite email + OTP → intro screen → Start simulation → Day 1 loads.
 - Invalid/expired invite shows friendly error on verification screen.
 - Returning to invite link resumes tasks with stored `candidateSessionId` (no manual verify).
 - Candidate dashboard lists invites with Continue/Start CTA; empty state renders when none.

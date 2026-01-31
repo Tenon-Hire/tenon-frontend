@@ -10,7 +10,7 @@
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint . --max-warnings=0",
     "lint:prettier": "prettier . --check",
-    "typecheck": "rimraf .next && tsc --noEmit",
+    "typecheck": "rimraf .next && tsc --noEmit -p tsconfig.typecheck.json",
     "test": "jest",
     "test:coverage": "jest --coverage --runInBand",
     "test:ci": "jest --ci --runInBand --coverage",

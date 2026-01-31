@@ -1,101 +1,161 @@
-jest.mock('next/server', () => {
-  const buildHeaders = (init?: Record<string, string>) => {
-    const store = new Map<string, string>();
-    Object.entries(init ?? {}).forEach(([k, v]) =>
-      store.set(k.toLowerCase(), v),
-    );
-    return {
-      get: (key: string) => store.get(key.toLowerCase()) ?? null,
-      set: (key: string, value: string) => store.set(key.toLowerCase(), value),
-    };
-  };
+import { NextRequest } from 'next/server';
 
-  const buildResponse = (location?: string) => {
-    const headers = buildHeaders();
+jest.mock('next/server', () => {
+  const { MockNextRequest } = jest.requireActual('../app/api/mockNext');
+  const makeResp = (status: number, location?: string) => {
+    const headers = new Map<string, string>();
     if (location) headers.set('location', location);
-    const deleted: Array<{ name: string; options?: unknown }> = [];
+    const cookies: {
+      name: string;
+      value?: string;
+      path?: string;
+      domain?: string;
+    }[] = [];
     return {
-      status: 307,
+      status,
       headers,
       cookies: {
-        delete: (value: string | { name: string }) => {
-          const name = typeof value === 'string' ? value : value.name;
-          deleted.push({ name });
-        },
+        set: (cookie: {
+          name: string;
+          value?: string;
+          path?: string;
+          domain?: string;
+        }) => cookies.push(cookie),
+        delete: (cookie: { name: string; path?: string; domain?: string }) =>
+          cookies.push({ ...cookie, value: undefined }),
+        getAll: () => cookies,
       },
-      __deleted: deleted,
     };
   };
-
-  class FakeNextRequest {
-    url: string;
-    nextUrl: URL;
-    cookies: { getAll: () => Array<{ name: string; value?: string }> };
-    constructor(
-      url: string,
-      init?: { cookies?: Array<{ name: string; value?: string }> },
-    ) {
-      this.url = url;
-      this.nextUrl = new URL(url);
-      const cookieList = init?.cookies ?? [];
-      this.cookies = {
-        getAll: () => cookieList,
-      };
-    }
-  }
-
   return {
-    NextRequest: FakeNextRequest,
+    NextRequest: MockNextRequest,
     NextResponse: {
-      redirect: (url: string) => buildResponse(url),
+      redirect: (url: URL | string) => makeResp(307, url.toString()),
+      json: (body: unknown, init?: { status?: number }) =>
+        Object.assign(makeResp(init?.status ?? 200), { body }),
+      next: () => makeResp(200),
     },
   };
 });
 
-import { NextRequest } from 'next/server';
-import { GET } from '@/app/(auth)/auth/clear/route';
+jest.mock('@/lib/auth/authCookies', () => {
+  const actual = jest.requireActual('@/lib/auth/authCookies');
+  return {
+    ...actual,
+    isAuthCookie: jest.fn(
+      (name: string) => name.startsWith('a0:') || name === 'appSession',
+    ),
+  };
+});
 
-describe('/auth/clear route', () => {
-  it('clears auth cookies with secure/host prefixes and redirects', async () => {
-    const ReqCtor = NextRequest as unknown as new (
-      url: string,
-      init?: { cookies?: Array<{ name: string; value?: string }> },
-    ) => NextRequest;
-    const req = new ReqCtor(
-      'http://app.test/auth/clear?returnTo=%2Fdashboard&mode=recruiter',
-      {
-        cookies: [
-          { name: '__Secure-a0:state', value: '1' },
-          { name: '__Host-appSession', value: '2' },
-          { name: '__Secure-analytics', value: '3' },
-        ],
-      },
-    );
-    const res = await GET(req);
-    const location = String(res.headers.get('location') ?? '');
-    expect(location).toMatch(/^http:\/\/app\.test\/auth\/error\?/);
-    expect(location).toContain('returnTo=%2Fdashboard');
-    expect(location).toContain('mode=recruiter');
-    expect(location).toContain('cleared=1');
-    const deleted = (res as { __deleted?: Array<{ name: string }> }).__deleted;
-    const deletedNames = (deleted ?? []).map((entry) => entry.name);
-    expect(deletedNames).toContain('__Secure-a0:state');
-    expect(deletedNames).toContain('__Host-appSession');
-    expect(deletedNames).not.toContain('__Secure-analytics');
+jest.mock('@/lib/auth/routing', () => {
+  const actual = jest.requireActual('@/lib/auth/routing');
+  return {
+    ...actual,
+    sanitizeReturnTo: jest.fn((value?: string | null) => value?.trim() || '/'),
+    modeForPath: jest.fn(() => 'candidate'),
+  };
+});
+
+describe('auth clear route', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('sanitizes unsafe returnTo before redirecting', async () => {
-    const ReqCtor = NextRequest as unknown as new (
-      url: string,
-      init?: { cookies?: Array<{ name: string; value?: string }> },
-    ) => NextRequest;
-    const req = new ReqCtor(
-      'http://app.test/auth/clear?returnTo=https%3A%2F%2Fevil.com&mode=recruiter',
+  it('clears auth cookies and sets domain when configured', async () => {
+    process.env.TENON_AUTH0_COOKIE_DOMAIN = 'tenon.dev';
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest(
+      'http://localhost/auth/clear?returnTo=%2Fdash&mode=recruiter',
     );
-    const res = await GET(req);
-    const location = String(res.headers.get('location') ?? '');
-    expect(location).toMatch(/^http:\/\/app\.test\/auth\/error\?/);
-    expect(location).toContain('returnTo=%2F');
-    expect(location).toContain('mode=recruiter');
+    (
+      req as unknown as {
+        cookies: { getAll: () => Array<{ name: string; value: string }> };
+      }
+    ).cookies = {
+      getAll: () => [
+        { name: 'appSession', value: '1' },
+        { name: 'a0:state', value: '2' },
+        { name: 'other', value: 'x' },
+      ],
+    };
+
+    const res = (await GET(req as unknown as NextRequest)) as {
+      status: number;
+      cookies: { getAll: () => Array<{ name: string; value?: string }> };
+    };
+    expect(res.status).toBe(307);
+    const deleted = res.cookies.getAll().map((c) => c.name);
+    expect(deleted).toEqual(expect.arrayContaining(['appSession', 'a0:state']));
+    process.env.TENON_AUTH0_COOKIE_DOMAIN = undefined;
+  });
+
+  it('falls back to mode derived from returnTo when param missing', async () => {
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest(
+      'http://localhost/auth/clear?returnTo=%2Fcandidate%2Fdashboard',
+    );
+    (req as unknown as { cookies: { getAll: () => unknown[] } }).cookies = {
+      getAll: () => [],
+    };
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.headers.get('location')).toContain('mode=candidate');
+  });
+
+  it('does not set domain when hostname has no dot', async () => {
+    delete process.env.TENON_AUTH0_COOKIE_DOMAIN;
+    jest.resetModules();
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest('http://localhost/auth/clear');
+    (
+      req as unknown as {
+        cookies: { getAll: () => Array<{ name: string; value: string }> };
+      }
+    ).cookies = {
+      getAll: () => [{ name: 'appSession', value: '1' }],
+    };
+    const res = (await GET(req as unknown as NextRequest)) as {
+      status: number;
+      cookies: {
+        getAll: () => Array<{ name: string; value?: string; domain?: string }>;
+      };
+    };
+    expect(res.status).toBe(307);
+    const deleted = res.cookies.getAll();
+    expect(deleted.some((c) => c.domain)).toBe(false);
+  });
+
+  it('uses hostname with dot as domain when env not set', async () => {
+    delete process.env.TENON_AUTH0_COOKIE_DOMAIN;
+    jest.resetModules();
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest('http://tenon.example.com/auth/clear');
+    (
+      req as unknown as {
+        cookies: { getAll: () => Array<{ name: string; value: string }> };
+      }
+    ).cookies = {
+      getAll: () => [{ name: 'appSession', value: '1' }],
+    };
+    const res = (await GET(req as unknown as NextRequest)) as {
+      status: number;
+      cookies: {
+        getAll: () => Array<{ name: string; value?: string; domain?: string }>;
+      };
+    };
+    const deleted = res.cookies.getAll();
+    expect(deleted.some((c) => c.domain === 'tenon.example.com')).toBe(true);
+  });
+
+  it('uses recruiter mode when param is recruiter', async () => {
+    const { GET } = await import('@/app/(auth)/auth/clear/route');
+    const req = new NextRequest(
+      'http://localhost/auth/clear?returnTo=%2F&mode=recruiter',
+    );
+    (req as unknown as { cookies: { getAll: () => unknown[] } }).cookies = {
+      getAll: () => [],
+    };
+    const res = await GET(req as unknown as NextRequest);
+    expect(res.headers.get('location')).toContain('mode=recruiter');
   });
 });

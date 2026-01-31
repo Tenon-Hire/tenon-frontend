@@ -81,4 +81,61 @@ describe('sanitizeReturnTo', () => {
     expect(url.searchParams.get('returnTo')).toBe('/');
     expect(url.searchParams.get('returnTo')).not.toMatch(/^https?:/i);
   });
+
+  it('handles null and undefined inputs', () => {
+    expect(sanitizeReturnTo(null)).toBe('/');
+    expect(sanitizeReturnTo(undefined)).toBe('/');
+    expect(sanitizeReturnTo('')).toBe('/');
+  });
+
+  it('handles auth prefix with hash', () => {
+    expect(sanitizeReturnTo('/auth#foo')).toBe('/');
+    expect(sanitizeReturnTo('/api/auth#bar')).toBe('/');
+  });
+
+  it('handles relative paths not starting with slash', () => {
+    expect(sanitizeReturnTo('relative/path')).toBe('/');
+    expect(sanitizeReturnTo('dashboard')).toBe('/');
+  });
+
+  it('handles protocol-like patterns', () => {
+    expect(sanitizeReturnTo('/path://something')).toBe('/');
+  });
+
+  it('handles /javascript: variant', () => {
+    expect(sanitizeReturnTo('/javascript:void(0)')).toBe('/');
+  });
+
+  it('buildReturnTo handles NextRequest-like object', () => {
+    const nextRequest = {
+      nextUrl: {
+        pathname: '/candidate/test',
+        search: '?id=123',
+      },
+    };
+    expect(buildReturnTo(nextRequest as never)).toBe('/candidate/test?id=123');
+  });
+
+  it('buildReturnTo uses window.location when no input provided', () => {
+    const originalWindow = global.window;
+    Object.defineProperty(global, 'window', {
+      value: {
+        location: {
+          pathname: '/dashboard',
+          search: '?tab=overview',
+        },
+      },
+      configurable: true,
+    });
+    try {
+      expect(buildReturnTo()).toBe('/dashboard?tab=overview');
+    } finally {
+      global.window = originalWindow;
+    }
+  });
+
+  it('buildReturnTo handles Location without search', () => {
+    const loc = { pathname: '/simple' } as Location;
+    expect(buildReturnTo(loc)).toBe('/simple');
+  });
 });
