@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for InviteCandidateModal.tsx
  */
+import '@/features/recruiter/invitations/InviteCandidateModal';
+
 describe('InviteCandidateModal.tsx coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

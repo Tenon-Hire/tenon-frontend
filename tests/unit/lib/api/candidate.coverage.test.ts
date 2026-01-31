@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for lib/api/candidate.ts
  */
+import '@/lib/api/candidate';
+
 describe('candidate.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

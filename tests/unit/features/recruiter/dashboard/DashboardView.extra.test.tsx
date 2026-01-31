@@ -316,6 +316,86 @@ describe('DashboardView extra coverage', () => {
     expect(notifyMock).not.toHaveBeenCalled();
   });
 
+  it('handles copy failure and shows error action reset', async () => {
+    const props = baseProps();
+    inviteFlowSubmitMock.mockResolvedValueOnce({
+      inviteUrl: 'http://invite',
+      outcome: 'sent',
+      simulationId: '1',
+      candidateName: 'Ann',
+      candidateEmail: 'a@test.com',
+    });
+    copyToClipboardMock.mockResolvedValueOnce(false);
+
+    await act(async () => {
+      render(<DashboardView {...props} />);
+    });
+
+    act(() => {
+      screen.getByTestId('simulation-section').querySelector('button')?.click();
+    });
+
+    const modalProps = captureModalProps.mock.calls[0]?.[0] as {
+      onSubmit: (n: string, e: string) => Promise<void>;
+    };
+    await act(async () => {
+      await modalProps.onSubmit('Ann', 'a@test.com');
+    });
+
+    const copyAction = notifyMock.mock.calls[0][0]?.actions?.[0];
+    await act(async () => {
+      await copyAction.onClick();
+    });
+
+    expect(copyToClipboardMock).toHaveBeenCalled();
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        actions: expect.arrayContaining([
+          expect.objectContaining({ label: 'Copy invite link' }),
+        ]),
+      }),
+    );
+    expect(notifyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'error',
+      }),
+    );
+  });
+
+  it('renders loading skeleton and error states', () => {
+    const onRefresh = jest.fn();
+    render(
+      <DashboardView
+        profile={null}
+        error="Boom"
+        simulations={[]}
+        simulationsError="Err"
+        simulationsLoading={false}
+        onRefresh={onRefresh}
+      />,
+    );
+
+    // error message visible
+    expect(screen.getByText('Boom')).toBeInTheDocument();
+  });
+
+  it('renders profile loading skeleton when only loading flag is set', () => {
+    const { container } = render(
+      <DashboardView
+        profile={null}
+        error={null}
+        profileLoading
+        simulations={[]}
+        simulationsError={null}
+        simulationsLoading={false}
+        onRefresh={jest.fn()}
+      />,
+    );
+
+    expect(container.querySelector('.animate-pulse')).not.toBeNull();
+  });
+
   it('unmounts and clears all timers', async () => {
     const props = baseProps();
 

@@ -90,4 +90,40 @@ describe('InviteCandidateModal', () => {
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText(/Candidate name is required/i)).toBeInTheDocument();
   });
+
+  it('renders nothing when closed and still resets when opened later', () => {
+    const { rerender, queryByRole, getByLabelText, getByText } = render(
+      <InviteCandidateModal
+        open={false}
+        title="Later"
+        state={{ status: 'idle' }}
+        onClose={() => undefined}
+        onSubmit={jest.fn()}
+        initialName="Closed Name"
+        initialEmail="closed@example.com"
+      />,
+    );
+
+    expect(queryByRole('dialog')).toBeNull();
+
+    rerender(
+      <InviteCandidateModal
+        open
+        title="Later"
+        state={{ status: 'idle' }}
+        onClose={() => undefined}
+        onSubmit={jest.fn()}
+        initialName="Opened Name"
+        initialEmail="opened@example.com"
+      />,
+    );
+
+    expect(getByLabelText(/Candidate name/i)).toHaveValue('Opened Name');
+    expect(getByLabelText(/Candidate email/i)).toHaveValue(
+      'opened@example.com',
+    );
+
+    // Valid submit path executes the onClick guard even when inputs are valid
+    fireEvent.click(getByText('Send invite'));
+  });
 });

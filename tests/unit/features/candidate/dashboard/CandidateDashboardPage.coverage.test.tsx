@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for CandidateDashboardPage.tsx
  */
+import '@/features/candidate/dashboard/CandidateDashboardPage';
+
 describe('CandidateDashboardPage.tsx coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

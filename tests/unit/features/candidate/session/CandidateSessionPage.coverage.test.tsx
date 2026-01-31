@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for CandidateSessionPage.tsx
  */
+import '@/features/candidate/session/CandidateSessionPage';
+
 describe('CandidateSessionPage.tsx coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

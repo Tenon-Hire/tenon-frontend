@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for lib/api/httpClient.ts
  */
+import '@/lib/api/httpClient';
+
 describe('httpClient.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

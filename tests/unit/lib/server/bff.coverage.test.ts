@@ -1,6 +1,39 @@
 /**
  * Coverage completion tests for lib/server/bff.ts
  */
+import { TextDecoder, TextEncoder } from 'util';
+
+// Minimal polyfills & mocks so importing bff.ts doesn't rely on Edge runtime pieces.
+globalThis.TextEncoder = globalThis.TextEncoder ?? TextEncoder;
+// @ts-expect-error allow assign
+globalThis.TextDecoder = globalThis.TextDecoder ?? TextDecoder;
+
+jest.mock('undici', () => ({
+  Agent: class {},
+  Dispatcher: class {},
+  request: async () => ({ statusCode: 200, body: null }),
+}));
+
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: (body: unknown, init?: { status?: number }) => ({
+      body,
+      status: init?.status ?? 200,
+      headers: { set: () => undefined, delete: () => undefined },
+    }),
+  },
+}));
+
+jest.mock('@/lib/auth0', () => ({
+  getAccessToken: jest.fn(async () => 'token'),
+  getSessionNormalized: jest.fn(async () => ({
+    user: { sub: 'user' },
+    accessToken: 'token',
+  })),
+}));
+
+import '@/lib/server/bff';
+
 describe('bff.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

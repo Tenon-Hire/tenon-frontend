@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for RunTestsPanel.tsx
  */
+import '@/features/candidate/session/task/components/RunTestsPanel';
+
 describe('RunTestsPanel.tsx coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

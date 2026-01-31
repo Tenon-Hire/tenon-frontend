@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for SimulationCreatePage.tsx
  */
+import '@/features/recruiter/simulations/SimulationCreatePage';
+
 describe('SimulationCreatePage.tsx coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

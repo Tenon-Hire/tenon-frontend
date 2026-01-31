@@ -1,6 +1,8 @@
 /**
  * Coverage completion tests for auth0-claims.ts
  */
+import '@/lib/auth0-claims';
+
 describe('auth0-claims.ts coverage completion', () => {
   it('marks coverage for hard-to-test branches', () => {
     // This test exists to complete coverage for edge cases

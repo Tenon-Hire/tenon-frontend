@@ -64,6 +64,22 @@ jest.mock('@auth0/nextjs-auth0/server', () => ({
   Auth0Client: Auth0ClientMock,
 }));
 
+jest.mock(
+  '@auth0/nextjs-auth0/dist/server',
+  () => ({
+    Auth0Client: Auth0ClientMock,
+  }),
+  { virtual: true },
+);
+
+jest.mock(
+  '@auth0/nextjs-auth0/dist/server/index.js',
+  () => ({
+    Auth0Client: Auth0ClientMock,
+  }),
+  { virtual: true },
+);
+
 jest.mock('@/lib/auth0-claims', () => {
   const actual = jest.requireActual('@/lib/auth0-claims');
   return {
