@@ -134,7 +134,7 @@ The `tests/setup/` directory provides shared test utilities:
 
 ### Test Structure
 
-```
+```text
 tests/
 ├── e2e/                    # Playwright E2E tests
 │   ├── candidate.spec.ts
@@ -187,7 +187,7 @@ CI runs `npm run test:ci` which:
 
 ## Manual QA checklist
 
-- Incognito candidate invite link (/candidate/session/<token>) → enter invite email + OTP → intro screen → Start simulation → Day 1 loads.
+- Incognito candidate invite link (/candidate/session/{{token}}) → enter invite email + OTP → intro screen → Start simulation → Day 1 loads.
 - Invalid/expired invite shows friendly error on verification screen.
 - Returning to invite link resumes tasks with stored `candidateSessionId` (no manual verify).
 - Candidate dashboard lists invites with Continue/Start CTA; empty state renders when none.

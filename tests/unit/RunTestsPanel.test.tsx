@@ -49,7 +49,11 @@ const restoreRealTimers = () => {
 
 beforeAll(() => {
   jest.spyOn(console, 'error').mockImplementation((message, ...args) => {
-    if (typeof message === 'string' && message.includes('not wrapped in act')) {
+    if (
+      typeof message === 'string' &&
+      (message.includes('not wrapped in act') ||
+        message.includes('without await'))
+    ) {
       return;
     }
     realConsoleError(message, ...args);
