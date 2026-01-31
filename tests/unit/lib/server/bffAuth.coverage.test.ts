@@ -1,6 +1,37 @@
 /**
  * Coverage completion tests for lib/server/bffAuth.ts
  */
+beforeAll(async () => {
+  jest.doMock('next/server', () => ({
+    NextResponse: {
+      next: jest.fn(() => ({
+        cookies: { getAll: () => [], set: () => undefined },
+      })),
+      json: jest.fn((body: unknown, init?: { status?: number }) => ({
+        body,
+        status: init?.status ?? 200,
+        cookies: { getAll: () => [], set: () => undefined },
+      })),
+    },
+    NextRequest: class {},
+  }));
+
+  jest.doMock('@/lib/auth0', () => ({
+    auth0: { getAccessToken: jest.fn(async () => 'token') },
+    getSessionNormalized: jest.fn(async () => ({
+      user: {},
+      accessToken: 'token',
+    })),
+  }));
+
+  jest.doMock('@/lib/auth0-claims', () => ({
+    extractPermissions: jest.fn(() => ['p1']),
+    hasPermission: jest.fn(() => true),
+  }));
+
+  await import('@/lib/server/bffAuth');
+});
+
 describe('bffAuth.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

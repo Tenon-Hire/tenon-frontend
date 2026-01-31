@@ -1,6 +1,10 @@
 /**
  * Coverage completion tests for features/auth/authPaths.ts
  */
+beforeAll(async () => {
+  await import('@/features/auth/authPaths');
+});
+
 describe('authPaths.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

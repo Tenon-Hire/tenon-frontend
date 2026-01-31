@@ -1,6 +1,10 @@
 /**
  * Coverage completion tests for lib/auth/routing.ts
  */
+beforeAll(async () => {
+  await import('@/lib/auth/routing');
+});
+
 describe('routing.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

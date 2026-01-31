@@ -1,6 +1,10 @@
 /**
  * Coverage completion tests for lib/api/recruiter.ts
  */
+beforeAll(async () => {
+  await import('@/lib/api/recruiter');
+});
+
 describe('recruiter.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);

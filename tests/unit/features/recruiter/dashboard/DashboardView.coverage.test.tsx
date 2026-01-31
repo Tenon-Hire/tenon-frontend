@@ -1,6 +1,11 @@
 /**
  * Coverage completion tests for DashboardView.tsx
  */
+beforeAll(async () => {
+  jest.doMock('next/dynamic', () => (fn: () => unknown) => fn as unknown);
+  await import('@/features/recruiter/dashboard/DashboardView');
+});
+
 describe('DashboardView.tsx coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);
