@@ -463,7 +463,9 @@ describe('RunTestsPanel', () => {
     );
 
     await act(async () => {
-      jest.runAllTimers();
+      jest.advanceTimersByTime(1200);
+      await Promise.resolve();
+      jest.advanceTimersByTime(1200);
       await Promise.resolve();
     });
     expect(
@@ -648,6 +650,38 @@ describe('RunTestsPanel', () => {
     // Collapse
     await user.click(screen.getByRole('button', { name: /collapse/i }));
     expect(screen.queryByText(longStdout)).not.toBeInTheDocument();
+  });
+
+  it('expands long stderr output independently', async () => {
+    useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const longStderr = 'e'.repeat(9001);
+
+    const onStart = jest.fn().mockResolvedValue({ runId: 'stderr-run' });
+    const onPoll = jest.fn().mockResolvedValueOnce({
+      ...baseResult,
+      status: 'failed' as const,
+      stdout: 'ok',
+      stderr: longStderr,
+      failed: 1,
+      total: 1,
+    });
+
+    render(
+      <RunTestsPanel onStart={onStart} onPoll={onPoll} pollIntervalMs={1000} />,
+    );
+
+    await user.click(getTestsButton());
+    await act(async () => {
+      jest.advanceTimersByTime(1200);
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.queryByText(longStderr, { exact: false }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /show full stderr/i }));
+    expect(await screen.findByText(longStderr)).toBeInTheDocument();
   });
 
   it('does not dedupe toast when run id differs', async () => {

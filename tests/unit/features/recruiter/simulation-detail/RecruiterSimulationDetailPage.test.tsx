@@ -8,10 +8,12 @@ import {
   screen,
   waitFor,
   fireEvent,
+  within,
 } from '@testing-library/react';
 import RecruiterSimulationDetailPage, {
   __testables,
 } from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
+import * as formatters from '@/features/recruiter/utils/formatters';
 
 const {
   formatDateTime,
@@ -59,6 +61,11 @@ jest.mock('@/lib/api/httpClient', () => ({
     get: (...args: unknown[]) => recruiterGetMock(...args),
   },
 }));
+
+jest.mock('@/features/recruiter/utils/formatters', () => {
+  const actual = jest.requireActual('@/features/recruiter/utils/formatters');
+  return { ...actual, copyToClipboard: jest.fn() };
+});
 
 jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
@@ -736,5 +743,166 @@ describe('RecruiterSimulationDetailPage component', () => {
         0,
       );
     });
+  });
+
+  it('cleans up timers on unmount', async () => {
+    listSimulationCandidatesMock.mockResolvedValue([
+      {
+        candidateSessionId: 1,
+        inviteEmail: 'a@test.com',
+        inviteUrl: 'http://x',
+      },
+    ]);
+
+    const { unmount } = render(<RecruiterSimulationDetailPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/Simulation ID/)).toBeInTheDocument(),
+    );
+
+    act(() => {
+      unmount();
+    });
+  });
+
+  it('shows manual copy error when invite link missing', async () => {
+    listSimulationCandidatesMock.mockResolvedValue([
+      {
+        candidateSessionId: 10,
+        candidateName: 'NoLink',
+        inviteEmail: 'no@t.co',
+      },
+    ]);
+
+    await act(async () => {
+      render(<RecruiterSimulationDetailPage />);
+    });
+
+    const copyBtn = await screen.findByRole('button', {
+      name: /Copy invite link/i,
+    });
+    fireEvent.click(copyBtn);
+
+    expect(
+      await screen.findByText(/Invite link unavailable/i),
+    ).toBeInTheDocument();
+  });
+
+  it('handles failed copy and manual copy close flow', async () => {
+    const copySpy = formatters.copyToClipboard as jest.Mock;
+    copySpy.mockResolvedValue(false);
+    listSimulationCandidatesMock.mockResolvedValue([
+      {
+        candidateSessionId: 11,
+        candidateName: 'Copy Fail',
+        inviteEmail: 'copy@fail.com',
+        inviteUrl: 'http://invite/fail',
+      },
+    ]);
+
+    await act(async () => {
+      render(<RecruiterSimulationDetailPage />);
+    });
+
+    const copyBtn = await screen.findByRole('button', {
+      name: /Copy invite link/i,
+    });
+    fireEvent.click(copyBtn);
+
+    const manualInput = await screen.findByLabelText(/Manual invite link/i);
+    fireEvent.focus(manualInput);
+    expect((manualInput as HTMLInputElement).value).toBe('http://invite/fail');
+
+    const closeBtn = screen.getByRole('button', { name: /Close/i });
+    fireEvent.click(closeBtn);
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    copySpy.mockReset();
+  });
+
+  it('shows resend error and notification when invite resend fails', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockRejectedValue(new Error('resend failed'));
+
+    listSimulationCandidatesMock.mockResolvedValue([
+      {
+        candidateSessionId: 22,
+        candidateName: 'Resend',
+        inviteEmail: 'resend@test.com',
+        inviteUrl: 'http://invite/resend',
+      },
+    ]);
+
+    await act(async () => {
+      render(<RecruiterSimulationDetailPage />);
+    });
+
+    const row = await screen.findByTestId('candidate-row-22');
+    const resendBtn = within(row).getByRole('button', {
+      name: /Resend invite/i,
+    });
+    await act(async () => {
+      fireEvent.click(resendBtn);
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(within(row).getByText(/resend failed/i)).toBeInTheDocument(),
+    );
+    expect(notifyMock).toHaveBeenCalled();
+
+    global.fetch = originalFetch;
+  });
+
+  it('supports pagination controls for candidate list', async () => {
+    const candidates = Array.from({ length: 30 }).map((_, idx) => ({
+      candidateSessionId: idx + 1,
+      candidateName: `Candidate ${idx + 1}`,
+      inviteEmail: `c${idx + 1}@test.com`,
+      inviteUrl: 'http://invite/link',
+    }));
+    listSimulationCandidatesMock.mockResolvedValue(candidates);
+
+    await act(async () => {
+      render(<RecruiterSimulationDetailPage />);
+    });
+
+    const nextBtn = await screen.findByRole('button', { name: /^Next$/i });
+    expect(nextBtn).toBeEnabled();
+    fireEvent.click(nextBtn);
+    await waitFor(() =>
+      expect(screen.getByText(/Page 2 \/ 2/)).toBeInTheDocument(),
+    );
+
+    const prevBtn = screen.getByRole('button', { name: /^Prev$/i });
+    fireEvent.click(prevBtn);
+    expect(screen.getByText(/Page 1 \/ 2/)).toBeInTheDocument();
+  });
+
+  it('retries loading candidates after error', async () => {
+    listSimulationCandidatesMock
+      .mockRejectedValueOnce({ status: 500, details: 'boom' })
+      .mockResolvedValueOnce([
+        {
+          candidateSessionId: 33,
+          candidateName: 'Retry Ok',
+          inviteEmail: 'retry@test.com',
+          inviteUrl: 'http://invite/retry',
+        },
+      ]);
+
+    await act(async () => {
+      render(<RecruiterSimulationDetailPage />);
+    });
+
+    const retryBtn = await screen.findByRole('button', { name: /^Retry$/i });
+    fireEvent.click(retryBtn);
+
+    await waitFor(() =>
+      expect(screen.getByText('Retry Ok')).toBeInTheDocument(),
+    );
   });
 });

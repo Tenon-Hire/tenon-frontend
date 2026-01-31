@@ -12,6 +12,7 @@ const originalEnv = process.env.NEXT_PUBLIC_TENON_DEBUG_PERF;
 const useCandidateSessionMock = jest.fn();
 const startTestRunMock = jest.fn();
 const pollTestRunMock = jest.fn();
+const submitTaskMock = jest.fn();
 
 jest.mock('@/features/candidate/session/CandidateSessionProvider', () => ({
   useCandidateSession: () => useCandidateSessionMock(),
@@ -118,6 +119,7 @@ jest.mock('@/lib/api/candidate', () => {
       getCurrentTaskMock(...args),
     pollCandidateTestRun: (...args: unknown[]) => pollTestRunMock(...args),
     startCandidateTestRun: (...args: unknown[]) => startTestRunMock(...args),
+    submitCandidateTask: (...args: unknown[]) => submitTaskMock(...args),
     HttpError,
   };
 });
@@ -212,6 +214,7 @@ describe('CandidateSessionPage test run handlers', () => {
       failed: 0,
       total: 5,
     });
+    submitTaskMock.mockResolvedValue({ status: 'ok' });
   });
 
   afterEach(() => {
@@ -365,6 +368,80 @@ describe('CandidateSessionPage test run handlers', () => {
     fireEvent.click(startBtn);
 
     expect(setStarted).toHaveBeenCalledWith(true);
+  });
+
+  it('submits current task and refreshes progress after delay', async () => {
+    jest.useFakeTimers();
+    useCandidateSessionMock.mockReturnValue(baseState());
+
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
+
+    const submitBtn = await screen.findByTestId('submit-btn');
+    fireEvent.click(submitBtn);
+
+    await act(async () => {
+      jest.advanceTimersByTime(1200);
+      await Promise.resolve();
+    });
+
+    expect(submitTaskMock).toHaveBeenCalledWith({
+      taskId: 1,
+      token: 'auth-token',
+      candidateSessionId: 99,
+      contentText: undefined,
+    });
+    await waitFor(() => {
+      const hasSkipCache = getCurrentTaskMock.mock.calls.some(
+        (call) => (call[2] as { skipCache?: boolean } | undefined)?.skipCache,
+      );
+      expect(hasSkipCache).toBe(true);
+    });
+    jest.useRealTimers();
+  });
+
+  it('shows error when start fetch fails after clicking start', async () => {
+    getCurrentTaskMock
+      .mockResolvedValueOnce({
+        isComplete: false,
+        completedTaskIds: [],
+        currentTask: null,
+      })
+      .mockRejectedValueOnce({
+        status: 500,
+        message: 'task boom',
+      });
+    useCandidateSessionMock.mockReturnValue({
+      ...baseState(),
+      state: {
+        ...baseState().state,
+        started: false,
+        taskState: {
+          loading: true,
+          error: null,
+          isComplete: false,
+          completedTaskIds: [],
+          currentTask: null,
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<CandidateSessionPage token="inv" />);
+    });
+
+    const startBtn = await screen.findByRole('button', {
+      name: /Start simulation/i,
+    });
+    await act(async () => {
+      fireEvent.click(startBtn);
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByTestId('state-message')).toHaveTextContent(
+      /Unable to load simulation/i,
+    );
   });
 
   it('shows error when task fetch fails during bootstrap', async () => {
