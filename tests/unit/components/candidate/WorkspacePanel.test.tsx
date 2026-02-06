@@ -358,7 +358,7 @@ describe('WorkspacePanel', () => {
     );
 
     expect(
-      await screen.findByText(/Codespace link will appear when ready/i),
+      await screen.findByText(/Workspace provisioning is underway/i),
     ).toBeInTheDocument();
   });
 });

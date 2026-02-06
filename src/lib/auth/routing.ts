@@ -18,27 +18,24 @@ export function sanitizeReturnTo(value: string | null | undefined): string {
       return null;
     }
   };
-
   const candidates = [trimmed];
   const decodedOnce = decodeMaybe(trimmed);
-  if (decodedOnce && decodedOnce !== trimmed) {
-    candidates.push(decodedOnce);
-    const decodedTwice = decodeMaybe(decodedOnce);
-    if (decodedTwice && decodedTwice !== decodedOnce) {
-      candidates.push(decodedTwice);
-    }
-  }
+  const decodedTwice =
+    decodedOnce && decodedOnce !== trimmed ? decodeMaybe(decodedOnce) : null;
+  if (decodedOnce && decodedOnce !== trimmed) candidates.push(decodedOnce);
+  if (decodedTwice && decodedTwice !== decodedOnce)
+    candidates.push(decodedTwice);
 
   const isUnsafe = (candidate: string) => {
-    if (/[\u0000-\u001F\u007F]/.test(candidate)) return true;
-    if (candidate.includes('\\')) return true;
-    if (!candidate.startsWith('/')) return true;
-    if (candidate.startsWith('//')) return true;
-    if (candidate.includes('://')) return true;
     const lower = candidate.toLowerCase();
-    if (lower.startsWith('javascript:') || lower.startsWith('/javascript:'))
-      return true;
-    if (
+    return (
+      /[\u0000-\u001F\u007F]/.test(candidate) ||
+      candidate.includes('\\') ||
+      !candidate.startsWith('/') ||
+      candidate.startsWith('//') ||
+      candidate.includes('://') ||
+      lower.startsWith('javascript:') ||
+      lower.startsWith('/javascript:') ||
       AUTH_PREFIXES.some(
         (prefix) =>
           lower === prefix ||
@@ -46,14 +43,10 @@ export function sanitizeReturnTo(value: string | null | undefined): string {
           lower.startsWith(`${prefix}?`) ||
           lower.startsWith(`${prefix}#`),
       )
-    ) {
-      return true;
-    }
-    return false;
+    );
   };
 
   if (candidates.some(isUnsafe)) return DEFAULT_RETURN_TO;
-
   return trimmed;
 }
 
@@ -67,27 +60,20 @@ type ReturnToInput = NextRequest | Location | URL | string | null | undefined;
 
 export function buildReturnTo(input?: ReturnToInput): string {
   if (typeof input === 'string') return sanitizeReturnTo(input);
-
   if (input && typeof (input as NextRequest).nextUrl === 'object') {
     const url = (input as NextRequest).nextUrl;
     return sanitizeReturnTo(`${url.pathname}${url.search}`);
   }
-
-  if (input instanceof URL) {
+  if (input instanceof URL)
     return sanitizeReturnTo(`${input.pathname}${input.search}`);
-  }
-
   if (input && typeof (input as Location).pathname === 'string') {
     const loc = input as Location;
     return sanitizeReturnTo(`${loc.pathname}${loc.search ?? ''}`);
   }
-
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined')
     return sanitizeReturnTo(
       `${window.location.pathname}${window.location.search}`,
     );
-  }
-
   return DEFAULT_RETURN_TO;
 }
 

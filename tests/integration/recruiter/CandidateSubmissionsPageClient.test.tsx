@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
 import {
   recruiterBffClient,
+  bffClient,
   __resetHttpClientCache,
 } from '@/lib/api/httpClient';
 import { __resetCandidateCache } from '@/lib/api/recruiter';
@@ -13,10 +14,15 @@ jest.mock('next/navigation', () => ({
   useParams: () => params,
 }));
 
-jest.mock('@/lib/api/httpClient', () => ({
-  recruiterBffClient: { get: jest.fn() },
-  __resetHttpClientCache: jest.fn(),
-}));
+jest.mock('@/lib/api/httpClient', () => {
+  const actual = jest.requireActual('@/lib/api/httpClient');
+  return {
+    ...actual,
+    recruiterBffClient: { get: jest.fn() },
+    bffClient: { get: jest.fn() },
+    __resetHttpClientCache: jest.fn(),
+  };
+});
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -24,7 +30,17 @@ beforeEach(() => {
   params.candidateSessionId = '900';
   __resetCandidateCache();
   __resetHttpClientCache();
+  (bffClient.get as jest.Mock).mockReset();
+  (recruiterBffClient.get as jest.Mock).mockReset();
 });
+
+const mirrorBffGet = (getMock: jest.Mock) => {
+  const bffGet = bffClient.get as jest.Mock;
+  bffGet.mockImplementation(async (path: string, options?: unknown) => {
+    const data = await getMock(path, options);
+    return { ok: true, data, requestId: null };
+  });
+};
 
 describe('CandidateSubmissionsPage', () => {
   it('renders submission artifacts with test results', async () => {
@@ -143,6 +159,7 @@ describe('CandidateSubmissionsPage', () => {
       }
       throw new Error(`Unexpected path ${path}`);
     });
+    mirrorBffGet(getMock);
 
     const user = userEvent.setup();
     render(<CandidateSubmissionsPage />);
@@ -217,6 +234,7 @@ describe('CandidateSubmissionsPage', () => {
       }
       throw new Error(`Unexpected path ${path}`);
     });
+    mirrorBffGet(getMock);
 
     const user = userEvent.setup();
     render(<CandidateSubmissionsPage />);
@@ -257,6 +275,7 @@ describe('CandidateSubmissionsPage', () => {
       }
       throw new Error(`Unexpected path ${path}`);
     });
+    mirrorBffGet(getMock);
 
     render(<CandidateSubmissionsPage />);
 
@@ -284,6 +303,7 @@ describe('CandidateSubmissionsPage', () => {
       }
       throw new Error(`Unexpected path ${path}`);
     });
+    mirrorBffGet(getMock);
 
     render(<CandidateSubmissionsPage />);
 
@@ -311,6 +331,7 @@ describe('CandidateSubmissionsPage', () => {
       }
       throw new Error(`Unexpected path ${path}`);
     });
+    mirrorBffGet(getMock);
 
     render(<CandidateSubmissionsPage />);
 

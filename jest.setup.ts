@@ -1,6 +1,31 @@
 import '@testing-library/jest-dom';
 import React from 'react';
 
+// Suppress noisy warnings that clutter CI output (baseline-browser-mapping age,
+// React act(...) notices) so precommit logs stay clean.
+const shouldSilence = (message: unknown) =>
+  typeof message === 'string' &&
+  (message.includes('baseline-browser-mapping') ||
+    message.includes('not wrapped in act('));
+
+const originalWarn = console.warn;
+console.warn = (...args: unknown[]) => {
+  if (shouldSilence(args[0])) return;
+  originalWarn(...args);
+};
+
+const originalError = console.error;
+console.error = (...args: unknown[]) => {
+  if (shouldSilence(args[0])) return;
+  originalError(...args);
+};
+
+const originalLog = console.log;
+console.log = (...args: unknown[]) => {
+  if (shouldSilence(args[0])) return;
+  originalLog(...args);
+};
+
 jest.mock('remark-gfm', () => () => null);
 jest.mock('remark-breaks', () => () => null);
 

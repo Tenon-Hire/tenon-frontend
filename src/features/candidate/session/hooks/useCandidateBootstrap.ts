@@ -1,37 +1,29 @@
 import { useCallback, useRef, useState } from 'react';
-import {
-  resolveCandidateInviteToken,
-  type CandidateSessionBootstrapResponse,
-} from '@/lib/api/candidate';
+import { resolveCandidateInviteToken } from '@/lib/api/candidate';
 import { friendlyBootstrapError } from '../utils/errorMessages';
 
-type BootstrapState = 'idle' | 'loading' | 'ready' | 'error';
+export type BootstrapState = 'idle' | 'loading' | 'ready' | 'error';
 
-type Params = {
-  inviteToken: string | null;
-  authToken: string | null;
-  onResolved: (data: CandidateSessionBootstrapResponse) => void;
+export function useCandidateBootstrap(params: {
+  inviteToken?: string | null;
+  token?: string | null;
+  authToken?: string | null;
+  onResolved?: (data: unknown) => void;
   onSetInviteToken?: (token: string) => void;
-};
-
-export function useCandidateBootstrap({
-  inviteToken,
-  authToken,
-  onResolved,
-  onSetInviteToken,
-}: Params) {
+}) {
   const [state, setState] = useState<BootstrapState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
-  const inFlightRef = useRef(false);
-  const lastTokenRef = useRef<string | null>(null);
+  const inflightRef = useRef<{
+    token: string | null;
+    promise: Promise<void> | null;
+  }>({ token: null, promise: null });
 
   const load = useCallback(async () => {
-    if (!authToken) {
-      return;
-    }
-
+    const inviteToken = params.inviteToken ?? params.token ?? null;
+    const authToken = params.authToken ?? null;
+    if (!authToken) return;
     if (!inviteToken) {
       setState('error');
       setErrorMessage('Missing invite token.');
@@ -39,31 +31,37 @@ export function useCandidateBootstrap({
       return;
     }
 
-    if (inFlightRef.current && lastTokenRef.current === inviteToken) return;
+    if (
+      inflightRef.current.promise &&
+      inflightRef.current.token === inviteToken
+    ) {
+      return inflightRef.current.promise;
+    }
 
-    inFlightRef.current = true;
-    lastTokenRef.current = inviteToken;
     setState('loading');
     setErrorMessage(null);
     setErrorStatus(null);
 
-    try {
-      if (onSetInviteToken) onSetInviteToken(inviteToken);
-      const data = await resolveCandidateInviteToken(inviteToken, authToken);
-      onResolved(data);
-      setState('ready');
-    } catch (err) {
-      setErrorMessage(friendlyBootstrapError(err));
-      const status =
-        typeof (err as { status?: unknown })?.status === 'number'
-          ? ((err as { status: number }).status ?? null)
-          : null;
-      setErrorStatus(status);
-      setState('error');
-    } finally {
-      inFlightRef.current = false;
-    }
-  }, [authToken, inviteToken, onResolved, onSetInviteToken]);
+    const exec = (async () => {
+      try {
+        const data = await resolveCandidateInviteToken(inviteToken, authToken);
+        params.onSetInviteToken?.(inviteToken);
+        params.onResolved?.(data);
+        setState('ready');
+      } catch (err) {
+        const message = friendlyBootstrapError(err);
+        const status = (err as { status?: unknown })?.status;
+        setErrorMessage(message);
+        setErrorStatus(typeof status === 'number' ? status : null);
+        setState('error');
+      } finally {
+        inflightRef.current = { token: null, promise: null };
+      }
+    })();
+
+    inflightRef.current = { token: inviteToken, promise: exec };
+    return exec;
+  }, [params]);
 
   return { state, errorMessage, errorStatus, load };
 }

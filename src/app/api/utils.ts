@@ -6,6 +6,7 @@ import {
 } from '@/lib/server/bff';
 import { BRAND_SLUG } from '@/lib/brand';
 import { mergeResponseCookies, requireBffAuth } from '@/lib/server/bffAuth';
+import { errorResponse } from './errorResponse';
 
 export const BFF_HEADER = `x-${BRAND_SLUG}-bff`;
 
@@ -23,9 +24,7 @@ export async function forwardWithAuth(
   { tag, requirePermission, ...args }: ForwardArgs,
   req: NextRequest,
 ): Promise<NextResponse> {
-  const auth = await requireBffAuth(req, {
-    requirePermission: requirePermission,
-  });
+  const auth = await requireBffAuth(req, { requirePermission });
   const requestId = resolveRequestId(req.headers);
   if (!auth.ok) {
     const resp = auth.response;
@@ -34,41 +33,22 @@ export async function forwardWithAuth(
     return resp;
   }
 
-  let resp: NextResponse;
   try {
-    resp = await forwardJson({
+    const resp = await forwardJson({
       ...args,
       accessToken: auth.accessToken,
       cache: args.cache ?? 'no-store',
       requestId,
     });
+    mergeResponseCookies(auth.cookies, resp);
+    resp.headers.set(REQUEST_ID_HEADER, requestId);
+    if (tag) resp.headers.set(BFF_HEADER, tag);
+    return resp;
   } catch (e: unknown) {
     const error = errorResponse(e, 'Upstream error', requestId);
     mergeResponseCookies(auth.cookies, error);
     return error;
   }
-
-  mergeResponseCookies(auth.cookies, resp);
-  resp.headers.set(REQUEST_ID_HEADER, requestId);
-
-  if (tag) {
-    resp.headers.set(BFF_HEADER, tag);
-  }
-
-  return resp;
-}
-
-export function errorResponse(
-  e: unknown,
-  fallback = 'Upstream error',
-  requestId?: string,
-) {
-  const message = e instanceof Error ? `${fallback}: ${e.message}` : fallback;
-  const resp = NextResponse.json({ message }, { status: 500 });
-  if (requestId) {
-    resp.headers.set(REQUEST_ID_HEADER, requestId);
-  }
-  return resp;
 }
 
 type RecruiterAuthHandler = (auth: {
@@ -86,7 +66,6 @@ export async function withRecruiterAuth(
   const auth = await requireBffAuth(req, {
     requirePermission: options.requirePermission ?? 'recruiter:access',
   });
-
   if (!auth.ok) {
     mergeResponseCookies(auth.cookies, auth.response);
     auth.response.headers.set(REQUEST_ID_HEADER, requestId);
@@ -107,3 +86,5 @@ export async function withRecruiterAuth(
     return error;
   }
 }
+
+export { errorResponse } from './errorResponse';

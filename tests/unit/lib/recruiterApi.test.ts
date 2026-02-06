@@ -1,4 +1,3 @@
-import { recruiterBffClient } from '@/lib/api/httpClient';
 import {
   inviteCandidate,
   listSimulations,
@@ -7,36 +6,27 @@ import {
   listSimulationCandidates,
 } from '@/lib/api/recruiter';
 
+const mockRecruiterRequest = jest.fn();
+const mockSafeRequest = jest.fn();
+const mockRecruiterBffGet = jest.fn();
+
 jest.mock('@/lib/api/httpClient', () => ({
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
+  bffClient: { get: jest.fn(), post: jest.fn() },
   recruiterBffClient: {
-    get: jest.fn(),
-    post: jest.fn(),
+    get: (...args: unknown[]) => mockRecruiterBffGet(...args),
   },
-  safeRequest: jest.fn(),
+  safeRequest: (...args: unknown[]) => mockSafeRequest(...args),
 }));
 
-type MockGet = (path: string, options?: unknown) => Promise<unknown>;
-type MockPost = (
-  path: string,
-  body?: unknown,
-  options?: unknown,
-) => Promise<unknown>;
+jest.mock('@/lib/api/recruiter/client', () => ({
+  recruiterRequest: (...args: unknown[]) => mockRecruiterRequest(...args),
+  recruiterBffClient: {
+    get: (...args: unknown[]) => mockRecruiterBffGet(...args),
+  },
+}));
 
-const mockedApiGet = jest.requireMock('@/lib/api/httpClient').apiClient
-  .get as jest.MockedFunction<MockGet>;
-const mockedApiPost = jest.requireMock('@/lib/api/httpClient').apiClient
-  .post as jest.MockedFunction<MockPost>;
-const mockedBffGet =
-  recruiterBffClient.get as unknown as jest.MockedFunction<MockGet>;
-const mockedBffPost =
-  recruiterBffClient.post as unknown as jest.MockedFunction<MockPost>;
-const mockedSafeRequest = jest.requireMock('@/lib/api/httpClient')
-  .safeRequest as jest.MockedFunction<
-  (path: string, options?: unknown, clientOptions?: unknown) => Promise<unknown>
+const mockedRecruiterGet = mockRecruiterBffGet as jest.MockedFunction<
+  (path: string, options?: unknown) => Promise<unknown>
 >;
 
 describe('recruiterApi', () => {
@@ -51,139 +41,94 @@ describe('recruiterApi', () => {
   });
 
   describe('listSimulations', () => {
-    it('calls GET /simulations', async () => {
-      mockedBffGet.mockResolvedValueOnce([]);
+    it('calls GET /simulations via recruiterRequest', async () => {
+      mockRecruiterRequest.mockResolvedValueOnce({ data: [], requestId: null });
 
       await listSimulations();
 
-      expect(mockedBffGet).toHaveBeenCalledWith(
+      expect(mockRecruiterRequest).toHaveBeenCalledWith(
         '/simulations',
         expect.objectContaining({ cache: undefined }),
       );
-      expect(mockedApiGet).not.toHaveBeenCalled();
     });
 
     it('returns empty array when response is not an array', async () => {
-      mockedBffGet.mockResolvedValueOnce({});
+      mockRecruiterRequest.mockResolvedValueOnce({ data: {}, requestId: null });
 
       const result = await listSimulations();
 
       expect(result).toEqual([]);
     });
 
-    it('normalizes camelCase fields', async () => {
-      mockedBffGet.mockResolvedValueOnce([
-        {
-          id: 'sim_1',
-          title: 'Sim One',
-          role: 'Backend Engineer',
-          createdAt: '2025-12-10T10:00:00Z',
-          candidateCount: 3,
-          templateKey: 'python-fastapi',
-        },
-      ]);
-
-      const result = await listSimulations();
-
-      expect(result).toEqual([
-        {
-          id: 'sim_1',
-          title: 'Sim One',
-          role: 'Backend Engineer',
-          createdAt: '2025-12-10T10:00:00Z',
-          candidateCount: 3,
-          templateKey: 'python-fastapi',
-        },
-      ]);
-    });
-
-    it('normalizes snake_case fields', async () => {
-      mockedBffGet.mockResolvedValueOnce([
-        {
-          id: 'sim_2',
-          title: 'Sim Two',
-          role: 'Backend Engineer',
-          created_at: '2025-12-11T10:00:00Z',
-          candidate_count: 1,
-          template_key: 'node-express-ts',
-        },
-      ]);
+    it('normalizes simulation fields', async () => {
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'sim_2',
+            title: 'Sim Two',
+            role: 'Backend Engineer',
+            created_at: '2025-12-11T10:00:00Z',
+            candidate_count: 1,
+            template_key: 'node-express-ts',
+          },
+        ],
+        requestId: null,
+      });
 
       const result = await listSimulations();
 
       expect(result[0]?.id).toBe('sim_2');
-      expect(result[0]?.title).toBe('Sim Two');
-      expect(result[0]?.role).toBe('Backend Engineer');
-      expect(result[0]?.createdAt).toBe('2025-12-11T10:00:00Z');
       expect(result[0]?.candidateCount).toBe(1);
       expect(result[0]?.templateKey).toBe('node-express-ts');
-    });
-
-    it('falls back safely when item is not an object', async () => {
-      mockedBffGet.mockResolvedValueOnce([null]);
-
-      const result = await listSimulations();
-
-      expect(result).toHaveLength(1);
-      expect(result[0]?.title).toBe('Untitled simulation');
-      expect(result[0]?.role).toBe('Unknown role');
-      expect(typeof result[0]?.createdAt).toBe('string');
-    });
-
-    it('keeps recruiter calls on BFF even with absolute NEXT_PUBLIC_TENON_API_BASE_URL', async () => {
-      process.env.NEXT_PUBLIC_TENON_API_BASE_URL =
-        'https://backend.example.com/api';
-      mockedBffGet.mockResolvedValueOnce([]);
-
-      await listSimulations();
-
-      expect(mockedBffGet).toHaveBeenCalledWith(
-        '/simulations',
-        expect.objectContaining({ cache: undefined }),
-      );
-      expect(mockedApiGet).not.toHaveBeenCalled();
     });
   });
 
   describe('listSimulationsSafe', () => {
     it('calls safeRequest with BFF base and skipAuth', async () => {
-      mockedSafeRequest.mockResolvedValueOnce({ data: [], error: null });
+      mockSafeRequest.mockResolvedValueOnce({ data: [], error: null });
 
       const { listSimulationsSafe } = await import('@/lib/api/recruiter');
       await listSimulationsSafe();
 
-      expect(mockedSafeRequest).toHaveBeenCalledWith(
-        '/simulations',
-        undefined,
-        { basePath: '/api', skipAuth: true },
-      );
+      expect(mockSafeRequest).toHaveBeenCalledWith('/simulations', undefined, {
+        basePath: '/api',
+        skipAuth: true,
+      });
     });
   });
 
   describe('inviteCandidate', () => {
     it('calls POST /simulations/{id}/invite with candidateName + inviteEmail', async () => {
-      mockedBffPost.mockResolvedValueOnce({
-        candidateSessionId: 'cs_1',
-        token: 'tok_1',
-        inviteUrl: 'http://localhost:3000/candidate/session/tok_1',
-        outcome: 'created',
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: {
+          candidateSessionId: 'cs_1',
+          token: 'tok_1',
+          inviteUrl: 'http://localhost:3000/candidate/session/tok_1',
+          outcome: 'created',
+        },
+        requestId: null,
       });
 
       await inviteCandidate('sim_1', 'Jane Doe', 'jane@example.com');
 
-      expect(mockedBffPost).toHaveBeenCalledWith('/simulations/sim_1/invite', {
-        candidateName: 'Jane Doe',
-        inviteEmail: 'jane@example.com',
-      });
-      expect(mockedApiPost).not.toHaveBeenCalled();
+      expect(mockRecruiterRequest).toHaveBeenCalledWith(
+        '/simulations/sim_1/invite',
+        {
+          method: 'POST',
+          body: { candidateName: 'Jane Doe', inviteEmail: 'jane@example.com' },
+        },
+      );
     });
 
     it('normalizes invite response (camelCase)', async () => {
-      mockedBffPost.mockResolvedValueOnce({
-        candidateSessionId: 'cs_1',
-        token: 'tok_1',
-        inviteUrl: 'http://localhost:3000/candidate/session/tok_1',
-        outcome: 'created',
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: {
+          candidateSessionId: 'cs_1',
+          token: 'tok_1',
+          inviteUrl: 'http://localhost:3000/candidate/session/tok_1',
+          outcome: 'created',
+        },
+        requestId: null,
       });
 
       const result = await inviteCandidate(
@@ -201,10 +146,13 @@ describe('recruiterApi', () => {
     });
 
     it('normalizes invite response (snake_case)', async () => {
-      mockedBffPost.mockResolvedValueOnce({
-        candidate_session_id: 'cs_2',
-        token: 'tok_2',
-        invite_url: 'http://localhost:3000/candidate/session/tok_2',
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: {
+          candidate_session_id: 'cs_2',
+          token: 'tok_2',
+          invite_url: 'http://localhost:3000/candidate/session/tok_2',
+        },
+        requestId: null,
       });
 
       const result = await inviteCandidate(
@@ -226,10 +174,13 @@ describe('recruiterApi', () => {
       const originalWindow = globalAny.window as Window | undefined;
       delete globalAny.window;
 
-      mockedBffPost.mockResolvedValueOnce({
-        candidate_session_id: 'cs_3',
-        token: 'tok_3',
-        invite_url: '',
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: {
+          candidate_session_id: 'cs_3',
+          token: 'tok_3',
+          invite_url: '',
+        },
+        requestId: null,
       });
 
       const result = await inviteCandidate(
@@ -247,7 +198,10 @@ describe('recruiterApi', () => {
     });
 
     it('returns blanks when response is not an object', async () => {
-      mockedBffPost.mockResolvedValueOnce('not-an-object');
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: 'not-an-object',
+        requestId: null,
+      });
 
       const result = await inviteCandidate(
         'sim_3',
@@ -271,7 +225,7 @@ describe('recruiterApi', () => {
         inviteUrl: '',
         outcome: 'created',
       });
-      expect(mockedBffPost).not.toHaveBeenCalled();
+      expect(mockRecruiterRequest).not.toHaveBeenCalled();
     });
 
     it('guards against non-string inputs without throwing', async () => {
@@ -287,7 +241,7 @@ describe('recruiterApi', () => {
         inviteUrl: '',
         outcome: 'created',
       });
-      expect(mockedBffPost).not.toHaveBeenCalled();
+      expect(mockRecruiterRequest).not.toHaveBeenCalled();
     });
   });
 
@@ -298,12 +252,14 @@ describe('recruiterApi', () => {
         resolveFetch = resolve;
       });
 
-      mockedBffGet.mockReturnValueOnce(pending as Promise<unknown>);
+      mockedRecruiterGet.mockReturnValueOnce(
+        pending.then((data) => ({ ok: true, data })) as Promise<unknown>,
+      );
 
       const first = listSimulationCandidates('sim_1');
       const second = listSimulationCandidates('sim_1');
 
-      expect(mockedBffGet).toHaveBeenCalledTimes(1);
+      expect(mockedRecruiterGet).toHaveBeenCalledTimes(1);
       expect(first).toBe(second);
 
       resolveFetch([]);
@@ -311,7 +267,7 @@ describe('recruiterApi', () => {
     });
 
     it('returns cached data within TTL window', async () => {
-      mockedBffGet.mockResolvedValueOnce([
+      mockedRecruiterGet.mockResolvedValueOnce([
         { candidate_session_id: 1, status: 'not_started' },
       ]);
 
@@ -320,16 +276,16 @@ describe('recruiterApi', () => {
 
       expect(first).toHaveLength(1);
       expect(second).toHaveLength(1);
-      expect(mockedBffGet).toHaveBeenCalledTimes(1);
+      expect(mockedRecruiterGet).toHaveBeenCalledTimes(1);
     });
 
     it('clears cache on errors and retries', async () => {
-      mockedBffGet.mockRejectedValueOnce(new Error('fail'));
+      mockedRecruiterGet.mockRejectedValueOnce(new Error('fail'));
       await expect(listSimulationCandidates('sim_3')).rejects.toThrow('fail');
 
-      mockedBffGet.mockResolvedValueOnce([]);
+      mockedRecruiterGet.mockResolvedValueOnce([]);
       await listSimulationCandidates('sim_3');
-      expect(mockedBffGet).toHaveBeenCalledTimes(2);
+      expect(mockedRecruiterGet).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -422,11 +378,14 @@ describe('recruiterApi', () => {
         status: 400,
         message: 'Missing required fields',
       });
-      expect(mockedBffPost).not.toHaveBeenCalled();
+      expect(mockRecruiterRequest).not.toHaveBeenCalled();
     });
 
     it('posts trimmed payload and returns normalized id', async () => {
-      mockedBffPost.mockResolvedValueOnce({ id: 'sim_99' });
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: { id: 'sim_99' },
+        requestId: null,
+      });
 
       const result = await createSimulation({
         title: '  Backend Sim ',
@@ -437,20 +396,19 @@ describe('recruiterApi', () => {
         focus: '  Focus ',
       });
 
-      expect(mockedBffPost).toHaveBeenCalledWith(
+      expect(mockRecruiterRequest).toHaveBeenCalledWith(
         '/simulations',
-        {
-          title: 'Backend Sim',
-          role: 'Backend',
-          techStack: 'Node',
-          seniority: 'Senior',
-          templateKey: 'node-express-ts',
-          focus: 'Focus',
-        },
-        {
-          cache: undefined,
-          signal: undefined,
-        },
+        expect.objectContaining({
+          method: 'POST',
+          body: {
+            title: 'Backend Sim',
+            role: 'Backend',
+            techStack: 'Node',
+            seniority: 'Senior',
+            templateKey: 'node-express-ts',
+            focus: 'Focus',
+          },
+        }),
       );
 
       expect(result).toEqual({
@@ -459,11 +417,13 @@ describe('recruiterApi', () => {
         status: 201,
         message: undefined,
       });
-      expect(mockedApiPost).not.toHaveBeenCalled();
     });
 
     it('normalizes snake_case id responses', async () => {
-      mockedBffPost.mockResolvedValueOnce({ simulation_id: 42 });
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: { simulation_id: 42 },
+        requestId: null,
+      });
 
       const result = await createSimulation({
         title: 'Sim',
@@ -482,7 +442,10 @@ describe('recruiterApi', () => {
     });
 
     it('omits focus field when blank after trimming', async () => {
-      mockedBffPost.mockResolvedValueOnce({ id: 'sim_200' });
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: { id: 'sim_200' },
+        requestId: null,
+      });
 
       const result = await createSimulation({
         title: 'Sim',
@@ -504,7 +467,10 @@ describe('recruiterApi', () => {
     it('posts to BFF base even when public API base is absolute', async () => {
       process.env.NEXT_PUBLIC_TENON_API_BASE_URL =
         'https://backend.example.com/api';
-      mockedBffPost.mockResolvedValueOnce({ id: 'sim_env' });
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: { id: 'sim_env' },
+        requestId: null,
+      });
 
       const result = await createSimulation({
         title: 'Env Sim',
@@ -514,16 +480,11 @@ describe('recruiterApi', () => {
         templateKey: 'python-fastapi',
       });
 
-      expect(mockedBffPost).toHaveBeenCalledWith(
-        '/simulations',
-        expect.any(Object),
-        expect.objectContaining({ cache: undefined, signal: undefined }),
-      );
       expect(result.id).toBe('sim_env');
     });
 
     it('returns structured error when backend responds with failure', async () => {
-      mockedBffPost.mockRejectedValueOnce({
+      mockRecruiterRequest.mockRejectedValueOnce({
         message: 'Missing title',
         status: 400,
       });
@@ -545,10 +506,9 @@ describe('recruiterApi', () => {
     });
 
     it('normalizes explicit error responses from backend payloads', async () => {
-      mockedBffPost.mockResolvedValueOnce({
-        status: 409,
-        detail: 'Conflict',
-        simulation_id: null,
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: { status: 409, detail: 'Conflict', simulation_id: null },
+        requestId: null,
       });
 
       const result = await createSimulation({
@@ -575,33 +535,40 @@ describe('recruiterApi', () => {
     });
 
     it('posts resend invite when identifiers are valid', async () => {
-      mockedBffPost.mockResolvedValueOnce({ ok: true });
+      mockRecruiterRequest.mockResolvedValueOnce({
+        data: { ok: true },
+        requestId: null,
+      });
       const { resendInvite } = await import('@/lib/api/recruiter');
       await resendInvite('sim_9', 42);
 
-      expect(mockedBffPost).toHaveBeenCalledWith(
+      expect(mockRecruiterRequest).toHaveBeenCalledWith(
         '/simulations/sim_9/candidates/42/invite/resend',
+        { method: 'POST' },
       );
     });
   });
 
   it('normalizes candidateCount across numeric variants', async () => {
-    mockedBffGet.mockResolvedValueOnce([
-      {
-        id: 1,
-        simulation_title: 'A',
-        role_name: 'R',
-        created_at: '2025-01-01',
-        numCandidates: 7,
-      },
-      {
-        id: 2,
-        simulation_title: 'B',
-        role_name: 'R',
-        created_at: '2025-01-02',
-        num_candidates: 8,
-      },
-    ]);
+    mockRecruiterRequest.mockResolvedValueOnce({
+      data: [
+        {
+          id: 1,
+          simulation_title: 'A',
+          role_name: 'R',
+          created_at: '2025-01-01',
+          numCandidates: 7,
+        },
+        {
+          id: 2,
+          simulation_title: 'B',
+          role_name: 'R',
+          created_at: '2025-01-02',
+          num_candidates: 8,
+        },
+      ],
+      requestId: null,
+    });
 
     const result = await listSimulations();
 

@@ -1,67 +1,68 @@
 import { useCallback, useRef } from 'react';
-import {
-  getCandidateCurrentTask,
-  type CandidateCurrentTaskResponse,
-} from '@/lib/api/candidate';
+import { getCandidateCurrentTask } from '@/lib/api/candidate';
 import { friendlyTaskError } from '../utils/errorMessages';
-import { normalizeCompletedTaskIds, toTask } from '../utils/taskTransforms';
-import type { Task } from '../task/types';
+import type { CandidateTask } from '../CandidateSessionProvider';
 
 type Params = {
   token: string | null;
   candidateSessionId: number | null;
   setTaskLoading: () => void;
-  setTaskLoaded: (p: {
+  setTaskLoaded: (task: {
     isComplete: boolean;
     completedTaskIds: number[];
-    currentTask: Task | null;
+    currentTask: CandidateTask | null;
   }) => void;
-  setTaskError: (msg: string) => void;
+  setTaskError: (message: string | null) => void;
   clearTaskError: () => void;
 };
 
-export function useCurrentTask({
-  token,
-  candidateSessionId,
-  setTaskLoading,
-  setTaskLoaded,
-  setTaskError,
-  clearTaskError,
-}: Params) {
-  const inFlightRef = useRef(false);
+export function useCurrentTask(params: Params) {
+  const inflight = useRef<{
+    key: string | null;
+    promise: Promise<void> | null;
+  }>({ key: null, promise: null });
 
   const fetchCurrentTask = useCallback(async () => {
-    if (!token || !candidateSessionId) return;
-    if (inFlightRef.current) return;
-
-    inFlightRef.current = true;
-    clearTaskError();
-    setTaskLoading();
-
-    try {
-      const dto: CandidateCurrentTaskResponse = await getCandidateCurrentTask(
-        candidateSessionId,
-        token,
-      );
-
-      setTaskLoaded({
-        isComplete: Boolean(dto.isComplete),
-        completedTaskIds: normalizeCompletedTaskIds(dto),
-        currentTask: toTask(dto.currentTask),
-      });
-    } catch (err) {
-      setTaskError(friendlyTaskError(err));
-    } finally {
-      inFlightRef.current = false;
+    if (!params.token || !params.candidateSessionId) return;
+    const sessionId = params.candidateSessionId;
+    const token = params.token;
+    const key = `${sessionId}::${params.token}`;
+    if (inflight.current.promise && inflight.current.key === key) {
+      return inflight.current.promise;
     }
-  }, [
-    candidateSessionId,
-    clearTaskError,
-    setTaskError,
-    setTaskLoaded,
-    setTaskLoading,
-    token,
-  ]);
+
+    params.setTaskLoading();
+    params.clearTaskError();
+
+    const exec = (async () => {
+      try {
+        const result = await getCandidateCurrentTask(sessionId, token);
+        if (result) {
+          params.setTaskLoaded({
+            isComplete: Boolean(result.isComplete),
+            completedTaskIds:
+              result.progress?.completedTaskIds ??
+              result.completedTaskIds ??
+              [],
+            currentTask: result.currentTask ?? null,
+          });
+        } else {
+          params.setTaskLoaded({
+            isComplete: false,
+            completedTaskIds: [],
+            currentTask: null,
+          });
+        }
+      } catch (e) {
+        params.setTaskError(friendlyTaskError(e));
+      } finally {
+        inflight.current = { key: null, promise: null };
+      }
+    })();
+
+    inflight.current = { key, promise: exec };
+    return exec;
+  }, [params]);
 
   return { fetchCurrentTask };
 }

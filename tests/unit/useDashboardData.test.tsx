@@ -1,9 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
-import { recruiterBffClient } from '@/lib/api/httpClient';
 
-jest.mock('@/lib/api/httpClient', () => ({
-  recruiterBffClient: { get: jest.fn() },
+const fetchDashboard = jest.fn();
+
+jest.mock('@/features/recruiter/dashboard/hooks/dashboardApi', () => ({
+  fetchDashboard: (...args: unknown[]) => fetchDashboard(...args),
+  isAbortError: (err: unknown) =>
+    err instanceof DOMException && err.name === 'AbortError',
 }));
 
 type Deferred<T> = {
@@ -68,7 +71,7 @@ describe('useDashboardData', () => {
   });
 
   it('fetches profile and simulations and surfaces results', async () => {
-    (recruiterBffClient.get as jest.Mock).mockResolvedValueOnce({
+    fetchDashboard.mockResolvedValueOnce({
       profile: {
         name: 'Recruiter',
         email: 'r@test.com',
@@ -95,15 +98,13 @@ describe('useDashboardData', () => {
     expect(screen.getByTestId('sim-loading').textContent).toBe('false');
     expect(screen.getByTestId('profile-error').textContent).toBe('');
     expect(screen.getByTestId('sim-error').textContent).toBe('');
-    expect((recruiterBffClient.get as jest.Mock).mock.calls).toHaveLength(1);
+    expect(fetchDashboard.mock.calls).toHaveLength(1);
   });
 
   it('dedupes concurrent refresh calls and keeps previous data while reloading', async () => {
     const profileDeferred = deferred<unknown>();
 
-    (recruiterBffClient.get as jest.Mock).mockReturnValueOnce(
-      profileDeferred.promise,
-    );
+    fetchDashboard.mockReturnValueOnce(profileDeferred.promise);
 
     render(<TestDashboard fetchOnMount={false} />);
 
@@ -111,7 +112,7 @@ describe('useDashboardData', () => {
     fireEvent.click(refreshButton);
     fireEvent.click(refreshButton);
 
-    expect((recruiterBffClient.get as jest.Mock).mock.calls).toHaveLength(1);
+    expect(fetchDashboard.mock.calls).toHaveLength(1);
     expect(screen.getByTestId('profile-loading').textContent).toBe('true');
 
     profileDeferred.resolve({
@@ -141,9 +142,11 @@ describe('useDashboardData', () => {
       origin: 'http://app.test',
     } as unknown as Location);
 
-    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce({
-      status: 401,
-      details: { message: 'nope' },
+    fetchDashboard.mockImplementationOnce(() => {
+      window.location.assign('/auth/login?returnTo=/x');
+      const error = new Error('unauthorized') as Error & { status?: number };
+      error.status = 401;
+      return Promise.reject(error);
     });
 
     render(<TestDashboard />);
@@ -159,9 +162,11 @@ describe('useDashboardData', () => {
       origin: 'http://app.test',
     } as unknown as Location);
 
-    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce({
-      status: 403,
-      details: { message: 'nope' },
+    fetchDashboard.mockImplementationOnce(() => {
+      window.location.assign('/not-authorized?returnTo=/x');
+      const error = new Error('forbidden') as Error & { status?: number };
+      error.status = 403;
+      return Promise.reject(error);
     });
 
     render(<TestDashboard />);
@@ -171,9 +176,7 @@ describe('useDashboardData', () => {
   });
 
   it('surfaces errors for non-auth failures', async () => {
-    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce(
-      new Error('fail'),
-    );
+    fetchDashboard.mockRejectedValueOnce(new Error('fail'));
 
     render(<TestDashboard />);
 
@@ -184,7 +187,7 @@ describe('useDashboardData', () => {
   });
 
   it('ignores abort errors without setting error state', async () => {
-    (recruiterBffClient.get as jest.Mock).mockRejectedValueOnce(
+    fetchDashboard.mockRejectedValueOnce(
       new DOMException('Aborted', 'AbortError'),
     );
 
@@ -199,6 +202,6 @@ describe('useDashboardData', () => {
 
   it('skips fetch on mount when fetchOnMount is false', async () => {
     render(<TestDashboard fetchOnMount={false} />);
-    expect((recruiterBffClient.get as jest.Mock).mock.calls).toHaveLength(0);
+    expect(fetchDashboard.mock.calls).toHaveLength(0);
   });
 });

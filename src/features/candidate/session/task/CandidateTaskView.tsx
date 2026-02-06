@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { useSubmitHandler, useTaskDrafts } from './hooks/taskHooks';
 import { Task, SubmitPayload, SubmitResponse } from './types';
 import { TaskContainer } from './components/TaskContainer';
 import { TaskHeader } from './components/TaskHeader';
@@ -10,7 +8,7 @@ import { TaskTextInput } from './components/TaskTextInput';
 import { TaskStatus } from './components/TaskStatus';
 import { TaskErrorBanner } from './components/TaskErrorBanner';
 import { TaskActions } from './components/TaskActions';
-import { isCodeTask, isGithubNativeDay } from './utils/taskGuards';
+import { useTaskSubmitController } from './hooks/useTaskSubmitController';
 
 export default function CandidateTaskView(props: {
   task: Task;
@@ -36,44 +34,19 @@ function CandidateTaskViewInner({
     payload: SubmitPayload,
   ) => Promise<SubmitResponse | void> | SubmitResponse | void;
 }) {
-  const { textTask, text, setText, savedAt, saveDraftNow, clearDrafts } =
-    useTaskDrafts(task);
-
-  const { submitStatus, lastProgress, handleSubmit } =
-    useSubmitHandler(onSubmit);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const githubNative =
-    isGithubNativeDay(task.dayIndex) || isCodeTask(task.type);
-
-  const displayStatus = submitting ? 'submitting' : submitStatus;
-
-  const saveAndSubmit = async () => {
-    if (displayStatus !== 'idle') return;
-
-    if (githubNative) {
-      setLocalError(null);
-      const resp = await handleSubmit({});
-      if (resp !== 'submit-failed') clearDrafts();
-      return;
-    }
-
-    if (textTask) {
-      const trimmed = text.trim();
-      if (!trimmed) {
-        setLocalError('Please enter an answer before submitting.');
-        return;
-      }
-      setLocalError(null);
-      const resp = await handleSubmit({ contentText: trimmed });
-      if (resp !== 'submit-failed') clearDrafts();
-      return;
-    }
-    setLocalError(null);
-    const resp = await handleSubmit({});
-    if (resp !== 'submit-failed') clearDrafts();
-  };
-
-  const errorToShow = localError ?? submitError ?? null;
+  const {
+    textTask,
+    text,
+    setText,
+    savedAt,
+    saveDraftNow,
+    displayStatus,
+    lastProgress,
+    githubNative,
+    disabled,
+    errorToShow,
+    saveAndSubmit,
+  } = useTaskSubmitController({ task, onSubmit, submitting, submitError });
 
   return (
     <TaskContainer>
@@ -90,7 +63,7 @@ function CandidateTaskViewInner({
           <TaskTextInput
             value={text}
             onChange={setText}
-            disabled={submitting || submitStatus === 'submitted'}
+            disabled={disabled}
             savedAt={savedAt}
           />
         )}

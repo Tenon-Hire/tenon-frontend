@@ -1,34 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth0, getSessionNormalized } from '@/lib/auth0';
 import { extractPermissions, hasPermission } from '@/lib/auth0-claims';
-
-type AuthResultSuccess = {
-  ok: true;
-  accessToken: string;
-  permissions: string[];
-  session: Awaited<ReturnType<typeof getSessionNormalized>>;
-  cookies: NextResponse;
-};
-
-type AuthResultFailure = {
-  ok: false;
-  response: NextResponse;
-  cookies: NextResponse;
-};
-
-type AuthResult = AuthResultSuccess | AuthResultFailure;
-
-function normalizeAccessToken(raw: unknown): string | null {
-  if (!raw) return null;
-  if (typeof raw === 'string') return raw;
-  if (typeof raw === 'object') {
-    const maybe =
-      (raw as { token?: unknown }).token ??
-      (raw as { accessToken?: unknown }).accessToken;
-    return typeof maybe === 'string' ? maybe : null;
-  }
-  return null;
-}
+import { normalizeAccessToken } from '@/lib/auth0/helpers';
+import type { AuthResult } from './bff/authTypes';
 
 export function mergeResponseCookies(
   from: NextResponse | null | undefined,
@@ -47,12 +21,11 @@ export async function requireBffAuth(
   const cookieCarrier = NextResponse.next();
   const start = process.env.TENON_DEBUG_PERF ? Date.now() : null;
   const logPerf = (status: string) => {
-    if (start !== null) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[perf:bff-auth] permission=${options?.requirePermission ?? 'any'} status=${status} ${Date.now() - start}ms`,
-      );
-    }
+    if (start === null) return;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[perf:bff-auth] permission=${options?.requirePermission ?? 'any'} status=${status} ${Date.now() - start}ms`,
+    );
   };
 
   const session = await getSessionNormalized();
@@ -101,7 +74,7 @@ export async function requireBffAuth(
       };
     }
 
-    const result: AuthResultSuccess = {
+    const result: AuthResult = {
       ok: true,
       accessToken,
       permissions,

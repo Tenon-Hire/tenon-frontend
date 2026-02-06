@@ -4,21 +4,15 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
 
-jest.mock('@/lib/api/httpClient', () => ({
-  recruiterBffClient: {
-    get: jest.fn().mockResolvedValue({ simulations: [], profile: {} }),
-  },
+jest.mock('@/features/recruiter/dashboard/hooks/dashboardApi', () => ({
+  fetchDashboard: jest.fn().mockResolvedValue({ simulations: [], profile: {} }),
+  isAbortError: jest.fn(),
 }));
 
 jest.mock('@/features/shared/notifications', () => ({
   useNotifications: () => ({
     notify: jest.fn(),
   }),
-}));
-
-jest.mock('@/lib/auth/routing', () => ({
-  buildLoginUrl: jest.fn(() => '/auth/login'),
-  buildReturnTo: jest.fn(() => '/'),
 }));
 
 describe('useDashboardData.ts coverage completion', () => {
