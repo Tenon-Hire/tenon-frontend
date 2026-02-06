@@ -1,6 +1,7 @@
 # User Flows
 
 ## Candidate Happy Path
+
 1. Open invite link at `/candidate/session/[token]` and sign in via Auth0 if prompted. UI states: `LoadingView`, `AuthView`, `ErrorView`. Key components: `CandidateSessionPage`, `CandidateSessionView`, `AuthView`. APIs: `GET /api/auth/access-token`, `GET /candidate/session/{token}`, `GET /candidate/session/{id}/current_task`.
 2. Onboarding start screen. UI state: `StartView` with day overview and start actions. Key components: `StartView`, `StartIntro`, `StartActions`. APIs: none.
 3. Day 1 text task submission. UI states: `RunningView`, editor, submit states (`idle`, `submitting`, `submitted`), error banner. Key components: `CandidateTaskView`, `TaskTextInput`, `TaskStatus`. APIs: `POST /tasks/{taskId}/submit` with `x-candidate-session-id`, then `GET /candidate/session/{id}/current_task`.
@@ -11,10 +12,12 @@
 8. Completion. UI state: `CompleteView` when `isComplete` is true. Key components: `CompleteView`. APIs: none.
 
 Notes on current behavior:
+
 - Candidate access is enforced by middleware and Auth0 session. The invite token resolves a session but is not sufficient on its own.
 - Email verification is enforced by the backend when required. The UI surfaces a 403 message but does not include a dedicated verification UI.
 
 ## Recruiter Happy Path
+
 1. Sign in via `/auth/login`. UI states: login page, Auth0 redirect, not-authorized screen if missing permissions. Key components: `LoginPage`, `NotAuthorizedPage`. APIs: Auth0 handled by middleware and `/api/auth/access-token` for session tokens.
 2. Dashboard load at `/dashboard`. UI states: profile skeleton, simulations skeleton, error messages, empty state. Key components: `RecruiterDashboardPage`, `DashboardContent`, `RecruiterSimulationList`. APIs: `GET /api/dashboard` (BFF aggregator).
 3. Create simulation at `/dashboard/simulations/new`. UI states: validation errors and submit feedback. Key components: `SimulationCreatePage`, `SimulationCreateForm`. APIs: `POST /api/simulations` with `templateKey`, `title`, `role`, `techStack`, `seniority`, `focus`.

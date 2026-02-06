@@ -1,6 +1,7 @@
 # Configuration and Environment Variables
 
 ## Server-side
+
 - `TENON_BACKEND_BASE_URL` (default `http://localhost:8000`)
 - `TENON_AUTH0_SECRET`
 - `TENON_AUTH0_DOMAIN`
@@ -16,6 +17,7 @@
 - `TENON_USE_FETCH_DISPATCHER` (optional)
 
 ## Client-side
+
 - `NEXT_PUBLIC_TENON_API_BASE_URL` (defaults to `/api/backend`)
 - `NEXT_PUBLIC_TENON_AUTH0_CLAIM_NAMESPACE`
 - `NEXT_PUBLIC_TENON_AUTH0_CANDIDATE_CONNECTION`

@@ -1,11 +1,14 @@
 # Routes and Structure
 
 ## App Router vs Pages Router
+
 - App Router only (`src/app`).
 - There is no `src/pages` directory.
 
 ## Route Index
+
 Marketing and auth:
+
 - `/`
 - `/auth/login`
 - `/auth/logout`
@@ -14,17 +17,20 @@ Marketing and auth:
 - `/not-authorized`
 
 Candidate:
+
 - `/candidate/dashboard`
 - `/candidate/session/[token]`
 - `/candidate-sessions/[token]` (legacy redirect)
 
 Recruiter:
+
 - `/dashboard`
 - `/dashboard/simulations/new`
 - `/dashboard/simulations/[id]`
 - `/dashboard/simulations/[id]/candidates/[candidateSessionId]`
 
 API (BFF + proxy):
+
 - `/api/backend/[...path]`
 - `/api/health`
 - `/api/dashboard`
@@ -41,6 +47,7 @@ API (BFF + proxy):
 - `/api/submissions/[submissionId]`
 
 ## Feature Code Locations
+
 - Candidate features: `src/features/candidate`.
 - Recruiter features: `src/features/recruiter`.
 - Auth and marketing: `src/features/auth`, `src/features/marketing`.
