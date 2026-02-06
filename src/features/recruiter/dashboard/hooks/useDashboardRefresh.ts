@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useAsyncLoader } from '@/features/shared/hooks';
+import { useAsyncLoader } from '@/shared/hooks';
 import { dashboardPerfDebugEnabled, logPerf, nowMs } from '../utils/perf';
 import type { DashboardPayload } from './dashboardTypes';
 import { fetchDashboard, isAbortError } from './dashboardApi';

@@ -1,9 +1,9 @@
-import { statusMeta } from '@/features/shared/status/statusMeta';
+import { statusMeta } from '@/shared/status/statusMeta';
 import {
   dayProgressStatusMeta,
   reportStatusMeta,
-} from '@/features/recruiter/simulation-detail/utils/statusAdapters';
-import type { CandidateSession } from '@/types/recruiter';
+} from '@/features/recruiter/simulations/detail/utils/statusAdapters';
+import type { CandidateSession } from '@/features/recruiter/types';
 
 describe('statusAdapters', () => {
   it('maps report readiness to report_ready status', () => {

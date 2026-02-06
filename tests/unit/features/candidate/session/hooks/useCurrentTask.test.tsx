@@ -5,7 +5,7 @@ import { useCurrentTask } from '@/features/candidate/session/hooks/useCurrentTas
 const getCandidateCurrentTaskMock = jest.fn();
 const friendlyTaskErrorMock = jest.fn(() => 'friendly-task-error');
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   getCandidateCurrentTask: (...args: unknown[]) =>
     getCandidateCurrentTaskMock(...args),
 }));

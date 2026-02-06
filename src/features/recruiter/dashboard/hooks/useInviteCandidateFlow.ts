@@ -1,8 +1,11 @@
 import { useCallback, useState } from 'react';
-import { inviteCandidate } from '@/lib/api/recruiter';
-import { errorToMessage } from '../../utils/formatters';
+import { inviteCandidate } from '@/features/recruiter/api';
+import { formatRecruiterError } from '../../utils/formatters';
 import { friendlyInviteError, toSafeString } from '../utils/inviteHelpers';
-import type { InviteModalState, InviteSuccess } from '@/types/recruiter';
+import type {
+  InviteModalState,
+  InviteSuccess,
+} from '@/features/recruiter/types';
 
 export function useInviteCandidateFlow(simulation: InviteModalState | null) {
   const [state, setState] = useState<{
@@ -48,7 +51,8 @@ export function useInviteCandidateFlow(simulation: InviteModalState | null) {
         setState({
           status: 'error',
           message:
-            friendlyMessage ?? errorToMessage(e, 'Failed to invite candidate.'),
+            friendlyMessage ??
+            formatRecruiterError(e, 'Failed to invite candidate.'),
         });
         return null;
       }

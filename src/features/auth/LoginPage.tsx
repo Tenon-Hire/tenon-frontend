@@ -1,4 +1,4 @@
-import Button from '@/components/ui/Button';
+import Button from '@/shared/ui/Button';
 import LoginLink from '@/features/auth/LoginLink';
 import { BRAND_NAME } from '@/lib/brand';
 import { AuthPageLayout } from './AuthPageLayout';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNotifications } from '@/features/shared/notifications';
+import { useNotifications } from '@/shared/notifications';
 import { useRunTestsMachine } from './runTestsMachine';
 import { loadStoredRunId } from './runTestsStorage';
 import { fallbackMessage, toastCopy } from './runTestsCopy';

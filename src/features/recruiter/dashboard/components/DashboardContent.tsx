@@ -2,7 +2,7 @@ import { ProfileCard } from './ProfileCard';
 import { DashboardHeader } from './DashboardHeader';
 import { SimulationSection } from './SimulationSection';
 import type { RecruiterProfile } from '../types';
-import type { SimulationListItem } from '@/types/recruiter';
+import type { SimulationListItem } from '@/features/recruiter/types';
 
 const ProfileSkeleton = () => (
   <div className="rounded border border-gray-200 bg-white p-4 shadow-sm">

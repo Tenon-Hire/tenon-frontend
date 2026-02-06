@@ -19,7 +19,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => useRouterMock,
 }));
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   listCandidateInvites: (...args: unknown[]) =>
     listCandidateInvitesMock(...args),
 }));

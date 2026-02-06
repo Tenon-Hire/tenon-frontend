@@ -1,5 +1,5 @@
-import Button from '@/components/ui/Button';
-import type { CandidateInvite } from '@/lib/api/candidate';
+import Button from '@/shared/ui/Button';
+import type { CandidateInvite } from '@/features/candidate/api';
 import { InviteCard } from './InviteCard';
 
 type Props = {

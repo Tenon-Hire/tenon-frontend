@@ -1,9 +1,13 @@
 /**
- * Additional tests for lib/utils/errors to close coverage gaps
+ * Additional tests for lib/errors/errors to close coverage gaps
  */
-import { normalizeApiError, toStatus, toUserMessage } from '@/lib/utils/errors';
+import {
+  normalizeApiError,
+  toStatus,
+  toUserMessage,
+} from '@/lib/errors/errors';
 
-describe('lib/utils/errors extra coverage', () => {
+describe('lib/errors/errors extra coverage', () => {
   const originalDebugErrors = process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
 
   afterEach(() => {

@@ -83,9 +83,9 @@ jest.mock(
 
 const resolveInviteMock = jest.fn();
 const getCurrentTaskMock = jest.fn();
-import { HttpError } from '@/lib/api/candidate';
+import { HttpError } from '@/features/candidate/api';
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   resolveCandidateInviteToken: (...args: unknown[]) =>
     resolveInviteMock(...args),
   getCandidateCurrentTask: (...args: unknown[]) => getCurrentTaskMock(...args),

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type React from 'react';
 import { friendlyTaskError } from '../utils/errorMessages';
-import type { ViewState } from '../CandidateSessionScreen';
+import type { ViewState } from '../CandidateSessionView';
 import type { CandidateSessionState } from '../CandidateSessionProvider';
 
 type Params = {

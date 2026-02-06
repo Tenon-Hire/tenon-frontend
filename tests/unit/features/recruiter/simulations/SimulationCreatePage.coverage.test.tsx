@@ -1,7 +1,7 @@
 /**
  * Coverage completion tests for SimulationCreatePage.tsx
  */
-import '@/features/recruiter/simulations/SimulationCreatePage';
+import '@/features/recruiter/simulations/create/SimulationCreatePage';
 
 describe('SimulationCreatePage.tsx coverage completion', () => {
   it('marks coverage', () => {

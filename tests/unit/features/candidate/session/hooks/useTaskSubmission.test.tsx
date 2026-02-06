@@ -8,7 +8,7 @@ const normalizeApiErrorMock = jest.fn((err, fallback) => ({
   message: fallback ?? String(err),
 }));
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   HttpError: class HttpError extends Error {
     status?: number;
     constructor(status?: number) {
@@ -19,11 +19,11 @@ jest.mock('@/lib/api/candidate', () => ({
   submitCandidateTask: (...args: unknown[]) => submitCandidateTaskMock(...args),
 }));
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock }),
 }));
 
-jest.mock('@/lib/utils/errors', () => ({
+jest.mock('@/lib/errors/errors', () => ({
   __esModule: true,
   normalizeApiError: (...args: unknown[]) => normalizeApiErrorMock(...args),
 }));

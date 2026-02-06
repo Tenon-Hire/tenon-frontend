@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { useToastQueue } from '@/features/shared/notifications/hooks/useToastQueue';
+import { useToastQueue } from '@/shared/notifications/hooks/useToastQueue';
 
 describe('useToastQueue', () => {
   afterEach(() => {

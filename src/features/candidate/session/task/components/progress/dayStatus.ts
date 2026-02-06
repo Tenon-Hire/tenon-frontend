@@ -1,4 +1,4 @@
-import { statusMeta } from '@/features/shared/status/statusMeta';
+import { statusMeta } from '@/shared/status/statusMeta';
 import type { DayStatus } from './daySummaries';
 
 const STATUS_KEY: Record<DayStatus, string> = {

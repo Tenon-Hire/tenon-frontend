@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useInviteModalActions } from '@/features/recruiter/simulation-detail/components/InviteModalActions';
+import { useInviteModalActions } from '@/features/recruiter/simulations/detail/components/InviteModalActions';
 
 describe('useInviteModalActions', () => {
   it('opens modal after resetting state', () => {

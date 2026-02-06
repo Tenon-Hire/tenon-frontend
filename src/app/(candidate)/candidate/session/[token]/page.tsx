@@ -4,7 +4,7 @@ import { BRAND_NAME } from '@/lib/brand';
 import {
   requireCandidateToken,
   type TokenParams,
-} from '../../../candidate-sessions/token-params';
+} from '../../../(legacy)/candidate-sessions/token-params';
 
 export const metadata: Metadata = {
   title: `Candidate simulation | ${BRAND_NAME}`,

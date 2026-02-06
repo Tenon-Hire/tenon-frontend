@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { forwardJson } from '@/lib/server/bff';
-import { withRecruiterAuth } from '@/app/api/utils';
+import { withRecruiterAuth } from '@/app/api/bffRouteHelpers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

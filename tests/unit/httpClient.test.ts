@@ -3,7 +3,7 @@ import {
   isSameOriginRequest,
   recruiterBffClient,
   __resetHttpClientCache,
-} from '@/lib/api/httpClient';
+} from '@/lib/api/client';
 import { responseHelpers } from '../setup';
 
 describe('httpClient', () => {

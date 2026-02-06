@@ -1,7 +1,7 @@
 import {
   resolveCandidateInviteToken,
   type CandidateSessionBootstrapResponse,
-} from '@/lib/api/candidate';
+} from '@/features/candidate/api';
 import {
   INVITE_EXPIRED_MESSAGE,
   INVITE_UNAVAILABLE_MESSAGE,
@@ -10,7 +10,7 @@ import {
   friendlyBootstrapError,
   friendlyTaskError,
 } from '../utils/errorMessages';
-import type { ViewState } from '../CandidateSessionScreen';
+import type { ViewState } from '../CandidateSessionView';
 
 export type InviteInitParams = {
   authToken: string | null;

@@ -4,19 +4,22 @@ import { SimulationSection } from '@/features/recruiter/dashboard/components/Sim
 
 type Simulation = { id: string; title: string; status: string };
 
-jest.mock('@/features/recruiter/simulations/SimulationList', () => ({
-  SimulationList: ({
-    simulations,
-    onInvite,
-  }: {
-    simulations: Simulation[];
-    onInvite: (sim: Simulation) => void;
-  }) => (
-    <div data-testid="sim-list" onClick={() => onInvite(simulations[0])}>
-      list-{simulations.length}
-    </div>
-  ),
-}));
+jest.mock(
+  '@/features/recruiter/simulations/list/RecruiterSimulationList',
+  () => ({
+    RecruiterSimulationList: ({
+      simulations,
+      onInvite,
+    }: {
+      simulations: Simulation[];
+      onInvite: (sim: Simulation) => void;
+    }) => (
+      <div data-testid="sim-list" onClick={() => onInvite(simulations[0])}>
+        list-{simulations.length}
+      </div>
+    ),
+  }),
+);
 
 const sample: Simulation[] = [{ id: '1', title: 'Sim 1', status: 'Draft' }];
 

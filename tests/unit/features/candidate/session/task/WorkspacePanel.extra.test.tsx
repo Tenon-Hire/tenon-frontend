@@ -7,14 +7,14 @@ import { WorkspacePanel } from '@/features/candidate/session/task/components/Wor
 
 const notifyMock = jest.fn();
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock }),
 }));
 
 const getStatusMock = jest.fn();
 const initWorkspaceMock = jest.fn();
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   getCandidateWorkspaceStatus: (...args: unknown[]) => getStatusMock(...args),
   initCandidateWorkspace: (...args: unknown[]) => initWorkspaceMock(...args),
 }));

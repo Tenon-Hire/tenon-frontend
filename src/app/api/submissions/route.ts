@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { forwardWithAuth } from '@/app/api/utils';
+import { forwardBffWithAuth } from '@/app/api/bffRouteHelpers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams.toString();
   const path = `/api/submissions${search ? `?${search}` : ''}`;
 
-  return forwardWithAuth(
+  return forwardBffWithAuth(
     {
       path,
       tag: 'submissions-list',

@@ -18,12 +18,12 @@ const baseResult = {
 const getTestsButton = () =>
   screen.getByRole('button', { name: /^(run|re-run|retry|running)\s+tests/i });
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock }),
 }));
 
-jest.mock('@/lib/utils/errors', () => {
-  const actual = jest.requireActual('@/lib/utils/errors');
+jest.mock('@/lib/errors/errors', () => {
+  const actual = jest.requireActual('@/lib/errors/errors');
   return {
     ...actual,
     normalizeApiError: jest.fn((err: unknown, fallback?: string) => ({

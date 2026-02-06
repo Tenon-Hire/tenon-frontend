@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
-import { withRecruiterAuth } from '@/app/api/utils';
-import { handleDashboard } from './handler';
+import { withRecruiterAuth } from '@/app/api/bffRouteHelpers';
+import { handleDashboard } from '@/features/recruiter/api/dashboard/handler';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

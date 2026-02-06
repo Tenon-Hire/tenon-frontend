@@ -1,4 +1,4 @@
-import { deriveTestStatus } from '@/features/shared/formatters';
+import { deriveTestStatus } from '@/shared/formatters';
 import type { PollResult, RunState } from './runTestsTypes';
 import {
   ctaLabel as ctaLabelFor,

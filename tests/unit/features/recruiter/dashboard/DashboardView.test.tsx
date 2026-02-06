@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, act } from '@testing-library/react';
-import DashboardView from '@/features/recruiter/dashboard/DashboardView';
+import DashboardView from '@/features/recruiter/dashboard/RecruiterDashboardView';
 import { useInviteCandidateFlow } from '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow';
 
 const notifyMock = jest.fn();
@@ -8,9 +8,9 @@ const updateMock = jest.fn();
 const inviteFlowResetMock = jest.fn();
 const inviteFlowSubmitMock = jest.fn();
 const captureModalProps = jest.fn();
-const copyToClipboardMock = jest.fn();
+const copyInviteLinkMock = jest.fn();
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
 }));
 
@@ -26,7 +26,7 @@ jest.mock(
 );
 
 jest.mock('@/features/recruiter/utils/formatters', () => ({
-  copyToClipboard: (...args: unknown[]) => copyToClipboardMock(...args),
+  copyInviteLink: (...args: unknown[]) => copyInviteLinkMock(...args),
 }));
 
 jest.mock('next/dynamic', () => {
@@ -72,7 +72,7 @@ jest.mock(
 );
 
 jest.mock('@/features/recruiter/utils/formatters', () => ({
-  copyToClipboard: jest.fn(async () => true),
+  copyInviteLink: jest.fn(async () => true),
 }));
 
 type Simulation = { id: string; title: string; status: string };
@@ -162,7 +162,7 @@ describe('DashboardView', () => {
 
   it('handles copy failures and invite resend state', async () => {
     const props = baseProps();
-    copyToClipboardMock.mockResolvedValueOnce(false);
+    copyInviteLinkMock.mockResolvedValueOnce(false);
     inviteFlowSubmitMock.mockResolvedValueOnce({
       inviteUrl: 'http://invite',
       outcome: 'resent',

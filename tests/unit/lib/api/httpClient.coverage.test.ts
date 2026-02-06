@@ -1,9 +1,9 @@
 /**
- * Coverage completion tests for lib/api/httpClient.ts
+ * Coverage completion tests for lib/api/client/index.ts
  */
-import '@/lib/api/httpClient';
+import '@/lib/api/client';
 
-describe('httpClient.ts coverage completion', () => {
+describe('client/index.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);
   });
@@ -13,7 +13,7 @@ describe('httpClient.ts coverage completion', () => {
     const coverageKey = Object.keys(
       (globalThis as unknown as { __coverage__?: Record<string, unknown> })
         .__coverage__ ?? {},
-    ).find((k) => k.includes('httpClient.ts'));
+    ).find((k) => k.includes('client/index.ts'));
 
     if (coverageKey) {
       const cov = (

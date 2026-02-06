@@ -44,20 +44,23 @@ jest.mock('@/features/recruiter/dashboard/RecruiterDashboardPage', () => ({
 }));
 
 jest.mock(
-  '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage',
+  '@/features/recruiter/simulations/detail/RecruiterSimulationDetailPage',
   () => ({
     __esModule: true,
     default: () => simulationDetailMock(),
   }),
 );
 
-jest.mock('@/features/recruiter/simulations/SimulationCreatePage', () => ({
-  __esModule: true,
-  default: () => simulationCreateMock(),
-}));
+jest.mock(
+  '@/features/recruiter/simulations/create/SimulationCreatePage',
+  () => ({
+    __esModule: true,
+    default: () => simulationCreateMock(),
+  }),
+);
 
 jest.mock(
-  '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage',
+  '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage',
   () => ({
     __esModule: true,
     default: () => candidateSubmissionsMock(),
@@ -69,9 +72,9 @@ jest.mock('@/lib/auth0', () => ({
     getCachedSessionNormalizedMock(...args),
 }));
 
-jest.mock('@/app/(candidate)/candidate-sessions/token-params', () => {
+jest.mock('@/app/(candidate)/(legacy)/candidate-sessions/token-params', () => {
   const actual = jest.requireActual(
-    '@/app/(candidate)/candidate-sessions/token-params',
+    '@/app/(candidate)/(legacy)/candidate-sessions/token-params',
   );
   return {
     ...actual,

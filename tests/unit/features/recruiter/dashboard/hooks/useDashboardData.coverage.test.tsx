@@ -9,7 +9,7 @@ jest.mock('@/features/recruiter/dashboard/hooks/dashboardApi', () => ({
   isAbortError: jest.fn(),
 }));
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({
     notify: jest.fn(),
   }),

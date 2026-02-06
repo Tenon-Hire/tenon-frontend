@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { buildLoginHref } from '@/features/auth/authPaths';
 import type React from 'react';
 import { useInviteInit } from './useInviteInit';
-import type { CandidateSessionBootstrapResponse } from '@/lib/api/candidate';
+import type { CandidateSessionBootstrapResponse } from '@/features/candidate/api';
 import type { ViewState } from '../views/types';
 
 type Params = {

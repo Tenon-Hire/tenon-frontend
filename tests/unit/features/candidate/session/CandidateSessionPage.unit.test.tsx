@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import CandidateSessionPage from '@/features/candidate/session/CandidateSessionPage';
 import { useCandidateSession } from '@/features/candidate/session/CandidateSessionProvider';
 import { useTaskSubmission } from '@/features/candidate/session/hooks/useTaskSubmission';
-import { resolveCandidateInviteToken } from '@/lib/api/candidate';
+import { resolveCandidateInviteToken } from '@/features/candidate/api';
 
 jest.mock('@/features/candidate/session/CandidateSessionProvider', () => ({
   useCandidateSession: jest.fn(),
@@ -12,8 +12,8 @@ jest.mock('@/features/candidate/session/hooks/useTaskSubmission', () => ({
   useTaskSubmission: jest.fn(),
 }));
 
-jest.mock('@/lib/api/candidate', () => ({
-  ...jest.requireActual('@/lib/api/candidate'),
+jest.mock('@/features/candidate/api', () => ({
+  ...jest.requireActual('@/features/candidate/api'),
   resolveCandidateInviteToken: jest.fn(),
   getCandidateCurrentTask: jest.fn(),
   pollCandidateTestRun: jest.fn(),

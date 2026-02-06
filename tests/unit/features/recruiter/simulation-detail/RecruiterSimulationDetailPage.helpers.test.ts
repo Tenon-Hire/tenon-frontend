@@ -1,5 +1,5 @@
-import { __testables } from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
-import type { CandidateSession } from '@/types/recruiter';
+import { __testables } from '@/features/recruiter/simulations/detail/RecruiterSimulationDetailPage';
+import type { CandidateSession } from '@/features/recruiter/types';
 
 describe('RecruiterSimulationDetailPage helpers', () => {
   const baseCandidate: CandidateSession = {

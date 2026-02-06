@@ -1,7 +1,7 @@
-import { StatusPill } from '@/components/ui/StatusPill';
-import { formatShortDate } from '@/features/shared/formatters/date';
-import { statusMeta } from '@/features/shared/status/statusMeta';
-import type { CandidateInvite } from '@/lib/api/candidate';
+import { StatusPill } from '@/shared/ui/StatusPill';
+import { formatShortDate } from '@/shared/formatters/date';
+import { statusMeta } from '@/shared/status/statusMeta';
+import type { CandidateInvite } from '@/features/candidate/api';
 
 type Props = { invite: CandidateInvite };
 

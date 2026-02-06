@@ -1,5 +1,5 @@
 import type { RunState } from './runTestsTypes';
-import type { ToastTone } from '@/features/shared/notifications/types';
+import type { ToastTone } from '@/shared/notifications/types';
 
 export const statusLabel: Record<RunState, string> = {
   idle: 'Idle',

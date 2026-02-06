@@ -1,12 +1,12 @@
 /**
- * Coverage completion tests for DashboardView.tsx
+ * Coverage completion tests for RecruiterDashboardView.tsx
  */
 beforeAll(async () => {
   jest.doMock('next/dynamic', () => (fn: () => unknown) => fn as unknown);
-  await import('@/features/recruiter/dashboard/DashboardView');
+  await import('@/features/recruiter/dashboard/RecruiterDashboardView');
 });
 
-describe('DashboardView.tsx coverage completion', () => {
+describe('RecruiterDashboardView.tsx coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);
   });
@@ -16,7 +16,7 @@ describe('DashboardView.tsx coverage completion', () => {
     const coverageKey = Object.keys(
       (globalThis as unknown as { __coverage__?: Record<string, unknown> })
         .__coverage__ ?? {},
-    ).find((k) => k.includes('DashboardView.tsx'));
+    ).find((k) => k.includes('RecruiterDashboardView.tsx'));
 
     if (coverageKey) {
       const cov = (

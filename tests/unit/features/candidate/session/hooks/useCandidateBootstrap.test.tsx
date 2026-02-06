@@ -6,7 +6,7 @@ import { useCandidateBootstrap } from '@/features/candidate/session/hooks/useCan
 
 const resolveCandidateInviteTokenMock = jest.fn();
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   resolveCandidateInviteToken: (...args: unknown[]) =>
     resolveCandidateInviteTokenMock(...args),
 }));

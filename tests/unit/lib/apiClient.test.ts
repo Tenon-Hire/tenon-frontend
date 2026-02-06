@@ -1,4 +1,4 @@
-import { apiClient, login, safeRequest } from '@/lib/api/httpClient';
+import { apiClient, login, safeRequest } from '@/lib/api/client';
 import { getAuthToken } from '@/lib/auth';
 import { responseHelpers } from '../../setup';
 

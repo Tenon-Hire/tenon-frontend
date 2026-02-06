@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import Input from '@/components/ui/Input';
+import Input from '@/shared/ui/Input';
 
 describe('Input', () => {
   it('applies base and custom classes', () => {

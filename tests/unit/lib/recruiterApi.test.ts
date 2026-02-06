@@ -4,13 +4,13 @@ import {
   createSimulation,
   normalizeCandidateSession,
   listSimulationCandidates,
-} from '@/lib/api/recruiter';
+} from '@/features/recruiter/api';
 
 const mockRecruiterRequest = jest.fn();
 const mockSafeRequest = jest.fn();
 const mockRecruiterBffGet = jest.fn();
 
-jest.mock('@/lib/api/httpClient', () => ({
+jest.mock('@/lib/api/client', () => ({
   bffClient: { get: jest.fn(), post: jest.fn() },
   recruiterBffClient: {
     get: (...args: unknown[]) => mockRecruiterBffGet(...args),
@@ -18,8 +18,8 @@ jest.mock('@/lib/api/httpClient', () => ({
   safeRequest: (...args: unknown[]) => mockSafeRequest(...args),
 }));
 
-jest.mock('@/lib/api/recruiter/client', () => ({
-  recruiterRequest: (...args: unknown[]) => mockRecruiterRequest(...args),
+jest.mock('@/features/recruiter/api/requestRecruiterBff', () => ({
+  requestRecruiterBff: (...args: unknown[]) => mockRecruiterRequest(...args),
   recruiterBffClient: {
     get: (...args: unknown[]) => mockRecruiterBffGet(...args),
   },
@@ -41,7 +41,7 @@ describe('recruiterApi', () => {
   });
 
   describe('listSimulations', () => {
-    it('calls GET /simulations via recruiterRequest', async () => {
+    it('calls GET /simulations via requestRecruiterBff', async () => {
       mockRecruiterRequest.mockResolvedValueOnce({ data: [], requestId: null });
 
       await listSimulations();
@@ -87,7 +87,7 @@ describe('recruiterApi', () => {
     it('calls safeRequest with BFF base and skipAuth', async () => {
       mockSafeRequest.mockResolvedValueOnce({ data: [], error: null });
 
-      const { listSimulationsSafe } = await import('@/lib/api/recruiter');
+      const { listSimulationsSafe } = await import('@/features/recruiter/api');
       await listSimulationsSafe();
 
       expect(mockSafeRequest).toHaveBeenCalledWith('/simulations', undefined, {
@@ -530,7 +530,7 @@ describe('recruiterApi', () => {
 
   describe('resendInvite', () => {
     it('returns null when identifiers are missing', async () => {
-      const { resendInvite } = await import('@/lib/api/recruiter');
+      const { resendInvite } = await import('@/features/recruiter/api');
       await expect(resendInvite('', NaN)).resolves.toBeNull();
     });
 
@@ -539,7 +539,7 @@ describe('recruiterApi', () => {
         data: { ok: true },
         requestId: null,
       });
-      const { resendInvite } = await import('@/lib/api/recruiter');
+      const { resendInvite } = await import('@/features/recruiter/api');
       await resendInvite('sim_9', 42);
 
       expect(mockRecruiterRequest).toHaveBeenCalledWith(

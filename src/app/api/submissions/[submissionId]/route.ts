@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { errorResponse, forwardWithAuth } from '@/app/api/utils';
+import { errorResponse, forwardBffWithAuth } from '@/app/api/bffRouteHelpers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,7 +14,7 @@ export async function GET(
   if (!submissionId)
     return errorResponse('Missing submission id', 'Bad request');
 
-  return forwardWithAuth(
+  return forwardBffWithAuth(
     {
       path: `/api/submissions/${encodeURIComponent(submissionId)}`,
       tag: 'submission-detail',

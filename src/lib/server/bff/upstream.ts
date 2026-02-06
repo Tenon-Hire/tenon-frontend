@@ -1,8 +1,8 @@
-import { stripTrailingApi } from './utils';
+import { stripTrailingApiSegment } from './stripTrailingApi';
 
 export function getBackendBaseUrl(): string {
   const raw = process.env.TENON_BACKEND_BASE_URL ?? 'http://localhost:8000';
-  return stripTrailingApi(raw);
+  return stripTrailingApiSegment(raw);
 }
 
 export async function parseUpstreamBody(res: Response): Promise<unknown> {

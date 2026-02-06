@@ -1,9 +1,9 @@
-import { HttpError } from '@/lib/api/candidate';
+import { HttpError } from '@/features/candidate/api';
 import {
   INVITE_EXPIRED_MESSAGE,
   INVITE_UNAVAILABLE_MESSAGE,
 } from '@/lib/copy/invite';
-import { toUserMessage } from '@/lib/utils/errors';
+import { toUserMessage } from '@/lib/errors/errors';
 
 function statusFromUnknown(err: unknown): number | undefined {
   if (typeof HttpError === 'function' && err instanceof HttpError)

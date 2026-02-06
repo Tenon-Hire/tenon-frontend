@@ -6,7 +6,7 @@ import { TaskHeader } from './components/TaskHeader';
 import { TaskDescription } from './components/TaskDescription';
 import { TaskTextInput } from './components/TaskTextInput';
 import { TaskStatus } from './components/TaskStatus';
-import { TaskErrorBanner } from './components/TaskErrorBanner';
+import { TaskPanelErrorBanner } from './components/TaskPanelErrorBanner';
 import { TaskActions } from './components/TaskActions';
 import { useTaskSubmitController } from './hooks/useTaskSubmitController';
 
@@ -70,7 +70,7 @@ function CandidateTaskViewInner({
       </div>
 
       <TaskStatus displayStatus={displayStatus} progress={lastProgress} />
-      <TaskErrorBanner message={errorToShow} />
+      <TaskPanelErrorBanner message={errorToShow} />
 
       <TaskActions
         isTextTask={textTask}

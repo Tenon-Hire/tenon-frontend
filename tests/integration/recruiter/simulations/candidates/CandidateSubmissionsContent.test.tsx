@@ -3,14 +3,14 @@ import { setMockParams } from '../../../setup/paramsMock';
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
+import CandidateSubmissionsPage from '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage';
 import {
   getRequestUrl,
   jsonResponse,
   textResponse,
 } from '../../../../setup/responseHelpers';
-import { __resetCandidateCache } from '@/lib/api/recruiter';
-import { __resetHttpClientCache } from '@/lib/api/httpClient';
+import { __resetCandidateCache } from '@/features/recruiter/api';
+import { __resetHttpClientCache } from '@/lib/api/client';
 
 jest.mock('next/link', () => ({
   __esModule: true,

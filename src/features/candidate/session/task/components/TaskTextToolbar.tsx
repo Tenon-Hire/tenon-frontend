@@ -1,4 +1,4 @@
-import { cn } from '@/components/ui/classnames';
+import { cn } from '@/shared/ui/classnames';
 
 type Props = {
   mode: 'write' | 'preview';

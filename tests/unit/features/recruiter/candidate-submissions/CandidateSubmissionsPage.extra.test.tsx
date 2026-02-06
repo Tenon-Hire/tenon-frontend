@@ -11,7 +11,7 @@ import {
 } from '@testing-library/react';
 import CandidateSubmissionsPage, {
   ArtifactCard,
-} from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
+} from '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage';
 
 const listSimulationCandidatesMock = jest.fn();
 const recruiterGetMock = jest.fn();
@@ -24,12 +24,12 @@ jest.mock('next/navigation', () => ({
   useParams: () => useParamsMock(),
 }));
 
-jest.mock('@/lib/api/recruiter', () => ({
+jest.mock('@/features/recruiter/api', () => ({
   listSimulationCandidates: (...args: unknown[]) =>
     listSimulationCandidatesMock(...args),
 }));
 
-jest.mock('@/lib/api/httpClient', () => ({
+jest.mock('@/lib/api/client', () => ({
   recruiterBffClient: {
     get: (...args: unknown[]) => recruiterGetMock(...args),
   },

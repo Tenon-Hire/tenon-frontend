@@ -122,7 +122,7 @@ const parseUpstreamBodyMock = jest.requireMock('@/lib/server/bff')
 const getBackendBaseUrlMock = jest.requireMock('@/lib/server/bff')
   .getBackendBaseUrl as jest.Mock;
 
-const { BFF_HEADER } = jest.requireActual('@/app/api/utils');
+const { BFF_HEADER } = jest.requireActual('@/app/api/bffRouteHelpers');
 
 function makeUpstreamResponse(body: unknown, status = 200) {
   return {

@@ -124,7 +124,7 @@ describe('auth route entrypoints', () => {
 
   it('not-authorized page renders links per mode and returnTo', async () => {
     const { default: NotAuthorizedPage } =
-      await import('@/app/not-authorized/page');
+      await import('@/app/(auth)/not-authorized/page');
     const element = await NotAuthorizedPage({
       searchParams: Promise.resolve({ mode: 'recruiter', returnTo: '/dash' }),
     });
@@ -136,7 +136,7 @@ describe('auth route entrypoints', () => {
 
   it('not-authorized page uses candidate returnTo and default recruiter path', async () => {
     const { default: NotAuthorizedPage } =
-      await import('@/app/not-authorized/page');
+      await import('@/app/(auth)/not-authorized/page');
     const element = await NotAuthorizedPage({
       searchParams: Promise.resolve({ mode: 'candidate', returnTo: '/cand' }),
     });

@@ -1,4 +1,7 @@
-import type { RecruiterProfile, SimulationListItem } from '@/types/recruiter';
+import type {
+  RecruiterProfile,
+  SimulationListItem,
+} from '@/features/recruiter/types';
 
 export type DashboardOptions = {
   initialProfile?: RecruiterProfile | null;

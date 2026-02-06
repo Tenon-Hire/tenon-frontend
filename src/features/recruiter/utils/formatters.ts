@@ -1,6 +1,6 @@
-import { toUserMessage } from '@/lib/utils/errors';
+import { toUserMessage } from '@/lib/errors/errors';
 
-export function formatCreatedDate(iso: string): string {
+export function formatSimulationCreatedDate(iso: string): string {
   if (typeof iso !== 'string') return '';
   const trimmed = iso.trim();
   if (!trimmed) return '';
@@ -8,12 +8,12 @@ export function formatCreatedDate(iso: string): string {
   return datePart;
 }
 
-export function errorToMessage(e: unknown, fallback: string): string {
+export function formatRecruiterError(e: unknown, fallback: string): string {
   if (typeof e === 'string' && e.trim()) return e.trim();
   return toUserMessage(e, fallback, { includeDetail: true });
 }
 
-export async function copyToClipboard(text: string): Promise<boolean> {
+export async function copyInviteLink(text: string): Promise<boolean> {
   const trimmed = text.trim();
   if (!trimmed) return false;
 

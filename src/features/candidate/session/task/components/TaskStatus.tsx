@@ -1,5 +1,5 @@
-import { StatusPill } from '@/components/ui/StatusPill';
-import { statusMeta } from '@/features/shared/status/statusMeta';
+import { StatusPill } from '@/shared/ui/StatusPill';
+import { statusMeta } from '@/shared/status/statusMeta';
 
 type TaskStatusProps = {
   displayStatus: 'idle' | 'submitting' | 'submitted';

@@ -12,7 +12,7 @@ import {
 } from '@testing-library/react';
 import RecruiterSimulationDetailPage, {
   __testables,
-} from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
+} from '@/features/recruiter/simulations/detail/RecruiterSimulationDetailPage';
 import * as formatters from '@/features/recruiter/utils/formatters';
 
 const {
@@ -49,14 +49,14 @@ jest.mock('next/navigation', () => ({
   useParams: () => useParamsMock(),
 }));
 
-jest.mock('@/lib/api/recruiter', () => ({
+jest.mock('@/features/recruiter/api', () => ({
   listSimulationCandidates: (...args: unknown[]) =>
     listSimulationCandidatesMock(...args),
   listSimulations: (...args: unknown[]) => listSimulationsMock(...args),
   normalizeCandidateSession: (data: unknown) => data,
 }));
 
-jest.mock('@/lib/api/httpClient', () => ({
+jest.mock('@/lib/api/client', () => ({
   recruiterBffClient: {
     get: (...args: unknown[]) => recruiterGetMock(...args),
   },
@@ -64,10 +64,10 @@ jest.mock('@/lib/api/httpClient', () => ({
 
 jest.mock('@/features/recruiter/utils/formatters', () => {
   const actual = jest.requireActual('@/features/recruiter/utils/formatters');
-  return { ...actual, copyToClipboard: jest.fn() };
+  return { ...actual, copyInviteLink: jest.fn() };
 });
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
 }));
 
@@ -789,7 +789,7 @@ describe('RecruiterSimulationDetailPage component', () => {
   });
 
   it('handles failed copy and manual copy close flow', async () => {
-    const copySpy = formatters.copyToClipboard as jest.Mock;
+    const copySpy = formatters.copyInviteLink as jest.Mock;
     copySpy.mockResolvedValue(false);
     listSimulationCandidatesMock.mockResolvedValue([
       {

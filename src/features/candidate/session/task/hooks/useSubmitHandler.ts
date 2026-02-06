@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useBackoffPolling } from '@/features/shared/polling';
+import { useBackoffPolling } from '@/shared/polling';
 import { isSubmitResponse } from '../utils/taskGuards';
 
 type SubmitStatus = 'idle' | 'submitting' | 'submitted';

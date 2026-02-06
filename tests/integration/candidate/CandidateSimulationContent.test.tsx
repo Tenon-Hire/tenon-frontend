@@ -6,11 +6,11 @@ import { CandidateSessionProvider } from '@/features/candidate/session/Candidate
 import {
   getCandidateCurrentTask,
   resolveCandidateInviteToken,
-} from '@/lib/api/candidate';
+} from '@/features/candidate/api';
 import { jsonResponse } from '../../setup/responseHelpers';
 
-jest.mock('@/lib/api/candidate', () => {
-  const actual = jest.requireActual('@/lib/api/candidate');
+jest.mock('@/features/candidate/api', () => {
+  const actual = jest.requireActual('@/features/candidate/api');
   return {
     __esModule: true,
     ...actual,

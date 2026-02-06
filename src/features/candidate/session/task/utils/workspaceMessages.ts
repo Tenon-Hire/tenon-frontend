@@ -1,4 +1,4 @@
-import type { CandidateWorkspaceStatus } from '@/lib/api/candidate';
+import type { CandidateWorkspaceStatus } from '@/features/candidate/api';
 
 export function buildWorkspaceMessage(
   workspace: CandidateWorkspaceStatus | null,

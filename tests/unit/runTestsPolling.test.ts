@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { useBackoffPolling } from '@/features/shared/polling/useBackoffPolling';
+import { useBackoffPolling } from '@/shared/polling/useBackoffPolling';
 
 jest.useFakeTimers();
 

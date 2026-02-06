@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import AppShell from '@/features/shared/layout/AppShell';
-import { AppHeader } from '@/features/shared/layout/AppHeader';
-import { AppNav } from '@/features/shared/layout/AppNav';
+import AppShell from '@/shared/layout/AppShell';
+import { AppHeader } from '@/shared/layout/AppHeader';
+import { AppNav } from '@/shared/layout/AppNav';
 import { BRAND_NAME } from '@/lib/brand';
 
 jest.mock('next/link', () => {

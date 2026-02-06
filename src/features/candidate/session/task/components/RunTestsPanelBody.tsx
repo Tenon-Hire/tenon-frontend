@@ -1,6 +1,6 @@
 'use client';
 
-import { StatusPill } from '@/components/ui/StatusPill';
+import { StatusPill } from '@/shared/ui/StatusPill';
 import { RunTestsStats } from './RunTestsStats';
 import { RunTestsOutput } from './RunTestsOutput';
 import type { PollResult } from '../hooks/runTestsTypes';

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ArtifactCard } from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
+import { ArtifactCard } from '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage';
 
 const baseArtifact = {
   submissionId: 1,

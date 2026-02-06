@@ -1,6 +1,6 @@
-import Button from '@/components/ui/Button';
-import { Skeleton } from '@/components/ui/Skeleton';
-import type { CandidateWorkspaceStatus } from '@/lib/api/candidate';
+import Button from '@/shared/ui/Button';
+import { Skeleton } from '@/shared/ui/Skeleton';
+import type { CandidateWorkspaceStatus } from '@/features/candidate/api';
 
 type Props = {
   workspace: CandidateWorkspaceStatus | null;

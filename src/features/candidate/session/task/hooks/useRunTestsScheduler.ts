@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { useBackoffPolling } from '@/features/shared/polling';
+import { useBackoffPolling } from '@/shared/polling';
 import { useRunTestsCleanup, useRunTestsVisibility } from './runTestsLifecycle';
 import { limitMessages, statusMap } from './runTestsMessages';
 import type { PollResult, RunState, RunTestsArgs } from './runTestsTypes';

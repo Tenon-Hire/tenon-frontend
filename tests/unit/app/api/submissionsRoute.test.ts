@@ -39,16 +39,16 @@ class MockResponse {
   }
 }
 
-// Provide global Response for forwardWithAuth mock
+// Provide global Response for forwardBffWithAuth mock
 // @ts-expect-error allow override for test
 global.Response = MockResponse as unknown as typeof Response;
 
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/submissions/route';
 
-jest.mock('@/app/api/utils', () => ({
+jest.mock('@/app/api/bffRouteHelpers', () => ({
   __esModule: true,
-  forwardWithAuth: jest.fn(
+  forwardBffWithAuth: jest.fn(
     async (opts) =>
       new Response(JSON.stringify({ path: opts.path, tag: opts.tag }), {
         status: 200,

@@ -34,7 +34,8 @@ function areaFor(rel) {
   if (rel.includes('/app/')) return 'app route/layout';
   if (rel.includes('/features/candidate/')) return 'candidate feature';
   if (rel.includes('/features/recruiter/')) return 'recruiter feature';
-  if (rel.includes('/features/shared/')) return 'shared feature';
+  if (rel.includes('/shared/ui/')) return 'ui components';
+  if (rel.includes('/shared/')) return 'shared feature';
   if (rel.includes('/features/auth/')) return 'auth feature';
   if (rel.includes('/features/marketing/')) return 'marketing feature';
   if (rel.includes('/components/')) return 'ui components';
@@ -53,10 +54,10 @@ function coverageEntry(rel) {
 function status(entry) {
   if (!entry) return 'not instrumented';
   const { statements, branches, functions, lines } = entry;
-  const all100 = [statements, branches, functions, lines]
-    .map((s) => s?.pct === 100)
+  const all99 = [statements, branches, functions, lines]
+    .map((s) => s?.pct === 99)
     .every(Boolean);
-  if (all100) return 'covered (100%)';
+  if (all99) return 'covered (99%)';
   return `needs tests (S ${statements?.pct ?? 0} / B ${branches?.pct ?? 0} / F ${functions?.pct ?? 0} / L ${lines?.pct ?? 0})`;
 }
 

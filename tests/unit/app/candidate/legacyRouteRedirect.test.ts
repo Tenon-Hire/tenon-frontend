@@ -13,7 +13,7 @@ describe('legacy candidate-sessions route', () => {
   it('redirects to the canonical /candidate/session path', async () => {
     const redirectMock = redirect as unknown as jest.Mock;
     const pageModule =
-      await import('@/app/(candidate)/candidate-sessions/[token]/page');
+      await import('@/app/(candidate)/(legacy)/candidate-sessions/[token]/page');
     const page = pageModule.default;
 
     await expect(

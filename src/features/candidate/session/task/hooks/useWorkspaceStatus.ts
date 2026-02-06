@@ -1,9 +1,9 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNotifications } from '@/features/shared/notifications';
-import { useAsyncLoader } from '@/features/shared/hooks';
-import type { CandidateWorkspaceStatus } from '@/lib/api/candidate';
-import { loadWorkspaceStatus } from '../utils/loadWorkspaceStatus';
+import { useNotifications } from '@/shared/notifications';
+import { useAsyncLoader } from '@/shared/hooks';
+import type { CandidateWorkspaceStatus } from '@/features/candidate/api';
+import { createWorkspaceStatusLoader } from '../utils/createWorkspaceStatusLoader';
 
 type Params = {
   taskId: number;
@@ -28,25 +28,14 @@ export function useWorkspaceStatus({
   const modeRef = useRef<'init' | 'refresh'>('init');
 
   const loader = useCallback(() => {
-    if (!token) {
-      return Promise.resolve({
-        workspace: null,
-        notice: null,
-        error: 'Session expired. Please sign in again.',
-        notify: {
-          tone: 'warning' as const,
-          title: 'Session expired',
-          description: 'Session expired. Please sign in again.',
-        },
-      });
-    }
-    return loadWorkspaceStatus({
-      mode: modeRef.current,
+    const run = createWorkspaceStatusLoader({
       taskId,
       candidateSessionId,
       token,
-      initAttempted: initAttemptedRef.current,
+      modeRef,
+      initAttemptedRef,
     });
+    return run();
   }, [candidateSessionId, taskId, token]);
 
   const { load, abort } = useAsyncLoader(loader, {

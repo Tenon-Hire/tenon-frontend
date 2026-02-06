@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import Button from '@/components/ui/Button';
+import Button from '@/shared/ui/Button';
 
 describe('Button', () => {
   it('renders left icon by default and respects variant/size classes', () => {

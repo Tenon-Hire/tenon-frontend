@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { MarkdownPreview } from '@/components/ui/Markdown';
-import { LazyMarkdownPreview } from '@/components/ui/LazyMarkdownPreview';
-import { StatusPill } from '@/components/ui/StatusPill';
+import { MarkdownPreview } from '@/shared/ui/Markdown';
+import { LazyMarkdownPreview } from '@/shared/ui/LazyMarkdownPreview';
+import { StatusPill } from '@/shared/ui/StatusPill';
 
 jest.mock('next/dynamic', () => {
   return (

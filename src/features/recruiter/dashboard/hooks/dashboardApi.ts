@@ -1,5 +1,5 @@
-import { mapApiError } from '@/lib/api/errorMapping';
-import { httpResult } from '@/lib/api/httpClient';
+import { mapApiError } from '@/lib/api/errors/errorMapping';
+import { httpResult } from '@/lib/api/client';
 import { dashboardPerfDebugEnabled, logPerf, nowMs } from '../utils/perf';
 import type { DashboardPayload } from './dashboardTypes';
 
