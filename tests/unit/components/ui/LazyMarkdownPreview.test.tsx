@@ -23,7 +23,7 @@ jest.mock('next/dynamic', () => {
 describe('LazyMarkdownPreview', () => {
   it('renders loading placeholder and can preload underlying module', async () => {
     const { LazyMarkdownPreview } =
-      await import('@/components/ui/LazyMarkdownPreview');
+      await import('@/shared/ui/LazyMarkdownPreview');
     const Loading = (
       LazyMarkdownPreview as {
         loading?: () => JSX.Element;
@@ -48,7 +48,7 @@ describe('LazyMarkdownPreview', () => {
 
   it('renders resolved markdown component after dynamic import', async () => {
     const { LazyMarkdownPreview } =
-      await import('@/components/ui/LazyMarkdownPreview');
+      await import('@/shared/ui/LazyMarkdownPreview');
     render(<LazyMarkdownPreview content="Hello" />);
     expect(screen.getByTestId('mock-md')).toBeInTheDocument();
   });

@@ -36,9 +36,9 @@ jest.mock('next/server', () => {
 const mockErrorResponse = jest.fn();
 const mockForwardWithAuth = jest.fn();
 
-jest.mock('@/app/api/utils', () => ({
+jest.mock('@/app/api/bffRouteHelpers', () => ({
   errorResponse: (...args: unknown[]) => mockErrorResponse(...args),
-  forwardWithAuth: (...args: unknown[]) => mockForwardWithAuth(...args),
+  forwardBffWithAuth: (...args: unknown[]) => mockForwardWithAuth(...args),
 }));
 
 describe('/api/submissions/[submissionId] route', () => {

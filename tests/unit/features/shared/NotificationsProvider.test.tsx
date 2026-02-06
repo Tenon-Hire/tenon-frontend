@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import {
   NotificationsProvider,
   useNotifications,
-} from '@/features/shared/notifications';
+} from '@/shared/notifications';
 
 function TriggerButton({
   id,

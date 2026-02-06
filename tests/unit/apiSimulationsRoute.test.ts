@@ -109,7 +109,7 @@ const requireBffAuthMock = jest.requireMock('@/lib/server/bffAuth')
 const forwardJsonMock = jest.requireMock('@/lib/server/bff')
   .forwardJson as jest.Mock;
 
-const { BFF_HEADER } = jest.requireActual('@/app/api/utils');
+const { BFF_HEADER } = jest.requireActual('@/app/api/bffRouteHelpers');
 
 describe('/api/simulations route', () => {
   beforeEach(() => {

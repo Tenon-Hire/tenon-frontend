@@ -1,5 +1,5 @@
 /**
- * Coverage completion tests for lib/utils/errors.ts
+ * Coverage completion tests for lib/errors/errors.ts
  */
 describe('errors.ts coverage completion', () => {
   it('marks coverage', () => {
@@ -11,7 +11,7 @@ describe('errors.ts coverage completion', () => {
     const coverageKey = Object.keys(
       (globalThis as unknown as { __coverage__?: Record<string, unknown> })
         .__coverage__ ?? {},
-    ).find((k) => k.includes('lib/utils/errors.ts'));
+    ).find((k) => k.includes('lib/errors/errors.ts'));
 
     if (coverageKey) {
       const cov = (

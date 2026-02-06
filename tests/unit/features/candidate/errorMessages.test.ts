@@ -4,7 +4,7 @@ import {
   friendlyTaskError,
   friendlyClaimError,
 } from '@/features/candidate/session/utils/errorMessages';
-import { HttpError } from '@/lib/api/candidate';
+import { HttpError } from '@/features/candidate/api';
 
 describe('candidate error messages', () => {
   it('maps bootstrap statuses to friendly messages', () => {

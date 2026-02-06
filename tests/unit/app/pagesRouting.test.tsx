@@ -11,7 +11,7 @@ jest.mock('@/features/candidate/dashboard/CandidateDashboardPage', () => ({
   ),
 }));
 
-jest.mock('@/features/recruiter/dashboard/DashboardView', () => ({
+jest.mock('@/features/recruiter/dashboard/RecruiterDashboardView', () => ({
   __esModule: true,
   default: () => <div data-testid="recruiter-dashboard" />,
 }));
@@ -21,10 +21,13 @@ jest.mock('@/features/recruiter/dashboard/RecruiterDashboardPage', () => ({
   default: () => <div data-testid="recruiter-dashboard" />,
 }));
 
-jest.mock('@/features/recruiter/simulations/SimulationCreatePage', () => ({
-  __esModule: true,
-  default: () => <div data-testid="simulation-create" />,
-}));
+jest.mock(
+  '@/features/recruiter/simulations/create/SimulationCreatePage',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="simulation-create" />,
+  }),
+);
 
 jest.mock('@/features/auth/LoginPage', () => ({
   __esModule: true,
@@ -49,7 +52,7 @@ jest.mock('@/features/candidate/session/CandidateSessionPage', () => ({
 }));
 
 jest.mock(
-  '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage',
+  '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage',
   () => ({
     __esModule: true,
     default: () => <div data-testid="candidate-submissions-page" />,
@@ -62,7 +65,7 @@ jest.mock('@/lib/auth0', () => ({
   })),
 }));
 
-jest.mock('@/app/(candidate)/candidate-sessions/token-params', () => ({
+jest.mock('@/app/(candidate)/(legacy)/candidate-sessions/token-params', () => ({
   requireCandidateToken: jest.fn(
     async (params: { token: string }) => params.token,
   ),

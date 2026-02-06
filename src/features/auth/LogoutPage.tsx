@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Button from '@/components/ui/Button';
+import Button from '@/shared/ui/Button';
 import LogoutLink from '@/features/auth/LogoutLink';
 import { BRAND_NAME } from '@/lib/brand';
 import { AuthPageLayout } from './AuthPageLayout';

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import PageHeader from '@/components/ui/PageHeader';
+import PageHeader from '@/shared/ui/PageHeader';
 
 type AuthPageLayoutProps = {
   title: string;

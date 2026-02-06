@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
-import { useInviteCooldown } from '@/features/recruiter/simulation-detail/hooks/useInviteCooldown';
-import type { RowState } from '@/features/recruiter/simulation-detail/hooks/types';
+import { useInviteCooldown } from '@/features/recruiter/simulations/detail/hooks/useInviteCooldown';
+import type { RowState } from '@/features/recruiter/simulations/detail/hooks/types';
 
 jest.useFakeTimers();
 

@@ -1,6 +1,6 @@
 'use client';
 
-import Button from '@/components/ui/Button';
+import Button from '@/shared/ui/Button';
 
 export default function GlobalError({
   error,

@@ -7,7 +7,7 @@ export {
   readRequestId,
   resolveRequestId,
 } from './bff/requestId';
-export { stripTrailingApi } from './bff/utils';
+export { stripTrailingApiSegment } from './bff/stripTrailingApi';
 export { getBackendBaseUrl, parseUpstreamBody } from './bff/upstream';
 export { robustFetch } from './bff/robustFetch';
 export { upstreamRequest } from './bff/upstreamRequest';

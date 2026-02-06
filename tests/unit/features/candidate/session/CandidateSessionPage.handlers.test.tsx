@@ -103,7 +103,7 @@ jest.mock(
 const resolveInviteMock = jest.fn();
 const getCurrentTaskMock = jest.fn();
 
-jest.mock('@/lib/api/candidate', () => {
+jest.mock('@/features/candidate/api', () => {
   class HttpError extends Error {
     status: number;
     constructor(status: number, message?: string) {

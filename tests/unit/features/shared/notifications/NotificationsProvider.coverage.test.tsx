@@ -6,7 +6,7 @@ import { render } from '@testing-library/react';
 import {
   NotificationsProvider,
   useNotifications,
-} from '@/features/shared/notifications';
+} from '@/shared/notifications';
 
 const TestConsumer = () => {
   const { notify } = useNotifications();

@@ -1,1 +1,1 @@
-export * from './httpClient/index';
+export * from './client';

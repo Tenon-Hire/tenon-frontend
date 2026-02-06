@@ -1,4 +1,4 @@
-import { apiClient, __resetHttpClientCache } from '@/lib/api/httpClient';
+import { apiClient, __resetHttpClientCache } from '@/lib/api/client';
 import { responseHelpers } from '../setup';
 
 describe('httpClient edge cases', () => {
@@ -49,7 +49,7 @@ describe('httpClient edge cases', () => {
     jest.resetModules();
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '1';
     const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
-    const { apiClient: debugApiClient } = await import('@/lib/api/httpClient');
+    const { apiClient: debugApiClient } = await import('@/lib/api/client');
     (global.fetch as jest.Mock).mockResolvedValueOnce(
       responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
     );
@@ -240,7 +240,7 @@ describe('httpClient edge cases', () => {
     jest.resetModules();
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = 'true';
     const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
-    const { apiClient: debugApiClient } = await import('@/lib/api/httpClient');
+    const { apiClient: debugApiClient } = await import('@/lib/api/client');
     (global.fetch as jest.Mock).mockResolvedValueOnce(
       responseHelpers.jsonResponse({ ok: true }) as unknown as Response,
     );

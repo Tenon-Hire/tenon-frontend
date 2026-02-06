@@ -4,7 +4,7 @@
 import { renderHook } from '@testing-library/react';
 import { useCandidateBootstrap } from '@/features/candidate/session/hooks/useCandidateBootstrap';
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   HttpError: class HttpError extends Error {
     status?: number;
     constructor(status?: number) {
@@ -16,7 +16,7 @@ jest.mock('@/lib/api/candidate', () => ({
   getCandidateCurrentTask: jest.fn().mockResolvedValue(null),
 }));
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({
     notify: jest.fn(),
   }),

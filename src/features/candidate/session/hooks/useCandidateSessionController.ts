@@ -5,7 +5,7 @@ import { usePerfMarks } from './usePerfMarks';
 import { useCandidateDerivedInfo } from './useCandidateDerivedInfo';
 import { useTokenSync } from './useTokenSync';
 import { useCandidateSessionActions } from './useCandidateSessionActions';
-import type { ViewState } from '../CandidateSessionScreen';
+import type { ViewState } from '../CandidateSessionView';
 
 export function useCandidateSessionController(token: string) {
   const session = useCandidateSession();

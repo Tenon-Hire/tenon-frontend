@@ -1,4 +1,4 @@
-import { SimulationList } from '@/features/recruiter/simulations/SimulationList';
+import { RecruiterSimulationList } from '@/features/recruiter/simulations/list/RecruiterSimulationList';
 import { SimulationError } from './SimulationError';
 import { SimulationSkeleton } from './SimulationSkeleton';
 import type { SimulationListItem } from '../../types';
@@ -47,10 +47,16 @@ export function SimulationSection({
           {loading ? (
             <p className="text-xs text-gray-500">Refreshing…</p>
           ) : null}
-          <SimulationList simulations={simulations} onInvite={onInvite} />
+          <RecruiterSimulationList
+            simulations={simulations}
+            onInvite={onInvite}
+          />
         </div>
       ) : (
-        <SimulationList simulations={simulations} onInvite={onInvite} />
+        <RecruiterSimulationList
+          simulations={simulations}
+          onInvite={onInvite}
+        />
       )}
     </section>
   );

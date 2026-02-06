@@ -4,7 +4,7 @@
 import { renderHook } from '@testing-library/react';
 import { useTaskSubmission } from '@/features/candidate/session/hooks/useTaskSubmission';
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   HttpError: class HttpError extends Error {
     status?: number;
     constructor(status?: number) {
@@ -15,7 +15,7 @@ jest.mock('@/lib/api/candidate', () => ({
   submitCandidateTask: jest.fn(),
 }));
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({
     notify: jest.fn(),
   }),

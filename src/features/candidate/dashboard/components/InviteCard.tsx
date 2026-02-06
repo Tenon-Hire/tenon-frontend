@@ -1,4 +1,4 @@
-import type { CandidateInvite } from '@/lib/api/candidate';
+import type { CandidateInvite } from '@/features/candidate/api';
 import { InviteActions } from './InviteActions';
 import { InviteBadges } from './InviteBadges';
 import { InviteMeta } from './InviteMeta';

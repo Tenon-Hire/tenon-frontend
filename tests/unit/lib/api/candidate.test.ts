@@ -2,14 +2,14 @@ const mockPost = jest.fn();
 const mockGet = jest.fn();
 const mockRequestWithMeta = jest.fn();
 
-jest.mock('@/lib/api/httpClient', () => ({
+jest.mock('@/lib/api/client', () => ({
   apiClient: {
     post: mockPost,
     get: mockGet,
   },
 }));
 
-jest.mock('@/lib/api/httpClient/request', () => ({
+jest.mock('@/lib/api/client/request', () => ({
   requestWithMeta: (...args: unknown[]) => mockRequestWithMeta(...args),
 }));
 
@@ -56,7 +56,7 @@ describe('candidate api helpers', () => {
       },
     ]);
 
-    const { listCandidateInvites } = await import('@/lib/api/candidate');
+    const { listCandidateInvites } = await import('@/features/candidate/api');
     const invites = await listCandidateInvites('auth');
 
     expect(mockGet).toHaveBeenCalled();
@@ -71,7 +71,7 @@ describe('candidate api helpers', () => {
   it('resolves invite token and maps 404 to HttpError', async () => {
     mockGet.mockRejectedValueOnce({ status: 404 });
     const { resolveCandidateInviteToken, HttpError } =
-      await import('@/lib/api/candidate');
+      await import('@/features/candidate/api');
 
     await expect(
       resolveCandidateInviteToken('tok', 'auth'),
@@ -84,7 +84,8 @@ describe('candidate api helpers', () => {
 
   it('resolves invite token and maps 410 to HttpError', async () => {
     mockGet.mockRejectedValueOnce({ status: 410 });
-    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+    const { resolveCandidateInviteToken } =
+      await import('@/features/candidate/api');
 
     await expect(
       resolveCandidateInviteToken('tok', 'auth'),
@@ -93,7 +94,8 @@ describe('candidate api helpers', () => {
 
   it('maps resolveCandidateInviteToken auth errors', async () => {
     mockGet.mockRejectedValueOnce({ status: 401 });
-    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+    const { resolveCandidateInviteToken } =
+      await import('@/features/candidate/api');
     await expect(
       resolveCandidateInviteToken('tok', 'auth'),
     ).rejects.toMatchObject({
@@ -118,7 +120,8 @@ describe('candidate api helpers', () => {
       status: 403,
       details: { message: 'email claim missing' },
     });
-    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+    const { resolveCandidateInviteToken } =
+      await import('@/features/candidate/api');
 
     await expect(
       resolveCandidateInviteToken('tok', 'auth'),
@@ -133,7 +136,8 @@ describe('candidate api helpers', () => {
       status: 403,
       details: { message: 'other' },
     });
-    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+    const { resolveCandidateInviteToken } =
+      await import('@/features/candidate/api');
 
     await expect(
       resolveCandidateInviteToken('tok', 'auth'),
@@ -145,7 +149,8 @@ describe('candidate api helpers', () => {
 
   it('maps current task network errors to HttpError', async () => {
     mockGet.mockRejectedValueOnce(new TypeError('network'));
-    const { getCandidateCurrentTask } = await import('@/lib/api/candidate');
+    const { getCandidateCurrentTask } =
+      await import('@/features/candidate/api');
 
     await expect(getCandidateCurrentTask(1, 'auth')).rejects.toMatchObject({
       status: 0,
@@ -154,7 +159,8 @@ describe('candidate api helpers', () => {
 
   it('maps current task 404 errors with backend message', async () => {
     mockGet.mockRejectedValueOnce({ status: 404, details: 'missing' });
-    const { getCandidateCurrentTask } = await import('@/lib/api/candidate');
+    const { getCandidateCurrentTask } =
+      await import('@/features/candidate/api');
 
     await expect(getCandidateCurrentTask(2, 'auth')).rejects.toMatchObject({
       status: 404,
@@ -163,7 +169,8 @@ describe('candidate api helpers', () => {
 
   it('maps current task 410 errors', async () => {
     mockGet.mockRejectedValueOnce({ status: 410 });
-    const { getCandidateCurrentTask } = await import('@/lib/api/candidate');
+    const { getCandidateCurrentTask } =
+      await import('@/features/candidate/api');
 
     await expect(getCandidateCurrentTask(3, 'auth')).rejects.toMatchObject({
       status: 410,
@@ -172,7 +179,7 @@ describe('candidate api helpers', () => {
 
   it('handles submitCandidateTask validation errors', async () => {
     mockPost.mockRejectedValueOnce({ status: 400 });
-    const { submitCandidateTask } = await import('@/lib/api/candidate');
+    const { submitCandidateTask } = await import('@/features/candidate/api');
 
     await expect(
       submitCandidateTask({
@@ -185,7 +192,7 @@ describe('candidate api helpers', () => {
 
   it('submits empty payloads without code or text', async () => {
     mockPost.mockResolvedValueOnce({ submissionId: 10 });
-    const { submitCandidateTask } = await import('@/lib/api/candidate');
+    const { submitCandidateTask } = await import('@/features/candidate/api');
 
     await submitCandidateTask({
       taskId: 8,
@@ -208,7 +215,7 @@ describe('candidate api helpers', () => {
 
   it('submits text content when provided', async () => {
     mockPost.mockResolvedValueOnce({ submissionId: 11 });
-    const { submitCandidateTask } = await import('@/lib/api/candidate');
+    const { submitCandidateTask } = await import('@/features/candidate/api');
 
     await submitCandidateTask({
       taskId: 9,
@@ -233,7 +240,7 @@ describe('candidate api helpers', () => {
   it('handles submitCandidateTask conflict and network errors', async () => {
     mockPost.mockRejectedValueOnce({ status: 409, details: 'dup' });
     mockPost.mockRejectedValueOnce(new TypeError('offline'));
-    const { submitCandidateTask } = await import('@/lib/api/candidate');
+    const { submitCandidateTask } = await import('@/features/candidate/api');
 
     await expect(
       submitCandidateTask({
@@ -255,7 +262,7 @@ describe('candidate api helpers', () => {
   it('handles submitCandidateTask session and expiration errors', async () => {
     mockPost.mockRejectedValueOnce({ status: 404, details: 'mismatch' });
     mockPost.mockRejectedValueOnce({ status: 410 });
-    const { submitCandidateTask } = await import('@/lib/api/candidate');
+    const { submitCandidateTask } = await import('@/features/candidate/api');
 
     await expect(
       submitCandidateTask({
@@ -276,7 +283,7 @@ describe('candidate api helpers', () => {
 
   it('returns empty list when invites response is not an array', async () => {
     mockGet.mockResolvedValueOnce({ not: 'array' });
-    const { listCandidateInvites } = await import('@/lib/api/candidate');
+    const { listCandidateInvites } = await import('@/features/candidate/api');
     const invites = await listCandidateInvites('auth');
     expect(invites).toEqual([]);
   });
@@ -284,7 +291,7 @@ describe('candidate api helpers', () => {
   it('propagates invite list errors as HttpError', async () => {
     mockGet.mockRejectedValueOnce(new Error('fetch'));
     const { listCandidateInvites, HttpError } =
-      await import('@/lib/api/candidate');
+      await import('@/features/candidate/api');
     await expect(listCandidateInvites('auth')).rejects.toBeInstanceOf(
       HttpError,
     );
@@ -292,7 +299,8 @@ describe('candidate api helpers', () => {
 
   it('propagates resolve invite backend errors', async () => {
     mockGet.mockRejectedValueOnce({ status: 500, details: 'backend' });
-    const { resolveCandidateInviteToken } = await import('@/lib/api/candidate');
+    const { resolveCandidateInviteToken } =
+      await import('@/features/candidate/api');
 
     await expect(
       resolveCandidateInviteToken('tok', 'auth'),
@@ -301,7 +309,8 @@ describe('candidate api helpers', () => {
 
   it('maps current task generic errors', async () => {
     mockGet.mockRejectedValueOnce({ status: 500, details: 'fail' });
-    const { getCandidateCurrentTask } = await import('@/lib/api/candidate');
+    const { getCandidateCurrentTask } =
+      await import('@/features/candidate/api');
 
     await expect(getCandidateCurrentTask(9, 'auth')).rejects.toMatchObject({
       status: 500,
@@ -311,7 +320,7 @@ describe('candidate api helpers', () => {
   it('maps submitCandidateTask unknown errors via toHttpError', async () => {
     mockPost.mockRejectedValueOnce('oops');
     const { submitCandidateTask, HttpError } =
-      await import('@/lib/api/candidate');
+      await import('@/features/candidate/api');
 
     await expect(
       submitCandidateTask({
@@ -323,7 +332,8 @@ describe('candidate api helpers', () => {
   });
 
   it('normalizes candidate invites with missing data', async () => {
-    const { normalizeCandidateInvite } = await import('@/lib/api/candidate');
+    const { normalizeCandidateInvite } =
+      await import('@/features/candidate/api');
     const normalized = normalizeCandidateInvite({
       id: 'NaN',
       inviteToken: '',
@@ -340,7 +350,7 @@ describe('candidate api helpers', () => {
   it('maps resolveCandidateInviteToken unknown errors via toHttpError', async () => {
     mockGet.mockRejectedValueOnce('wtf');
     const { resolveCandidateInviteToken, HttpError } =
-      await import('@/lib/api/candidate');
+      await import('@/features/candidate/api');
 
     await expect(
       resolveCandidateInviteToken('tok', 'auth'),
@@ -349,7 +359,8 @@ describe('candidate api helpers', () => {
 
   it('treats current task errors without numeric status as network issues', async () => {
     mockGet.mockRejectedValueOnce({ status: 'oops' });
-    const { getCandidateCurrentTask } = await import('@/lib/api/candidate');
+    const { getCandidateCurrentTask } =
+      await import('@/features/candidate/api');
 
     await expect(getCandidateCurrentTask(1, 'auth')).rejects.toMatchObject({
       status: 0,
@@ -359,7 +370,7 @@ describe('candidate api helpers', () => {
   it('maps current task unknown errors via toHttpError', async () => {
     mockGet.mockRejectedValueOnce('boom');
     const { getCandidateCurrentTask, HttpError } =
-      await import('@/lib/api/candidate');
+      await import('@/features/candidate/api');
 
     await expect(getCandidateCurrentTask(1, 'auth')).rejects.toBeInstanceOf(
       HttpError,
@@ -368,7 +379,7 @@ describe('candidate api helpers', () => {
 
   it('handles submitCandidateTask unexpected status with generic message', async () => {
     mockPost.mockRejectedValueOnce({ status: 418 });
-    const { submitCandidateTask } = await import('@/lib/api/candidate');
+    const { submitCandidateTask } = await import('@/features/candidate/api');
 
     await expect(
       submitCandidateTask({
@@ -389,7 +400,7 @@ describe('candidate api helpers', () => {
       codespaceUrl: 'https://codespaces.new/acme/repo',
     });
 
-    const { initCandidateWorkspace } = await import('@/lib/api/candidate');
+    const { initCandidateWorkspace } = await import('@/features/candidate/api');
     const result = await initCandidateWorkspace({
       taskId: 11,
       token: 'auth',
@@ -418,7 +429,8 @@ describe('candidate api helpers', () => {
       repoName: 'acme/repo2',
     });
 
-    const { getCandidateWorkspaceStatus } = await import('@/lib/api/candidate');
+    const { getCandidateWorkspaceStatus } =
+      await import('@/features/candidate/api');
     const result = await getCandidateWorkspaceStatus({
       taskId: 12,
       token: 'auth',
@@ -443,7 +455,8 @@ describe('candidate api helpers', () => {
   it('handles empty workspace status payloads', async () => {
     mockGet.mockResolvedValueOnce(null);
 
-    const { getCandidateWorkspaceStatus } = await import('@/lib/api/candidate');
+    const { getCandidateWorkspaceStatus } =
+      await import('@/features/candidate/api');
     const result = await getCandidateWorkspaceStatus({
       taskId: 15,
       token: 'auth',
@@ -466,7 +479,8 @@ describe('candidate api helpers', () => {
       codespace_url: 'https://codespaces.new/acme/repo3',
     });
 
-    const { getCandidateWorkspaceStatus } = await import('@/lib/api/candidate');
+    const { getCandidateWorkspaceStatus } =
+      await import('@/features/candidate/api');
     const result = await getCandidateWorkspaceStatus({
       taskId: 14,
       token: 'auth',
@@ -497,7 +511,7 @@ describe('candidate api helpers', () => {
     });
 
     const { startCandidateTestRun, pollCandidateTestRun } =
-      await import('@/lib/api/candidate');
+      await import('@/features/candidate/api');
 
     const start = await startCandidateTestRun({
       taskId: 13,
@@ -536,7 +550,7 @@ describe('candidate api helpers', () => {
   it('accepts numeric run ids from startCandidateTestRun', async () => {
     mockPost.mockResolvedValueOnce({ runId: 12345 });
 
-    const { startCandidateTestRun } = await import('@/lib/api/candidate');
+    const { startCandidateTestRun } = await import('@/features/candidate/api');
 
     const start = await startCandidateTestRun({
       taskId: 21,
@@ -561,7 +575,7 @@ describe('candidate api helpers', () => {
       commitSha: 'abc123',
     });
 
-    const { startCandidateTestRun } = await import('@/lib/api/candidate');
+    const { startCandidateTestRun } = await import('@/features/candidate/api');
 
     const start = await startCandidateTestRun({
       taskId: 22,
@@ -584,7 +598,7 @@ describe('candidate api helpers', () => {
       .mockResolvedValueOnce({ status: 'completed', conclusion: 'timed_out' })
       .mockResolvedValueOnce({ status: 'completed', conclusion: 'unknown' });
 
-    const { pollCandidateTestRun } = await import('@/lib/api/candidate');
+    const { pollCandidateTestRun } = await import('@/features/candidate/api');
 
     const running = await pollCandidateTestRun({
       taskId: 14,
@@ -759,7 +773,7 @@ describe('candidate api helpers', () => {
       getCandidateWorkspaceStatus,
       startCandidateTestRun,
       pollCandidateTestRun,
-    } = await import('@/lib/api/candidate');
+    } = await import('@/features/candidate/api');
 
     await expect(
       initCandidateWorkspace({
@@ -798,7 +812,7 @@ describe('candidate api helpers', () => {
   it('throws when test run start response is missing a run id', async () => {
     mockPost.mockResolvedValueOnce({});
     const { startCandidateTestRun, HttpError } =
-      await import('@/lib/api/candidate');
+      await import('@/features/candidate/api');
 
     await expect(
       startCandidateTestRun({
@@ -819,7 +833,7 @@ describe('candidate api helpers', () => {
       getCandidateWorkspaceStatus,
       pollCandidateTestRun,
       HttpError,
-    } = await import('@/lib/api/candidate');
+    } = await import('@/features/candidate/api');
 
     await expect(
       initCandidateWorkspace({

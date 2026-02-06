@@ -40,7 +40,7 @@ jest.mock('@/lib/server/bff', () => ({
   forwardJson: (...args: unknown[]) => mockForwardJson(...args),
 }));
 
-jest.mock('@/app/api/utils', () => ({
+jest.mock('@/app/api/bffRouteHelpers', () => ({
   withRecruiterAuth: (...args: unknown[]) => mockWithRecruiterAuth(...args),
 }));
 

@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { useCandidatesSearch } from '@/features/recruiter/simulation-detail/hooks/useCandidatesSearch';
+import { useCandidatesSearch } from '@/features/recruiter/simulations/detail/hooks/useCandidatesSearch';
 
 jest.useFakeTimers();
 

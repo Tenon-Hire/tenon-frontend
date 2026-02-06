@@ -2,9 +2,9 @@ import { useCallback, useMemo } from 'react';
 import {
   listCandidateInvites,
   type CandidateInvite,
-} from '@/lib/api/candidate';
-import { toUserMessage } from '@/lib/utils/errors';
-import { useAsyncLoader } from '@/features/shared/hooks';
+} from '@/features/candidate/api';
+import { toUserMessage } from '@/lib/errors/errors';
+import { useAsyncLoader } from '@/shared/hooks';
 
 type UseCandidateInvitesResult = {
   invites: CandidateInvite[];

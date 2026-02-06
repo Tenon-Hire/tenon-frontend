@@ -1,7 +1,7 @@
 import {
-  copyToClipboard,
-  errorToMessage,
-  formatCreatedDate,
+  copyInviteLink,
+  formatRecruiterError,
+  formatSimulationCreatedDate,
 } from '@/features/recruiter/utils/formatters';
 
 const originalExecCommand = document.execCommand;
@@ -24,17 +24,19 @@ describe('RecruiterDashboardContent helpers', () => {
   });
 
   it('formats created date safely', () => {
-    expect(formatCreatedDate('2025-12-10T10:00:00Z')).toBe('2025-12-10');
-    expect(formatCreatedDate('2025-1')).toBe('2025-1');
-    expect(formatCreatedDate(123 as unknown as string)).toBe('');
+    expect(formatSimulationCreatedDate('2025-12-10T10:00:00Z')).toBe(
+      '2025-12-10',
+    );
+    expect(formatSimulationCreatedDate('2025-1')).toBe('2025-1');
+    expect(formatSimulationCreatedDate(123 as unknown as string)).toBe('');
   });
 
   it('derives error message from object, detail, or fallback', () => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS = 'true';
-    expect(errorToMessage({ message: 'Boom' }, 'fallback')).toBe('Boom');
-    expect(errorToMessage({ detail: 'Nope' }, 'fallback')).toBe('Nope');
-    expect(errorToMessage(new Error('Err'), 'fallback')).toBe('Err');
-    expect(errorToMessage(null, 'fallback')).toBe('fallback');
+    expect(formatRecruiterError({ message: 'Boom' }, 'fallback')).toBe('Boom');
+    expect(formatRecruiterError({ detail: 'Nope' }, 'fallback')).toBe('Nope');
+    expect(formatRecruiterError(new Error('Err'), 'fallback')).toBe('Err');
+    expect(formatRecruiterError(null, 'fallback')).toBe('fallback');
   });
 
   it('copies using navigator.clipboard when available', async () => {
@@ -44,7 +46,7 @@ describe('RecruiterDashboardContent helpers', () => {
       configurable: true,
     });
 
-    await expect(copyToClipboard('   copied text  ')).resolves.toBe(true);
+    await expect(copyInviteLink('   copied text  ')).resolves.toBe(true);
     expect(writeText).toHaveBeenCalledWith('copied text');
   });
 
@@ -54,12 +56,12 @@ describe('RecruiterDashboardContent helpers', () => {
       document as unknown as { execCommand?: typeof document.execCommand }
     ).execCommand = execSpy;
 
-    await expect(copyToClipboard('copy me')).resolves.toBe(true);
+    await expect(copyInviteLink('copy me')).resolves.toBe(true);
     expect(execSpy).toHaveBeenCalledWith('copy');
   });
 
   it('returns false for empty clipboard input', async () => {
-    await expect(copyToClipboard('   ')).resolves.toBe(false);
+    await expect(copyInviteLink('   ')).resolves.toBe(false);
   });
 
   it('returns false when execCommand throws', async () => {
@@ -70,6 +72,6 @@ describe('RecruiterDashboardContent helpers', () => {
       document as unknown as { execCommand?: typeof document.execCommand }
     ).execCommand = execSpy;
 
-    await expect(copyToClipboard('copy me')).resolves.toBe(false);
+    await expect(copyInviteLink('copy me')).resolves.toBe(false);
   });
 });

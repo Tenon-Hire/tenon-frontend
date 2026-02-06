@@ -2,8 +2,8 @@ import {
   getCandidateWorkspaceStatus,
   initCandidateWorkspace,
   type CandidateWorkspaceStatus,
-} from '@/lib/api/candidate';
-import { normalizeApiError, toStatus } from '@/lib/utils/errors';
+} from '@/features/candidate/api';
+import { normalizeApiError, toStatus } from '@/lib/errors/errors';
 import { buildWorkspaceMessage } from './workspaceMessages';
 import {
   provisioning,

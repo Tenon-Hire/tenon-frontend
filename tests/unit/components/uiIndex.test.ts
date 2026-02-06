@@ -1,6 +1,6 @@
-describe('components/ui index export', () => {
+describe('shared/ui index export', () => {
   it('exposes expected primitives', async () => {
-    const ui = await import('@/components/ui');
+    const ui = await import('@/shared/ui');
     expect(ui).toHaveProperty('Button');
     expect(ui).toHaveProperty('Input');
     expect(ui).toHaveProperty('PageHeader');

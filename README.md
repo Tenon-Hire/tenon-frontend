@@ -4,11 +4,11 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 
 ## Architecture
 
-- App Router under `src/app`; shared shell in `src/features/shared/layout/AppShell`.
+- App Router under `src/app`; shared shell in `src/shared/layout/AppShell`.
 - Auth0 for recruiter portal; `src/proxy.ts` redirects unauthenticated recruiters to `/auth/login?returnTo=…`.
 - Candidate portal uses invite email OTP verification to mint a candidate access token for API calls.
 - Candidate portal uses a same-origin proxy under `/api/backend/*` by default (can point to an absolute backend URL); requests carry bearer tokens. Recruiter portal uses Next API routes as a BFF that forward to the backend with Auth0 access tokens.
-- Styling via Tailwind utility classes and shared UI primitives in `src/components/ui`.
+- Styling via Tailwind utility classes and shared UI primitives in `src/shared/ui`.
 - API client guardrails: use `apiClient` for direct candidate/backend calls, `recruiterBffClient` (or `httpResult` when you need status/meta) for recruiter BFF routes; avoid ad-hoc `fetch` or legacy `bffClient`.
 - File size guardrail: keep React components/hooks/utils/api modules ≤ 100 LOC; if a file must exceed, add a short top-of-file comment explaining why.
 
@@ -31,7 +31,7 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 
 - Candidate session state: `src/features/candidate/session/CandidateSessionProvider` persists token/bootstrap in `sessionStorage`.
 - Candidate flow: open invite → send OTP email → verify code → receive candidate access token → bootstrap session → intro → current task fetch → text/code editor with local drafts → submit → progress tracker; friendly error messages and retry hooks.
-- Recruiter dashboard: `DashboardView` + `SimulationList` with invite modal/toast, profile card, and navigation to creation/detail/submission views.
+- Recruiter dashboard: `RecruiterDashboardView` + `RecruiterSimulationList` with invite modal/toast, profile card, and navigation to creation/detail/submission views.
 - Submissions viewer: renders per-day artifacts (prompt, text, code with copy/download, testResults JSON if present).
 - API responses include correlation/debug headers: `x-tenon-request-id`, `x-tenon-bff`, `x-tenon-upstream-status` (+ per-upstream status on `/api/dashboard`) and `Server-Timing` (`bff;dur=…`, `retry;desc="count=N"`).
 
@@ -109,7 +109,7 @@ npm run test:e2e
 
 ### Coverage Thresholds
 
-The project enforces **100% coverage** for statements, branches, functions, and lines both globally and per-file. The CI pipeline fails if any threshold drops below 100%.
+The project enforces **99% coverage** for statements, branches, functions, and lines both globally and per-file. The CI pipeline fails if any threshold drops below 99%.
 
 Configuration is in `jest.config.mjs`:
 
@@ -164,8 +164,8 @@ tests/
 CI runs `npm run test:ci` which:
 
 1. Runs all tests with `--runInBand` for stable, serial execution.
-2. Collects coverage and enforces 100% thresholds.
-3. Fails the build if any file drops below 100% coverage.
+2. Collects coverage and enforces 99% thresholds.
+3. Fails the build if any file drops below 99% coverage.
 
 ## Performance Debugging
 

@@ -1,4 +1,4 @@
-import type { CandidateCurrentTaskResponse } from '@/lib/api/candidate';
+import type { CandidateCurrentTaskResponse } from '@/features/candidate/api';
 import type { Task } from '../task/types';
 
 export function normalizeCompletedTaskIds(

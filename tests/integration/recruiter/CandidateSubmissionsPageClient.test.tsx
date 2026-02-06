@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
+import CandidateSubmissionsPage from '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage';
 import {
   recruiterBffClient,
   bffClient,
   __resetHttpClientCache,
-} from '@/lib/api/httpClient';
-import { __resetCandidateCache } from '@/lib/api/recruiter';
+} from '@/lib/api/client';
+import { __resetCandidateCache } from '@/features/recruiter/api';
 
 const params = { id: 'sim-1', candidateSessionId: '900' };
 
@@ -14,8 +14,8 @@ jest.mock('next/navigation', () => ({
   useParams: () => params,
 }));
 
-jest.mock('@/lib/api/httpClient', () => {
-  const actual = jest.requireActual('@/lib/api/httpClient');
+jest.mock('@/lib/api/client', () => {
+  const actual = jest.requireActual('@/lib/api/client');
   return {
     ...actual,
     recruiterBffClient: { get: jest.fn() },

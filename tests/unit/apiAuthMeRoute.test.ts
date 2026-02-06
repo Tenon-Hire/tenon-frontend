@@ -104,7 +104,7 @@ jest.mock('@/lib/server/bff', () => ({
   REQUEST_ID_HEADER: 'x-tenon-request-id',
 }));
 
-const { BFF_HEADER } = jest.requireActual('@/app/api/utils');
+const { BFF_HEADER } = jest.requireActual('@/app/api/bffRouteHelpers');
 
 const requireBffAuthMock = jest.requireMock('@/lib/server/bffAuth')
   .requireBffAuth as jest.Mock;

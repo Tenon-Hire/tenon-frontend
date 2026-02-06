@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { InviteBadges } from '@/features/candidate/dashboard/components/InviteBadges';
-import type { CandidateInvite } from '@/lib/api/candidate';
+import type { CandidateInvite } from '@/features/candidate/api';
 
 const baseInvite: CandidateInvite = {
   candidateSessionId: 1,

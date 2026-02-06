@@ -3,10 +3,10 @@ import CandidateDashboardPage, {
   extractInviteToken,
 } from '@/features/candidate/dashboard/CandidateDashboardPage';
 import { CandidateSessionProvider } from '@/features/candidate/session/CandidateSessionProvider';
-import { listCandidateInvites } from '@/lib/api/candidate';
+import { listCandidateInvites } from '@/features/candidate/api';
 import { responseHelpers } from '../../../setup';
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   listCandidateInvites: jest.fn(),
 }));
 

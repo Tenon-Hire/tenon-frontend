@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { AppNav } from '@/features/shared/layout/AppNav';
+import { AppNav } from '@/shared/layout/AppNav';
 import { MarketingHomeSignedIn } from '@/features/marketing/home/MarketingHomeSignedIn';
 import { MarketingHomeSignedOut } from '@/features/marketing/home/MarketingHomeSignedOut';
 

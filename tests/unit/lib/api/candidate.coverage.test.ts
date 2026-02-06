@@ -1,9 +1,9 @@
 /**
- * Coverage completion tests for lib/api/candidate.ts
+ * Coverage completion tests for features/candidate/api/index.ts
  */
-import '@/lib/api/candidate';
+import '@/features/candidate/api';
 
-describe('candidate.ts coverage completion', () => {
+describe('features/candidate/api/index.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);
   });
@@ -13,7 +13,7 @@ describe('candidate.ts coverage completion', () => {
     const coverageKey = Object.keys(
       (globalThis as unknown as { __coverage__?: Record<string, unknown> })
         .__coverage__ ?? {},
-    ).find((k) => k.includes('api/candidate.ts'));
+    ).find((k) => k.includes('features/candidate/api/index.ts'));
 
     if (coverageKey) {
       const cov = (

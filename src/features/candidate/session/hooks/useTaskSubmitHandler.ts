@@ -1,6 +1,6 @@
-import { submitCandidateTask } from '@/lib/api/candidate';
-import { useNotifications } from '@/features/shared/notifications';
-import { normalizeApiError } from '@/lib/utils/errors';
+import { submitCandidateTask } from '@/features/candidate/api';
+import { useNotifications } from '@/shared/notifications';
+import { normalizeApiError } from '@/lib/errors/errors';
 import { friendlySubmitError } from '../utils/errorMessages';
 import {
   isCodeTask,

@@ -9,7 +9,7 @@ jest.mock('@/features/auth/AuthErrorPage', () => ({
   default: () => <div data-testid="auth-error-page" />,
 }));
 
-import NotAuthorizedPage from '@/app/not-authorized/page';
+import NotAuthorizedPage from '@/app/(auth)/not-authorized/page';
 
 describe('not-authorized/page.tsx coverage completion', () => {
   let consoleErrorSpy: jest.SpyInstance;

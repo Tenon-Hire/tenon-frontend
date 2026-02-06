@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildLoginHref } from '@/features/auth/authPaths';
-import type { CandidateInvite } from '@/lib/api/candidate';
+import type { CandidateInvite } from '@/features/candidate/api';
 import { useCandidateSession } from '../session/CandidateSessionProvider';
 import { DashboardHeader } from './components/DashboardHeader';
 import { InviteList } from './components/InviteList';

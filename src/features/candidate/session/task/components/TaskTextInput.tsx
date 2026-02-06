@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { MarkdownPreviewProps } from '@/components/ui/Markdown';
+import type { MarkdownPreviewProps } from '@/shared/ui/Markdown';
 import { TaskTextToolbar } from './TaskTextToolbar';
 import { TaskTextFooter } from './TaskTextFooter';
 
 const LazyMarkdownPreview = dynamic(
-  () => import('@/components/ui/Markdown').then((m) => m.MarkdownPreview),
+  () => import('@/shared/ui/Markdown').then((m) => m.MarkdownPreview),
   {
     loading: () => (
       <div className="text-xs text-gray-500" aria-label="loading-markdown">
@@ -20,7 +20,7 @@ let PreviewComponent: React.ComponentType<MarkdownPreviewProps> =
   LazyMarkdownPreview;
 if (process.env.NODE_ENV === 'test') {
   const mod =
-    require('@/components/ui/Markdown') as typeof import('@/components/ui/Markdown'); // eslint-disable-line @typescript-eslint/no-require-imports
+    require('@/shared/ui/Markdown') as typeof import('@/shared/ui/Markdown'); // eslint-disable-line @typescript-eslint/no-require-imports
   PreviewComponent = mod.MarkdownPreview;
 }
 

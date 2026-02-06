@@ -1,4 +1,4 @@
-import type { CandidateInvite } from '@/lib/api/candidate';
+import type { CandidateInvite } from '@/features/candidate/api';
 
 type Props = { invite: CandidateInvite };
 

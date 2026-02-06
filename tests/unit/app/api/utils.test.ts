@@ -40,7 +40,7 @@ jest.mock('next/server', () => ({
   },
 }));
 
-const importUtils = async () => await import('@/app/api/utils');
+const importUtils = async () => await import('@/app/api/bffRouteHelpers');
 
 describe('api utils helpers', () => {
   beforeEach(() => {
@@ -48,15 +48,15 @@ describe('api utils helpers', () => {
     jest.resetModules();
   });
 
-  it('returns auth failure with request id for forwardWithAuth', async () => {
+  it('returns auth failure with request id for forwardBffWithAuth', async () => {
     mockRequireBffAuth.mockResolvedValue({
       ok: false,
       response: NextResponse.json({ message: 'nope' }, { status: 401 }),
       cookies: [],
     });
-    const { forwardWithAuth } = await importUtils();
-    markMetadataCovered('@/app/api/utils.ts');
-    const resp = await forwardWithAuth(
+    const { forwardBffWithAuth } = await importUtils();
+    markMetadataCovered('@/app/api/bffRouteHelpers.ts');
+    const resp = await forwardBffWithAuth(
       { path: '/api/thing' },
       {} as unknown as NextRequest,
     );
@@ -74,8 +74,8 @@ describe('api utils helpers', () => {
     mockForwardJson.mockResolvedValue(
       NextResponse.json({ ok: true }, { headers: { existing: '1' } }),
     );
-    const { forwardWithAuth, BFF_HEADER } = await importUtils();
-    const resp = await forwardWithAuth(
+    const { forwardBffWithAuth, BFF_HEADER } = await importUtils();
+    const resp = await forwardBffWithAuth(
       { path: '/api/ok', tag: 'dash', cache: 'force-cache' },
       {} as unknown as NextRequest,
     );
@@ -97,8 +97,8 @@ describe('api utils helpers', () => {
       cookies: [],
     });
     mockForwardJson.mockRejectedValue(new Error('boom'));
-    const { forwardWithAuth } = await importUtils();
-    const resp = await forwardWithAuth(
+    const { forwardBffWithAuth } = await importUtils();
+    const resp = await forwardBffWithAuth(
       { path: '/api/fail' },
       {} as unknown as NextRequest,
     );

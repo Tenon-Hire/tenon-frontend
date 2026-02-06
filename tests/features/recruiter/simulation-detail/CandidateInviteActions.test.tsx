@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { CandidateInviteActions } from '@/features/recruiter/simulation-detail/components/CandidateInviteActions';
+import { CandidateInviteActions } from '@/features/recruiter/simulations/detail/components/CandidateInviteActions';
 
 const candidate = {
   candidateSessionId: 1,

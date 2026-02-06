@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { useNotifications } from '@/features/shared/notifications';
-import { copyToClipboard } from '../utils/formatters';
-import type { InviteSuccess } from '@/types/recruiter';
+import { useNotifications } from '@/shared/notifications';
+import { copyInviteLink } from '../utils/formatters';
+import type { InviteSuccess } from '@/features/recruiter/types';
 
 export function useInviteToasts() {
   const { notify, update } = useNotifications();
@@ -38,7 +38,7 @@ export function useInviteToasts() {
         window.clearTimeout(timers.current[toastId]);
         delete timers.current[toastId];
       }
-      const ok = await copyToClipboard(res.inviteUrl);
+      const ok = await copyInviteLink(res.inviteUrl);
       if (!ok) {
         notify({
           id: `invite-copy-${res.simulationId}-${res.candidateEmail}`,

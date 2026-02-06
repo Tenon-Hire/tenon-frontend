@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import {
   pollCandidateTestRun,
   startCandidateTestRun,
-} from '@/lib/api/candidate';
+} from '@/features/candidate/api';
 import type { CandidateTask } from '../CandidateSessionProvider';
 import type { PollResult } from '../task/hooks/runTestsTypes';
 

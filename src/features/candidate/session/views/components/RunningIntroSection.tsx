@@ -1,5 +1,5 @@
 import CandidateTaskProgress from '../../task/CandidateTaskProgress';
-import { TaskErrorBanner } from '../TaskErrorBanner';
+import { SessionRetryBanner } from '../SessionRetryBanner';
 import { RunningHeader } from './RunningHeader';
 
 type Props = {
@@ -31,7 +31,7 @@ export function RunningIntroSection({
         currentDayIndex={currentDayIndex}
         currentTaskTitle={currentTaskTitle}
       />
-      <TaskErrorBanner message={taskError} onRetry={onRetryTask} />
+      <SessionRetryBanner message={taskError} onRetry={onRetryTask} />
     </>
   );
 }

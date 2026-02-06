@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
+import CandidateSubmissionsPage from '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage';
 import { BRAND_NAME } from '@/lib/brand';
 
 export const metadata: Metadata = {

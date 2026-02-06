@@ -8,7 +8,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
-jest.mock('@/lib/api/httpClient', () => ({
+jest.mock('@/lib/api/client', () => ({
   recruiterBffClient: {
     get: jest.fn().mockResolvedValue({
       simulation: { id: 1, title: 'Test' },
@@ -22,13 +22,13 @@ jest.mock('@/lib/auth/routing', () => ({
   buildReturnTo: jest.fn(() => '/'),
 }));
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({
     notify: jest.fn(),
   }),
 }));
 
-import CandidateSubmissionsPage from '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage';
+import CandidateSubmissionsPage from '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage';
 
 describe('CandidateSubmissionsPage.tsx coverage completion', () => {
   it('renders the page', async () => {

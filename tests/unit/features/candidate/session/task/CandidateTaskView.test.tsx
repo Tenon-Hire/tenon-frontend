@@ -40,9 +40,9 @@ jest.mock('@/features/candidate/session/task/components/TaskStatus', () => ({
 }));
 
 jest.mock(
-  '@/features/candidate/session/task/components/TaskErrorBanner',
+  '@/features/candidate/session/task/components/TaskPanelErrorBanner',
   () => ({
-    TaskErrorBanner: ({ message }: { message: string | null }) => (
+    TaskPanelErrorBanner: ({ message }: { message: string | null }) => (
       <div data-testid="error">{message}</div>
     ),
   }),

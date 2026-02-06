@@ -1,7 +1,7 @@
 'use client';
 
-import { StatusPill } from '@/components/ui/StatusPill';
-import type { StatusPillTone } from '@/types/recruiter';
+import { StatusPill } from '@/shared/ui/StatusPill';
+import type { StatusPillTone } from '@/shared/status/types';
 type DayStatus = 'completed' | 'current' | 'locked';
 
 type Props = {

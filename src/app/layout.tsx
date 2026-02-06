@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { ReactNode } from 'react';
 import './globals.css';
 import { BRAND_NAME } from '@/lib/brand';
-import { NotificationsProvider } from '@/features/shared/notifications';
+import { NotificationsProvider } from '@/shared/notifications';
 
 export const metadata: Metadata = {
   title: BRAND_NAME,

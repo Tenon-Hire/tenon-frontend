@@ -4,7 +4,7 @@ import type { PollResult } from '../task/hooks/runTestsTypes';
 
 export type ViewState = 'loading' | 'auth' | 'starting' | 'error' | 'running';
 
-export type CandidateSessionScreenProps = {
+export type CandidateSessionViewProps = {
   view: ViewState;
   authStatus: 'idle' | 'loading' | 'ready' | 'unauthenticated' | 'error';
   authMessage: string | null;

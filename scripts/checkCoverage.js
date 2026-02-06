@@ -39,7 +39,7 @@ function readTotals() {
     const pctTotals = {};
     Object.entries(totals).forEach(([key, value]) => {
       pctTotals[key] = {
-        pct: value.total ? (value.covered / value.total) * 100 : 0,
+        pct: value.total ? (value.covered / value.total) * 99 : 0,
       };
     });
     return pctTotals;
@@ -67,7 +67,7 @@ function main() {
     .map((r) => `${r.key}: ${colorNum(`${r.pct.toFixed(2)}%`)}`)
     .join(' | ');
 
-  const target = Number(process.env.COVERAGE_TARGET ?? 90);
+  const target = Number(process.env.COVERAGE_TARGET ?? 99);
   const primaryPct = results.find((r) => r.key === 'lines')?.pct ?? 0;
 
   console.log(`Coverage summary -> ${report}`);

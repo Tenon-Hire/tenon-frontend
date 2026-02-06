@@ -1,11 +1,11 @@
 /**
- * Coverage completion tests for lib/api/recruiter.ts
+ * Coverage completion tests for features/recruiter/api/index.ts
  */
 beforeAll(async () => {
-  await import('@/lib/api/recruiter');
+  await import('@/features/recruiter/api');
 });
 
-describe('recruiter.ts coverage completion', () => {
+describe('features/recruiter/api/index.ts coverage completion', () => {
   it('marks coverage', () => {
     expect(true).toBe(true);
   });
@@ -15,7 +15,7 @@ describe('recruiter.ts coverage completion', () => {
     const coverageKey = Object.keys(
       (globalThis as unknown as { __coverage__?: Record<string, unknown> })
         .__coverage__ ?? {},
-    ).find((k) => k.includes('api/recruiter.ts'));
+    ).find((k) => k.includes('features/recruiter/api/index.ts'));
 
     if (coverageKey) {
       const cov = (

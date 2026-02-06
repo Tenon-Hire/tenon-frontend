@@ -2,8 +2,8 @@ import React from 'react';
 import { act, render, screen } from '@testing-library/react';
 import { useCandidateBootstrap } from '@/features/candidate/session/hooks/useCandidateBootstrap';
 
-jest.mock('@/lib/api/candidate', () => {
-  const actual = jest.requireActual('@/lib/api/candidate');
+jest.mock('@/features/candidate/api', () => {
+  const actual = jest.requireActual('@/features/candidate/api');
   return {
     __esModule: true,
     ...actual,
@@ -11,7 +11,7 @@ jest.mock('@/lib/api/candidate', () => {
   };
 });
 
-const resolveMock = jest.requireMock('@/lib/api/candidate')
+const resolveMock = jest.requireMock('@/features/candidate/api')
   .resolveCandidateInviteToken as jest.Mock;
 
 function Harness({

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Button from '@/components/ui/Button';
+import Button from '@/shared/ui/Button';
 import { InviteInputField } from './InviteInputField';
 import type { InviteUiState } from './InviteCandidateModal';
 

@@ -8,7 +8,7 @@ import {
   isSameOriginRequest,
   recruiterBffClient,
   __resetHttpClientCache,
-} from '@/lib/api/httpClient';
+} from '@/lib/api/client';
 import { responseHelpers } from '../setup';
 
 describe('httpClient branch coverage', () => {
@@ -386,7 +386,7 @@ describe('httpClient branch coverage', () => {
       const infoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
 
       const { apiClient: freshClient, __resetHttpClientCache: freshReset } =
-        await import('@/lib/api/httpClient');
+        await import('@/lib/api/client');
       freshReset();
 
       global.fetch = jest

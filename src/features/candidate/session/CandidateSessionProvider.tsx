@@ -1,12 +1,9 @@
 'use client';
 import { useEffect, useMemo, useReducer } from 'react';
-import {
-  CandidateSessionContext,
-  useCandidateSession,
-} from './provider/context';
-import { initialState, reducer } from './provider/state';
-import { useSessionActions } from './provider/actions';
-import { usePersistedState } from './provider/persistence';
+import { CandidateSessionContext, useCandidateSession } from './state/context';
+import { initialState, reducer } from './state/state';
+import { useSessionActions } from './state/actions';
+import { usePersistedState } from './state/persistence';
 
 export function CandidateSessionProvider({
   children,
@@ -44,4 +41,4 @@ export type {
   CandidateBootstrap,
   CandidateTask,
   CandidateSessionState,
-} from './provider/types';
+} from './state/types';

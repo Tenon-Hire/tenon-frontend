@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import RecruiterSimulationDetailPage from '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage';
-import { NotificationsProvider } from '@/features/shared/notifications';
-import { __resetCandidateCache } from '@/lib/api/recruiter';
-import { __resetHttpClientCache } from '@/lib/api/httpClient';
+import RecruiterSimulationDetailPage from '@/features/recruiter/simulations/detail/RecruiterSimulationDetailPage';
+import { NotificationsProvider } from '@/shared/notifications';
+import { __resetCandidateCache } from '@/features/recruiter/api';
+import { __resetHttpClientCache } from '@/lib/api/client';
 import { jsonResponse, type MockResponse } from '../../setup/responseHelpers';
 
 const params = { id: 'sim-1' };

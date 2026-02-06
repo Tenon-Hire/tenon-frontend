@@ -19,13 +19,13 @@ jest.mock('next/link', () => ({
   ),
 }));
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   NotificationsProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="notifications">{children}</div>
   ),
 }));
 
-jest.mock('@/features/shared/layout/AppShell', () => ({
+jest.mock('@/shared/layout/AppShell', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="app-shell">{children}</div>
@@ -46,18 +46,21 @@ jest.mock('@/features/candidate/dashboard/CandidateDashboardPage', () => ({
   ),
 }));
 
-jest.mock('@/features/recruiter/dashboard/DashboardView', () => ({
+jest.mock('@/features/recruiter/dashboard/RecruiterDashboardView', () => ({
   __esModule: true,
   default: () => <div data-testid="recruiter-dashboard" />,
 }));
 
-jest.mock('@/features/recruiter/simulations/SimulationCreatePage', () => ({
-  __esModule: true,
-  default: () => <div data-testid="recruiter-create-sim" />,
-}));
+jest.mock(
+  '@/features/recruiter/simulations/create/SimulationCreatePage',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="recruiter-create-sim" />,
+  }),
+);
 
 jest.mock(
-  '@/features/recruiter/simulation-detail/RecruiterSimulationDetailPage',
+  '@/features/recruiter/simulations/detail/RecruiterSimulationDetailPage',
   () => ({
     __esModule: true,
     default: () => <div data-testid="recruiter-sim-detail" />,
@@ -65,7 +68,7 @@ jest.mock(
 );
 
 jest.mock(
-  '@/features/recruiter/candidate-submissions/CandidateSubmissionsPage',
+  '@/features/recruiter/simulations/candidates/CandidateSubmissionsPage',
   () => ({
     __esModule: true,
     default: () => <div data-testid="candidate-submissions" />,
@@ -105,7 +108,7 @@ jest.mock('@/lib/auth0', () => ({
     mockGetCachedSessionNormalized(...args),
 }));
 
-jest.mock('@/app/(candidate)/candidate-sessions/token-params', () => ({
+jest.mock('@/app/(candidate)/(legacy)/candidate-sessions/token-params', () => ({
   requireCandidateToken: (...args: unknown[]) =>
     mockRequireCandidateToken(...args),
 }));
@@ -280,7 +283,7 @@ describe('app layouts and pages', () => {
 
   it('renders marketing and candidate session layouts in one pass', async () => {
     const { default: CandidateSessionsLayout } =
-      await import('@/app/(candidate)/candidate-sessions/layout');
+      await import('@/app/(candidate)/(legacy)/candidate-sessions/layout');
     render(
       CandidateSessionsLayout({
         children: <div data-testid="sessions-child" />,
@@ -291,7 +294,7 @@ describe('app layouts and pages', () => {
 
   it('renders not-authorized page with mode-aware messaging', async () => {
     const { default: NotAuthorizedPage } =
-      await import('@/app/not-authorized/page');
+      await import('@/app/(auth)/not-authorized/page');
     const element = await NotAuthorizedPage({
       searchParams: Promise.resolve({
         mode: 'recruiter',
@@ -304,7 +307,7 @@ describe('app layouts and pages', () => {
 
   it('wraps not-authorized layout in AppShell', async () => {
     const { default: NotAuthorizedLayout } =
-      await import('@/app/not-authorized/layout');
+      await import('@/app/(auth)/not-authorized/layout');
     render(
       NotAuthorizedLayout({
         children: <div data-testid="na-child" />,

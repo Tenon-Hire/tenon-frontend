@@ -1,8 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { useInviteCandidateFlow } from '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow';
-import { inviteCandidate } from '@/lib/api/recruiter';
+import { inviteCandidate } from '@/features/recruiter/api';
 
-jest.mock('@/lib/api/recruiter', () => ({
+jest.mock('@/features/recruiter/api', () => ({
   inviteCandidate: jest.fn(),
 }));
 

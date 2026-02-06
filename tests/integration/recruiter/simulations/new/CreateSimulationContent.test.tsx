@@ -2,11 +2,11 @@ import '../../../setup/routerMock';
 import { routerMock } from '../../../setup/routerMock';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import SimulationCreatePage from '@/features/recruiter/simulations/SimulationCreatePage';
-import { createSimulation } from '@/lib/api/recruiter';
+import SimulationCreatePage from '@/features/recruiter/simulations/create/SimulationCreatePage';
+import { createSimulation } from '@/features/recruiter/api';
 
-jest.mock('@/lib/api/recruiter', () => ({
-  ...jest.requireActual('@/lib/api/recruiter'),
+jest.mock('@/features/recruiter/api', () => ({
+  ...jest.requireActual('@/features/recruiter/api'),
   createSimulation: jest.fn(),
 }));
 

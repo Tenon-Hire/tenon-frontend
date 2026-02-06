@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import CandidateDashboardPage from '@/features/candidate/dashboard/CandidateDashboardPage';
 import { useCandidateSession } from '@/features/candidate/session/CandidateSessionProvider';
-import { listCandidateInvites } from '@/lib/api/candidate';
+import { listCandidateInvites } from '@/features/candidate/api';
 
 jest.mock('@/features/candidate/session/CandidateSessionProvider', () => ({
   useCandidateSession: jest.fn(),
 }));
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   listCandidateInvites: jest.fn(),
 }));
 

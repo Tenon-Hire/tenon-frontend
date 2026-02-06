@@ -2,7 +2,7 @@ import {
   formatCandidatesPageSummary,
   nextPage,
   prevPage,
-} from '@/features/recruiter/simulation-detail/hooks/candidatesPagination';
+} from '@/features/recruiter/simulations/detail/hooks/candidatesPagination';
 
 describe('candidatesPagination helpers', () => {
   it('formats page summary', () => {

@@ -1,4 +1,4 @@
-import Button from '@/components/ui/Button';
+import Button from '@/shared/ui/Button';
 import LoginLink from '@/features/auth/LoginLink';
 import { AuthPageLayout } from './AuthPageLayout';
 import { buildClearAuthHref, type LoginMode } from './authPaths';

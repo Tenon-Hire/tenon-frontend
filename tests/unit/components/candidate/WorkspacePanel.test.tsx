@@ -4,9 +4,9 @@ import { WorkspacePanel } from '@/features/candidate/session/task/components/Wor
 import {
   getCandidateWorkspaceStatus,
   initCandidateWorkspace,
-} from '@/lib/api/candidate';
+} from '@/features/candidate/api';
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   initCandidateWorkspace: jest.fn(),
   getCandidateWorkspaceStatus: jest.fn(),
 }));

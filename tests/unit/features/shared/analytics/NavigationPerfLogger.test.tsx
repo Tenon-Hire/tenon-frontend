@@ -32,7 +32,7 @@ describe('NavigationPerfLogger', () => {
 
   it('logs navigation performance when debug flag enabled', async () => {
     const { NavigationPerfLogger } =
-      await import('@/features/shared/analytics/NavigationPerfLogger');
+      await import('@/shared/analytics/NavigationPerfLogger');
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).toHaveBeenCalledWith(
       expect.stringContaining('[perf:navigation] /dashboard duration=42'),
@@ -42,7 +42,7 @@ describe('NavigationPerfLogger', () => {
   it('skips logging when debug flag disabled', async () => {
     process.env.NEXT_PUBLIC_TENON_DEBUG_PERF = '0';
     const { NavigationPerfLogger } =
-      await import('@/features/shared/analytics/NavigationPerfLogger');
+      await import('@/shared/analytics/NavigationPerfLogger');
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });
@@ -51,7 +51,7 @@ describe('NavigationPerfLogger', () => {
     const globalWithPerf = globalThis as { performance?: Performance };
     delete globalWithPerf.performance;
     const { NavigationPerfLogger } =
-      await import('@/features/shared/analytics/NavigationPerfLogger');
+      await import('@/shared/analytics/NavigationPerfLogger');
     render(<NavigationPerfLogger />);
     expect(consoleLogSpy).not.toHaveBeenCalled();
   });

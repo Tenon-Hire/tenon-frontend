@@ -3,14 +3,15 @@ import { act, render, waitFor } from '@testing-library/react';
 import { useInviteCandidateFlow } from '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow';
 
 const inviteCandidateMock = jest.fn();
-const errorToMessageMock = jest.fn(() => 'friendly-error');
+const formatRecruiterErrorMock = jest.fn(() => 'friendly-error');
 
-jest.mock('@/lib/api/recruiter', () => ({
+jest.mock('@/features/recruiter/api', () => ({
   inviteCandidate: (...args: unknown[]) => inviteCandidateMock(...args),
 }));
 
 jest.mock('@/features/recruiter/utils/formatters', () => ({
-  errorToMessage: (...args: unknown[]) => errorToMessageMock(...args),
+  formatRecruiterError: (...args: unknown[]) =>
+    formatRecruiterErrorMock(...args),
 }));
 
 type HookReturn = ReturnType<typeof useInviteCandidateFlow>;
@@ -126,7 +127,7 @@ describe('useInviteCandidateFlow', () => {
       const res = await ref.current?.submit('Bob', 'bob@test.com');
       expect(res).toBeNull();
     });
-    expect(errorToMessageMock).toHaveBeenCalled();
+    expect(formatRecruiterErrorMock).toHaveBeenCalled();
   });
 
   it('reset returns state to idle', () => {

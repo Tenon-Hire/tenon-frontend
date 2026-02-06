@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, act, waitFor } from '@testing-library/react';
-import DashboardView from '@/features/recruiter/dashboard/DashboardView';
+import DashboardView from '@/features/recruiter/dashboard/RecruiterDashboardView';
 import { useInviteCandidateFlow } from '@/features/recruiter/dashboard/hooks/useInviteCandidateFlow';
 
 const notifyMock = jest.fn();
@@ -8,9 +8,9 @@ const updateMock = jest.fn();
 const inviteFlowResetMock = jest.fn();
 const inviteFlowSubmitMock = jest.fn();
 const captureModalProps = jest.fn();
-const copyToClipboardMock = jest.fn();
+const copyInviteLinkMock = jest.fn();
 
-jest.mock('@/features/shared/notifications', () => ({
+jest.mock('@/shared/notifications', () => ({
   useNotifications: () => ({ notify: notifyMock, update: updateMock }),
 }));
 
@@ -26,7 +26,7 @@ jest.mock(
 );
 
 jest.mock('@/features/recruiter/utils/formatters', () => ({
-  copyToClipboard: (...args: unknown[]) => copyToClipboardMock(...args),
+  copyInviteLink: (...args: unknown[]) => copyInviteLinkMock(...args),
 }));
 
 jest.mock('next/dynamic', () => {
@@ -110,7 +110,7 @@ describe('DashboardView extra coverage', () => {
       candidateName: 'Ann',
       candidateEmail: 'a@test.com',
     });
-    copyToClipboardMock.mockResolvedValue(true);
+    copyInviteLinkMock.mockResolvedValue(true);
     (useInviteCandidateFlow as jest.Mock).mockReturnValue({
       state: { status: 'idle' },
       submit: inviteFlowSubmitMock,
@@ -151,7 +151,7 @@ describe('DashboardView extra coverage', () => {
       await copyAction.onClick();
     });
 
-    expect(copyToClipboardMock).toHaveBeenCalledWith('http://invite');
+    expect(copyInviteLinkMock).toHaveBeenCalledWith('http://invite');
     expect(updateMock).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
@@ -202,7 +202,7 @@ describe('DashboardView extra coverage', () => {
       await copyAction.onClick();
     });
 
-    expect(copyToClipboardMock).toHaveBeenCalledTimes(2);
+    expect(copyInviteLinkMock).toHaveBeenCalledTimes(2);
   });
 
   it('closes modal via onClose callback', async () => {
@@ -325,7 +325,7 @@ describe('DashboardView extra coverage', () => {
       candidateName: 'Ann',
       candidateEmail: 'a@test.com',
     });
-    copyToClipboardMock.mockResolvedValueOnce(false);
+    copyInviteLinkMock.mockResolvedValueOnce(false);
 
     await act(async () => {
       render(<DashboardView {...props} />);
@@ -347,7 +347,7 @@ describe('DashboardView extra coverage', () => {
       await copyAction.onClick();
     });
 
-    expect(copyToClipboardMock).toHaveBeenCalled();
+    expect(copyInviteLinkMock).toHaveBeenCalled();
     expect(updateMock).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({

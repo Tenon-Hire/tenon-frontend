@@ -27,7 +27,7 @@ describe('NavigationPerfLogger', () => {
     logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
     const { NavigationPerfLogger } =
-      await import('@/features/shared/analytics/NavigationPerfLogger');
+      await import('@/shared/analytics/NavigationPerfLogger');
 
     render(<NavigationPerfLogger />);
 

@@ -11,7 +11,7 @@
  */
 import React from 'react';
 import { render } from '@testing-library/react';
-import { WebVitalsLogger } from '@/features/shared/analytics/WebVitalsLogger';
+import { WebVitalsLogger } from '@/shared/analytics/WebVitalsLogger';
 
 const useReportWebVitalsMock = jest.fn();
 

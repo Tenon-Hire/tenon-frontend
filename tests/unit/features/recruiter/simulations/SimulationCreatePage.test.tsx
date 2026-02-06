@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import SimulationCreatePage from '@/features/recruiter/simulations/SimulationCreatePage';
+import SimulationCreatePage from '@/features/recruiter/simulations/create/SimulationCreatePage';
 
 const createSimulationMock = jest.fn();
 const pushMock = jest.fn();
@@ -11,7 +11,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-jest.mock('@/lib/api/recruiter', () => ({
+jest.mock('@/features/recruiter/api', () => ({
   createSimulation: (...args: unknown[]) => createSimulationMock(...args),
 }));
 
@@ -25,8 +25,8 @@ jest.mock('@/lib/auth/routing', () => {
   };
 });
 
-jest.mock('@/lib/utils/errors', () => {
-  const actual = jest.requireActual('@/lib/utils/errors');
+jest.mock('@/lib/errors/errors', () => {
+  const actual = jest.requireActual('@/lib/errors/errors');
   return {
     ...actual,
     toUserMessage: jest.fn(() => 'pretty error'),

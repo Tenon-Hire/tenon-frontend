@@ -5,9 +5,9 @@ import {
   normalizeApiError,
   toStatus,
   toUserMessage,
-} from '@/lib/utils/errors';
+} from '@/lib/errors/errors';
 
-describe('lib/utils/errors', () => {
+describe('lib/errors/errors', () => {
   const originalDebugErrors = process.env.NEXT_PUBLIC_TENON_DEBUG_ERRORS;
 
   afterEach(() => {

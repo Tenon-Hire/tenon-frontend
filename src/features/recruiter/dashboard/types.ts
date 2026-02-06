@@ -3,4 +3,4 @@ export type {
   InviteModalState,
   InviteSuccess,
   SimulationListItem,
-} from '@/types/recruiter';
+} from '@/features/recruiter/types';

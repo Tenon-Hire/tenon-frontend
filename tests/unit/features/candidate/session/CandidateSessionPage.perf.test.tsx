@@ -80,7 +80,7 @@ const getCurrentTaskMock = jest.fn();
 const startTestRunMock = jest.fn();
 const pollTestRunMock = jest.fn();
 
-jest.mock('@/lib/api/candidate', () => ({
+jest.mock('@/features/candidate/api', () => ({
   resolveCandidateInviteToken: (...args: unknown[]) =>
     resolveInviteMock(...args),
   getCandidateCurrentTask: (...args: unknown[]) => getCurrentTaskMock(...args),

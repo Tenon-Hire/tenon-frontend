@@ -8,7 +8,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/test',
 }));
 
-import { NavigationPerfLogger } from '@/features/shared/analytics/NavigationPerfLogger';
+import { NavigationPerfLogger } from '@/shared/analytics/NavigationPerfLogger';
 
 describe('NavigationPerfLogger.tsx coverage completion', () => {
   it('renders without error', () => {

@@ -8,13 +8,16 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RecruiterDashboardPage from '@/features/recruiter/dashboard/RecruiterDashboardPage';
-import { NotificationsProvider } from '@/features/shared/notifications';
-import type { RecruiterProfile } from '@/types/recruiter';
-import { inviteCandidate, listSimulationCandidates } from '@/lib/api/recruiter';
+import { NotificationsProvider } from '@/shared/notifications';
+import type { RecruiterProfile } from '@/features/recruiter/types';
+import {
+  inviteCandidate,
+  listSimulationCandidates,
+} from '@/features/recruiter/api';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
 
-jest.mock('@/lib/api/recruiter', () => {
-  const actual = jest.requireActual('@/lib/api/recruiter');
+jest.mock('@/features/recruiter/api', () => {
+  const actual = jest.requireActual('@/features/recruiter/api');
   return {
     ...actual,
     listSimulations: jest.fn(),
