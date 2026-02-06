@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { SimulationListItem } from '@/lib/api/recruiter';
 import { formatCreatedDate } from '../utils/formatters';
 
@@ -11,19 +12,15 @@ type SimulationListProps = {
 export function SimulationList({ simulations, onInvite }: SimulationListProps) {
   if (!simulations.length) {
     return (
-      <div className="rounded border border-dashed border-gray-200 bg-gray-50 p-6 text-center">
-        <p className="text-base font-semibold text-gray-900">
-          No simulations yet
-        </p>
-        <p className="mt-1 text-sm text-gray-600">
-          Kick off a simulation to invite candidates and track their progress.
-        </p>
-        <div className="mt-3 flex justify-center gap-2">
+      <EmptyState
+        title="No simulations yet"
+        description="Kick off a simulation to invite candidates and track their progress."
+        action={
           <Link href="/dashboard/simulations/new" prefetch>
             <Button>New Simulation</Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
     );
   }
 

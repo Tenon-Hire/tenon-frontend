@@ -1,18 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  submitCandidateTask,
-  type CandidateTaskSubmitResponse,
-} from '@/lib/api/candidate';
-import { useNotifications } from '@/features/shared/notifications';
-import { normalizeApiError } from '@/lib/utils/errors';
-import { friendlySubmitError } from '../utils/errorMessages';
-import {
-  isCodeTask,
-  isGithubNativeDay,
-  isTextTask,
-} from '../task/utils/taskGuards';
+import { useEffect, useRef, useState } from 'react';
+import { useTaskSubmitHandler } from './useTaskSubmitHandler';
 import type { Task } from '../task/types';
-import type { SubmitPayload } from '../task/types';
 
 type Params = {
   token: string | null;
@@ -31,7 +19,6 @@ export function useTaskSubmission({
   setTaskError,
   refreshTask,
 }: Params) {
-  const { notify } = useNotifications();
   const [submitting, setSubmitting] = useState(false);
   const refreshTimerRef = useRef<number | null>(null);
 
@@ -43,77 +30,19 @@ export function useTaskSubmission({
     };
   }, []);
 
-  const handleSubmit = useCallback(
-    async (
-      payload: SubmitPayload,
-    ): Promise<CandidateTaskSubmitResponse | void> => {
-      if (!token || !candidateSessionId || !currentTask) return;
-
-      const type = String(currentTask.type);
-      const wantsText = isTextTask(type);
-      const isCode = isCodeTask(type);
-      const isGithubNative = isGithubNativeDay(currentTask.dayIndex) || isCode;
-
-      if (!isGithubNative && wantsText) {
-        const trimmed = (payload.contentText ?? '').trim();
-        if (!trimmed) {
-          setTaskError('Please enter an answer before submitting.');
-          return;
-        }
-      }
-
-      setSubmitting(true);
-      clearTaskError();
-
-      try {
-        const resp = await submitCandidateTask({
-          taskId: currentTask.id,
-          token,
-          candidateSessionId,
-          contentText: isGithubNative ? undefined : payload.contentText,
-        });
-
-        if (refreshTimerRef.current) {
-          window.clearTimeout(refreshTimerRef.current);
-        }
-        refreshTimerRef.current = window.setTimeout(() => {
-          void refreshTask({ skipCache: true });
-        }, 900);
-        notify({
-          id: `submit-${currentTask.id}`,
-          tone: 'success',
-          title: 'Submission received',
-          description: 'We are refreshing your progress.',
-        });
-
-        return resp;
-      } catch (err) {
-        const normalized = normalizeApiError(
-          err,
-          friendlySubmitError(err) ?? 'Submission failed.',
-        );
-        setTaskError(normalized.message);
-        notify({
-          id: `submit-${currentTask?.id ?? 'unknown'}`,
-          tone: 'error',
-          title: 'Submission failed',
-          description: normalized.message,
-        });
-        throw err;
-      } finally {
-        setSubmitting(false);
-      }
+  const { handleSubmit } = useTaskSubmitHandler({
+    token,
+    candidateSessionId,
+    currentTask,
+    clearTaskError,
+    setTaskError,
+    refreshTask,
+    setSubmitting,
+    setRefreshTimer: (cb) => {
+      if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = window.setTimeout(cb, 900);
     },
-    [
-      candidateSessionId,
-      clearTaskError,
-      currentTask,
-      notify,
-      refreshTask,
-      setTaskError,
-      token,
-    ],
-  );
+  });
 
   return { submitting, handleSubmit };
 }

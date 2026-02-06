@@ -6,7 +6,8 @@ import {
 import { toUserMessage } from '@/lib/utils/errors';
 
 function statusFromUnknown(err: unknown): number | undefined {
-  if (err instanceof HttpError) return err.status;
+  if (typeof HttpError === 'function' && err instanceof HttpError)
+    return err.status;
   const anyErr = err as { status?: unknown } | undefined;
   return typeof anyErr?.status === 'number' ? anyErr.status : undefined;
 }

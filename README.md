@@ -5,10 +5,18 @@ Next.js App Router (React 19 + TypeScript) UI for Tenon’s 5-day work simulatio
 ## Architecture
 
 - App Router under `src/app`; shared shell in `src/features/shared/layout/AppShell`.
-- Auth0 for recruiter portal; `src/middleware.ts` redirects unauthenticated recruiters to `/auth/login?returnTo=…`.
+- Auth0 for recruiter portal; `src/proxy.ts` redirects unauthenticated recruiters to `/auth/login?returnTo=…`.
 - Candidate portal uses invite email OTP verification to mint a candidate access token for API calls.
 - Candidate portal uses a same-origin proxy under `/api/backend/*` by default (can point to an absolute backend URL); requests carry bearer tokens. Recruiter portal uses Next API routes as a BFF that forward to the backend with Auth0 access tokens.
 - Styling via Tailwind utility classes and shared UI primitives in `src/components/ui`.
+- API client guardrails: use `apiClient` for direct candidate/backend calls, `recruiterBffClient` (or `httpResult` when you need status/meta) for recruiter BFF routes; avoid ad-hoc `fetch` or legacy `bffClient`.
+- File size guardrail: keep React components/hooks/utils/api modules ≤ 100 LOC; if a file must exceed, add a short top-of-file comment explaining why.
+
+## Contributor quick rules
+
+- Status/UI: render statuses through `statusMeta` + `StatusPill`; use `deriveTestStatus` for any test result pill/label to keep wording consistent.
+- API calls: candidate surfaces use `apiClient`/`requestWithMeta`; recruiter surfaces use `recruiterBffClient`/`httpResult`. No raw `fetch` or `httpRequestWithMeta` in feature code.
+- Size guardrail: keep new components/hooks/utils/api modules ≤ 100 LOC (add a short comment if you must exceed).
 
 ## Routes
 

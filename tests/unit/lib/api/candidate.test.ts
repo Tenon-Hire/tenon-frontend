@@ -1,5 +1,6 @@
 const mockPost = jest.fn();
 const mockGet = jest.fn();
+const mockRequestWithMeta = jest.fn();
 
 jest.mock('@/lib/api/httpClient', () => ({
   apiClient: {
@@ -8,11 +9,37 @@ jest.mock('@/lib/api/httpClient', () => ({
   },
 }));
 
+jest.mock('@/lib/api/httpClient/request', () => ({
+  requestWithMeta: (...args: unknown[]) => mockRequestWithMeta(...args),
+}));
+
 describe('candidate api helpers', () => {
   beforeEach(() => {
     jest.resetModules();
     mockPost.mockReset();
     mockGet.mockReset();
+    mockRequestWithMeta.mockImplementation(
+      async (
+        path: string,
+        options?: Record<string, unknown>,
+        client?: unknown,
+      ) => {
+        const method = ((options?.method as string) ?? 'GET').toUpperCase();
+        if (method === 'GET') {
+          const data = await mockGet(path, options, client);
+          return {
+            data,
+            headers: (options as { headers?: Headers })?.headers ?? null,
+          };
+        }
+        const data = await mockPost(path, options?.body ?? {}, options, client);
+        return {
+          data,
+          headers: (options as { headers?: Headers })?.headers ?? null,
+        };
+      },
+    );
+    mockRequestWithMeta.mockClear();
   });
 
   it('lists candidate invites and normalizes shape', async () => {

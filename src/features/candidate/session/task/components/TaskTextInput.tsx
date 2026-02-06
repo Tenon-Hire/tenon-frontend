@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import { cn } from '@/components/ui/classnames';
 import type { MarkdownPreviewProps } from '@/components/ui/Markdown';
+import { TaskTextToolbar } from './TaskTextToolbar';
+import { TaskTextFooter } from './TaskTextFooter';
 
 const LazyMarkdownPreview = dynamic(
   () => import('@/components/ui/Markdown').then((m) => m.MarkdownPreview),
@@ -40,50 +41,7 @@ export function TaskTextInput({
 
   return (
     <>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
-        <div className="flex items-center gap-2">
-          <span className="leading-5">
-            Markdown is supported for headings, lists, emphasis, and code. Use
-            Preview to verify formatting.
-          </span>
-          <a
-            className="text-blue-600 hover:text-blue-700 hover:underline"
-            href="https://www.markdownguide.org/cheat-sheet/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Cheat sheet
-          </a>
-        </div>
-        <div className="inline-flex overflow-hidden rounded-md border border-gray-200 bg-white text-xs font-medium">
-          <button
-            type="button"
-            aria-pressed={mode === 'write'}
-            className={cn(
-              'px-3 py-1 transition-colors',
-              mode === 'write'
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-700 hover:bg-gray-50',
-            )}
-            onClick={() => setMode('write')}
-          >
-            Write
-          </button>
-          <button
-            type="button"
-            aria-pressed={mode === 'preview'}
-            className={cn(
-              'border-l border-gray-200 px-3 py-1 transition-colors',
-              mode === 'preview'
-                ? 'bg-blue-50 text-blue-700'
-                : 'text-gray-700 hover:bg-gray-50',
-            )}
-            onClick={() => setMode('preview')}
-          >
-            Preview
-          </button>
-        </div>
-      </div>
+      <TaskTextToolbar mode={mode} onChange={setMode} />
 
       {mode === 'write' ? (
         <textarea
@@ -102,10 +60,7 @@ export function TaskTextInput({
         </div>
       )}
 
-      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-        <span>{value.length.toLocaleString()} characters</span>
-        {savedAt ? <span>Draft saved</span> : null}
-      </div>
+      <TaskTextFooter length={value.length} savedAt={savedAt} />
     </>
   );
 }

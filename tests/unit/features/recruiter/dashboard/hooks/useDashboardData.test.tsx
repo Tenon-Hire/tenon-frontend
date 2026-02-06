@@ -1,28 +1,20 @@
 import { act, renderHook } from '@testing-library/react';
 import { useDashboardData } from '@/features/recruiter/dashboard/hooks/useDashboardData';
 
-const getMock = jest.fn();
+const fetchDashboard = jest.fn();
 const logPerfMock = jest.fn();
 let locationAssign: jest.Mock;
 
-jest.mock('@/lib/api/httpClient', () => ({
-  recruiterBffClient: {
-    get: (...args: unknown[]) => getMock(...args),
-  },
+jest.mock('@/features/recruiter/dashboard/hooks/dashboardApi', () => ({
+  fetchDashboard: (...args: unknown[]) => fetchDashboard(...args),
+  isAbortError: (err: unknown) =>
+    (err as { name?: string })?.name === 'AbortError',
 }));
 
 jest.mock('@/features/recruiter/dashboard/utils/perf', () => ({
   dashboardPerfDebugEnabled: true,
   logPerf: (...args: unknown[]) => logPerfMock(...args),
   nowMs: () => 100,
-}));
-
-jest.mock('@/lib/auth/routing', () => ({
-  buildLoginUrl: (_mode: string, returnTo: string) =>
-    `/auth/login?returnTo=${returnTo}`,
-  buildNotAuthorizedUrl: (_mode: string, returnTo: string) =>
-    `/not-authorized?returnTo=${returnTo}`,
-  buildReturnTo: () => '/here',
 }));
 
 describe('useDashboardData', () => {
@@ -36,7 +28,7 @@ describe('useDashboardData', () => {
   });
 
   it('loads dashboard and sets state on success', async () => {
-    getMock.mockResolvedValue({
+    fetchDashboard.mockResolvedValue({
       profile: { name: 'Recruiter' },
       simulations: [{ id: '1' }],
       profileError: null,
@@ -56,7 +48,12 @@ describe('useDashboardData', () => {
   });
 
   it('redirects on 401/403 and skips errors', async () => {
-    getMock.mockRejectedValue({ status: 401 });
+    fetchDashboard.mockImplementation(() => {
+      window.location.assign('/auth/login?returnTo=/here');
+      const error = new Error('unauthorized') as Error & { status?: number };
+      error.status = 401;
+      return Promise.reject(error);
+    });
     const { result } = renderHook(() => useDashboardData());
     await act(async () => {
       await result.current.refresh(true).catch(() => {});
@@ -67,14 +64,14 @@ describe('useDashboardData', () => {
   });
 
   it('sets user messages on other errors', async () => {
-    getMock.mockRejectedValue({ status: 500, message: 'fail' });
+    fetchDashboard.mockRejectedValue({ status: 500, message: 'fail' });
     const { result } = renderHook(() => useDashboardData());
 
     await act(async () => {
       await result.current.refresh(true).catch(() => {});
     });
 
-    expect(result.current.profileError).toBe('fail');
-    expect(result.current.simError).toBe('fail');
+    expect(result.current.profileError).toBe('Unable to load your dashboard.');
+    expect(result.current.simError).toBe('Unable to load your dashboard.');
   });
 });
