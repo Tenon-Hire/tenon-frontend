@@ -12,8 +12,27 @@ import { modeForPath } from './lib/auth/routing';
 import { normalizeLogoutRedirect } from './proxy/redirects';
 import { buildResponder, startPerfTimer } from './proxy/perf';
 import { redirectSignedInHome, gateByRole } from './proxy/auth';
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+  ],
+};
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const isStaticAsset =
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/.well-known/') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt' ||
+    /\.(?:css|js|map|png|jpg|jpeg|gif|svg|ico|webp|avif|woff2?|ttf|eot)$/.test(
+      pathname,
+    );
+  if (isStaticAsset) {
+    return NextResponse.next();
+  }
   const isApiPath = pathname === '/api' || pathname.startsWith('/api/');
   const logoutRedirect = normalizeLogoutRedirect(request);
   if (logoutRedirect) return logoutRedirect;
@@ -51,9 +70,3 @@ export async function proxy(request: NextRequest) {
 
   return responder(passThrough());
 }
-
-export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
-  ],
-};

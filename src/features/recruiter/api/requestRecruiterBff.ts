@@ -16,18 +16,17 @@ export async function requestRecruiterBff<T>(
   const methodUpper = (options.method ?? 'GET') as HttpMethod;
   const method = methodUpper.toLowerCase() as Lowercase<HttpMethod>;
   const client = recruiterBffClient as unknown as Record<string, unknown>;
-  const call =
-    typeof client[method] === 'function'
-      ? (client[method] as (p: string, o?: unknown) => Promise<unknown>)
-      : null;
-  const exec =
-    call ??
-    ((target: string, opts?: unknown) =>
-      runRecruiterFallback(
-        target,
-        opts as RecruiterRequestOptions,
-        methodUpper,
-      ));
+  const exec = async (target: string, opts: RecruiterRequestOptions) => {
+    if (typeof client[method] === 'function') {
+      const { body, method: _ignored, ...rest } = opts ?? {};
+      const call = client[method] as (...args: unknown[]) => Promise<unknown>;
+      if (methodUpper === 'GET' || methodUpper === 'DELETE') {
+        return call(target, rest);
+      }
+      return call(target, body, rest);
+    }
+    return runRecruiterFallback(target, opts, methodUpper);
+  };
 
   try {
     const res = await exec(path, options);

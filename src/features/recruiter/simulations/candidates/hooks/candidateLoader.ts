@@ -15,6 +15,12 @@ type LoadParams = {
   includePageItems?: boolean;
 };
 
+const isAbortError = (err: unknown) =>
+  (err instanceof DOMException && err.name === 'AbortError') ||
+  (err &&
+    typeof err === 'object' &&
+    (err as { name?: unknown }).name === 'AbortError');
+
 export type CandidateLoadResult = {
   candidate: CandidateSession | null;
   ordered: SubmissionListItem[];
@@ -31,15 +37,18 @@ export async function loadCandidateAndSubmissions({
   includePageItems,
 }: LoadParams): Promise<CandidateLoadResult> {
   try {
+    const resolvedSkipCache = skipCache ?? true;
     const candidate = await verifyCandidate(
       simulationId,
       candidateSessionId,
       signal,
+      resolvedSkipCache,
     );
     const listJson = await fetchCandidateSubmissions(
       candidateSessionId,
       signal,
-      skipCache,
+      resolvedSkipCache,
+      simulationId,
     );
     const ordered = [...(listJson.items ?? [])].sort(
       (a, b) => a.dayIndex - b.dayIndex,
@@ -60,6 +69,7 @@ export async function loadCandidateAndSubmissions({
       error: null,
     };
   } catch (error) {
+    if (signal.aborted || isAbortError(error)) throw error;
     return {
       candidate: null,
       ordered: [],

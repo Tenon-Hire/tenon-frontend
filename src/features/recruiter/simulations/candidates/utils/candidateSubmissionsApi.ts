@@ -2,15 +2,24 @@ import { recruiterBffClient } from '@/lib/api/client';
 import { listSimulationCandidates } from '@/features/recruiter/api';
 import type { SubmissionArtifact, SubmissionListResponse } from '../types';
 
+const isAbortError = (err: unknown) =>
+  (err instanceof DOMException && err.name === 'AbortError') ||
+  (err &&
+    typeof err === 'object' &&
+    (err as { name?: unknown }).name === 'AbortError');
+
 export async function verifyCandidate(
   simulationId: string,
   candidateSessionId: string,
   signal?: AbortSignal,
+  skipCache?: boolean,
 ) {
   try {
     const candidates = await listSimulationCandidates(simulationId, {
       cache: 'no-store',
       signal,
+      skipCache,
+      disableDedupe: true,
       cacheTtlMs: 9000,
     });
     const found =
@@ -20,6 +29,7 @@ export async function verifyCandidate(
     if (!found) throw new Error('Candidate not found for this simulation.');
     return found;
   } catch (e) {
+    if ((signal && signal.aborted) || isAbortError(e)) throw e;
     if (typeof e === 'string') throw e;
     const message =
       e instanceof Error && e.message
@@ -33,14 +43,25 @@ export async function fetchCandidateSubmissions(
   candidateSessionId: string,
   signal?: AbortSignal,
   skipCache?: boolean,
+  simulationId?: string,
 ): Promise<SubmissionListResponse> {
+  const encoded = encodeURIComponent(candidateSessionId);
+  const parts = [
+    `candidateSessionId=${encoded}`,
+    `candidate_session_id=${encoded}`,
+  ];
+  if (simulationId) {
+    const encodedSim = encodeURIComponent(simulationId);
+    parts.push(`simulationId=${encodedSim}`, `simulation_id=${encodedSim}`);
+  }
   return recruiterBffClient.get<SubmissionListResponse>(
-    `/submissions?candidateSessionId=${encodeURIComponent(candidateSessionId)}`,
+    `/submissions?${parts.join('&')}`,
     {
       cache: 'no-store',
       signal,
       skipCache,
       cacheTtlMs: 9000,
+      disableDedupe: true,
     },
   );
 }

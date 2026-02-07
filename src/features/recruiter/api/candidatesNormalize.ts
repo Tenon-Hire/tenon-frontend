@@ -6,22 +6,40 @@ import {
   normalizeProgress,
 } from './candidateNormalizeHelpers';
 
+const resolveCandidateSessionId = (rec: Record<string, unknown>) => {
+  const candidates = [
+    rec.candidateSessionId,
+    rec.candidate_session_id,
+    rec.candidateSessionID,
+    rec.sessionId,
+    rec.session_id,
+    rec.candidateId,
+    rec.candidate_id,
+    rec.id,
+  ];
+  for (const value of candidates) {
+    const parsed = toNumberOrNull(value);
+    if (parsed && parsed > 0) return parsed;
+  }
+  return 0;
+};
+
 export const normalizeCandidateSession = (raw: unknown): CandidateSession => {
   if (!raw || typeof raw !== 'object') return emptyCandidate;
   const rec = raw as Record<string, unknown>;
-  const candidateSessionId = toNumberOrNull(
-    rec.candidateSessionId ?? rec.candidate_session_id ?? rec.id,
-  );
+  const candidateSessionId = resolveCandidateSessionId(rec);
   const inviteEmail =
     toStringOrNull(rec.inviteEmail ?? rec.invite_email ?? rec.email) ?? null;
   const candidateName =
     toStringOrNull(rec.candidateName ?? rec.candidate_name ?? rec.name) ?? null;
-  const status =
+  let status =
     toStringOrNull(rec.status) ??
     toStringOrNull(rec.sessionStatus ?? rec.session_status) ??
     'not_started';
   const startedAt = toStringOrNull(rec.startedAt ?? rec.started_at);
   const completedAt = toStringOrNull(rec.completedAt ?? rec.completed_at);
+  if (completedAt) status = 'completed';
+  else if (status === 'not_started' && startedAt) status = 'in_progress';
   const hasReport = rec.hasReport === true || rec.reportReady === true;
   const reportReady =
     rec.reportReady === true || rec.report_ready === true ? true : undefined;

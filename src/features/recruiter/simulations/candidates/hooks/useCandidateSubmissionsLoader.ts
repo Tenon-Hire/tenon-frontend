@@ -70,7 +70,7 @@ export function useCandidateSubmissionsLoader({
   }, [showAll]);
 
   useEffect(() => {
-    reload().catch(() => {});
+    reload({ skipCache: true }).catch(() => {});
     return () => abort();
   }, [abort, reload]);
 

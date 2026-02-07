@@ -5,7 +5,7 @@ import {
   toStringOrNull,
 } from './base';
 import type { CandidateInvite } from './types';
-
+import { extractInviteToken } from '../dashboard/utils/inviteTokens';
 const normalizeProgress = (
   raw: unknown,
 ): { completed: number; total: number } | null => {
@@ -46,7 +46,14 @@ export function normalizeCandidateInvite(raw: unknown): CandidateInvite {
     toStringOrNull((raw as { companyName?: unknown }).companyName) ??
     toStringOrNull((raw as { company_name?: unknown }).company_name);
 
-  const token = toStringOrNull((raw as { token?: unknown }).token);
+  const rawInviteUrl =
+    toStringOrNull((raw as { inviteUrl?: unknown }).inviteUrl) ??
+    toStringOrNull((raw as { invite_url?: unknown }).invite_url);
+  const token =
+    toStringOrNull((raw as { token?: unknown }).token) ??
+    toStringOrNull((raw as { inviteToken?: unknown }).inviteToken) ??
+    toStringOrNull((raw as { invite_token?: unknown }).invite_token) ??
+    (rawInviteUrl ? extractInviteToken(rawInviteUrl) : null);
   const status =
     toStringOrNull((raw as { status?: unknown }).status) ??
     toStringOrNull((raw as { sessionStatus?: unknown }).sessionStatus) ??
