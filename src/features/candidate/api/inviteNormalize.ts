@@ -6,8 +6,6 @@ import {
 } from './base';
 import type { CandidateInvite } from './types';
 import { extractInviteToken } from '../dashboard/utils/inviteTokens';
-
-// Size guardrail: extra normalization cases + invite token parsing.
 const normalizeProgress = (
   raw: unknown,
 ): { completed: number; total: number } | null => {

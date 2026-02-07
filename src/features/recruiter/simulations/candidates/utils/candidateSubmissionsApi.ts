@@ -45,7 +45,6 @@ export async function fetchCandidateSubmissions(
   skipCache?: boolean,
   simulationId?: string,
 ): Promise<SubmissionListResponse> {
-  // Size guardrail: include multiple query key variants for backend compatibility.
   const encoded = encodeURIComponent(candidateSessionId);
   const parts = [
     `candidateSessionId=${encoded}`,
