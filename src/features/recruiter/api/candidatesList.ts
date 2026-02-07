@@ -40,6 +40,7 @@ export function listSimulationCandidates(
       signal: options?.signal,
       skipCache,
       cacheTtlMs: cacheTtl,
+      disableDedupe: options?.disableDedupe,
     })
     .then((data) => {
       const normalized = Array.isArray(data)

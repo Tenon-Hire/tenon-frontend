@@ -12,6 +12,12 @@ export type ReloadResult = {
   error: string | null;
 };
 
+const isAbortError = (err: unknown) =>
+  (err instanceof DOMException && err.name === 'AbortError') ||
+  (err &&
+    typeof err === 'object' &&
+    (err as { name?: unknown }).name === 'AbortError');
+
 export async function reloadCandidateSubmissions(params: {
   simulationId: string;
   candidateSessionId: string;
@@ -79,6 +85,7 @@ export async function reloadCandidateSubmissions(params: {
       error: null,
     };
   } catch (e: unknown) {
+    if (signal.aborted || isAbortError(e)) throw e;
     const message = formatReloadError(e, fallbackMessage);
     return {
       candidate: null,
